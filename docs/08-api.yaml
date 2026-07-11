@@ -1,0 +1,280 @@
+# Contrato executável OpenAPI 3.1 do SGD.
+openapi: 3.1.0
+info:
+  title: API do Sistema de Gerenciamento de Discipulados
+  version: 1.0.0
+  description: |
+    Contrato HTTP da API do SGD. Todos os recursos de domínio usam português,
+    plural e URLs versionadas. Datas usam ISO 8601; regras de negócio usam o
+    fuso America/Sao_Paulo. Exclusões lógicas são feitas por PATCH com ativo=false.
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Desenvolvimento local
+security:
+  - bearerAuth: []
+tags:
+  - name: Autenticação
+  - name: Usuários
+  - name: Gerências
+  - name: Discipulados
+  - name: Adolescentes
+  - name: Encontros
+  - name: Frequências
+  - name: Indicadores e relatórios
+paths:
+  /autenticacao/login:
+    post:
+      tags: [Autenticação]
+      summary: Autentica um usuário ativo
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/LoginRequest' } } }
+      responses:
+        '200': { description: Sessão criada, content: { application/json: { schema: { $ref: '#/components/schemas/SessaoResponse' } } } }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+  /autenticacao/atualizar-token:
+    post:
+      tags: [Autenticação]
+      summary: Rotaciona o refresh token e emite nova sessão
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/RefreshTokenRequest' } } }
+      responses:
+        '200': { description: Sessão renovada, content: { application/json: { schema: { $ref: '#/components/schemas/SessaoResponse' } } } }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+  /autenticacao/esqueci-a-senha:
+    post:
+      tags: [Autenticação]
+      summary: Solicita redefinição de senha sem revelar se o e-mail existe
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/EmailRequest' } } }
+      responses: { '204': { description: Solicitação recebida } }
+  /autenticacao/redefinir-senha:
+    post:
+      tags: [Autenticação]
+      summary: Redefine a senha com token de uso único
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/RedefinirSenhaRequest' } } }
+      responses:
+        '204': { description: Senha alterada }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+  /autenticacao/eu:
+    get:
+      tags: [Autenticação]
+      summary: Retorna o usuário autenticado
+      responses: { '200': { description: Usuário atual, content: { application/json: { schema: { $ref: '#/components/schemas/Usuario' } } } } }
+  /usuarios:
+    get:
+      tags: [Usuários]
+      summary: Lista usuários
+      description: Requer ADMIN.
+      parameters: [ { $ref: '#/components/parameters/Pagina' }, { $ref: '#/components/parameters/TamanhoPagina' }, { name: ativo, in: query, schema: { type: boolean } } ]
+      responses: { '200': { $ref: '#/components/responses/PaginaUsuarios' }, '403': { $ref: '#/components/responses/Proibido' } }
+    post:
+      tags: [Usuários]
+      summary: Cria usuário
+      description: Requer ADMIN. Um usuário pode receber múltiplos perfis.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CriarUsuarioRequest' } } } }
+      responses: { '201': { description: Usuário criado, content: { application/json: { schema: { $ref: '#/components/schemas/Usuario' } } } }, '409': { $ref: '#/components/responses/Conflito' } }
+  /usuarios/{usuarioId}:
+    patch:
+      tags: [Usuários]
+      summary: Atualiza perfis ou inativa/reativa usuário
+      description: Requer ADMIN. Nunca exclui fisicamente o usuário.
+      parameters: [ { $ref: '#/components/parameters/UsuarioId' } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AtualizarUsuarioRequest' } } } }
+      responses: { '200': { description: Usuário atualizado, content: { application/json: { schema: { $ref: '#/components/schemas/Usuario' } } } }, '404': { $ref: '#/components/responses/NaoEncontrado' } }
+  /gerencias:
+    get:
+      tags: [Gerências]
+      summary: Lista gerências visíveis ao solicitante
+      parameters: [ { $ref: '#/components/parameters/Pagina' }, { $ref: '#/components/parameters/TamanhoPagina' } ]
+      responses: { '200': { $ref: '#/components/responses/PaginaGerencias' } }
+    post:
+      tags: [Gerências]
+      summary: Cria uma gerência
+      description: Requer ADMIN.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/GerenciaRequest' } } } }
+      responses: { '201': { description: Gerência criada, content: { application/json: { schema: { $ref: '#/components/schemas/Gerencia' } } } } }
+  /gerencias/{gerenciaId}:
+    patch:
+      tags: [Gerências]
+      summary: Altera nome ou gerente da gerência
+      description: Requer ADMIN.
+      parameters: [ { $ref: '#/components/parameters/GerenciaId' } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/GerenciaRequest' } } } }
+      responses: { '200': { description: Gerência atualizada, content: { application/json: { schema: { $ref: '#/components/schemas/Gerencia' } } } } }
+  /discipulados:
+    get:
+      tags: [Discipulados]
+      summary: Lista discipulados visíveis ao solicitante
+      parameters: [ { $ref: '#/components/parameters/Pagina' }, { $ref: '#/components/parameters/TamanhoPagina' }, { name: gerenciaId, in: query, schema: { type: integer, format: int64 } }, { name: ativo, in: query, schema: { type: boolean } } ]
+      responses: { '200': { $ref: '#/components/responses/PaginaDiscipulados' } }
+    post:
+      tags: [Discipulados]
+      summary: Cria discipulado com um discipulador ativo
+      description: Requer ADMIN. RN003 exige exatamente um discipulador.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/DiscipuladoRequest' } } } }
+      responses: { '201': { description: Discipulado criado, content: { application/json: { schema: { $ref: '#/components/schemas/Discipulado' } } } } }
+  /discipulados/{discipuladoId}:
+    patch:
+      tags: [Discipulados]
+      summary: Atualiza dados organizacionais ou inativa discipulado
+      description: Requer ADMIN. Não há exclusão física.
+      parameters: [ { $ref: '#/components/parameters/DiscipuladoId' } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/DiscipuladoRequest' } } } }
+      responses: { '200': { description: Discipulado atualizado, content: { application/json: { schema: { $ref: '#/components/schemas/Discipulado' } } } } }
+  /discipulados/{discipuladoId}/co-lideres:
+    put:
+      tags: [Discipulados]
+      summary: Define os co-líderes de um discipulado
+      description: Requer ADMIN. A lista aceita no máximo dois usuários (RN004).
+      parameters: [ { $ref: '#/components/parameters/DiscipuladoId' } ]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [usuarioIds], properties: { usuarioIds: { type: array, minItems: 0, maxItems: 2, items: { type: integer, format: int64 } } } } } } }
+      responses: { '200': { description: Co-líderes atualizados, content: { application/json: { schema: { $ref: '#/components/schemas/Discipulado' } } } } }
+  /adolescentes:
+    get:
+      tags: [Adolescentes]
+      summary: Lista adolescentes por escopo de acesso
+      parameters: [ { $ref: '#/components/parameters/Pagina' }, { $ref: '#/components/parameters/TamanhoPagina' }, { name: discipuladoId, in: query, schema: { type: integer, format: int64 } }, { name: ativo, in: query, schema: { type: boolean } } ]
+      responses: { '200': { $ref: '#/components/responses/PaginaAdolescentes' } }
+    post:
+      tags: [Adolescentes]
+      summary: Cadastra adolescente e vínculo atual
+      description: ADMIN, DISCIPULADOR ou CO_LIDER; os dois últimos só podem usar seu discipulado (RN016 e RN017).
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AdolescenteRequest' } } } }
+      responses: { '201': { description: Adolescente criado, content: { application/json: { schema: { $ref: '#/components/schemas/Adolescente' } } } } }
+  /adolescentes/{adolescenteId}:
+    patch:
+      tags: [Adolescentes]
+      summary: Atualiza cadastro ou inativa adolescente
+      description: A inativação preserva histórico (RN018).
+      parameters: [ { $ref: '#/components/parameters/AdolescenteId' } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AdolescenteRequest' } } } }
+      responses: { '200': { description: Adolescente atualizado, content: { application/json: { schema: { $ref: '#/components/schemas/Adolescente' } } } } }
+  /adolescentes/{adolescenteId}/vinculos:
+    post:
+      tags: [Adolescentes]
+      summary: Transfere adolescente para outro discipulado
+      description: Encerra o vínculo ativo anterior e cria outro; mantém histórico (RN001 e RN002).
+      parameters: [ { $ref: '#/components/parameters/AdolescenteId' } ]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [discipuladoId, dataInicio], properties: { discipuladoId: { type: integer, format: int64 }, dataInicio: { type: string, format: date } } } } } }
+      responses: { '201': { description: Vínculo criado, content: { application/json: { schema: { $ref: '#/components/schemas/Vinculo' } } } }, '409': { $ref: '#/components/responses/Conflito' } }
+  /encontros:
+    get:
+      tags: [Encontros]
+      summary: Lista encontros
+      parameters: [ { name: discipuladoId, in: query, required: true, schema: { type: integer, format: int64 } }, { name: dataInicio, in: query, schema: { type: string, format: date } }, { name: dataFim, in: query, schema: { type: string, format: date } } ]
+      responses: { '200': { description: Encontros, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Encontro' } } } } } }
+    post:
+      tags: [Encontros]
+      summary: Registra encontro realizado ou cancelado
+      description: ADMIN, DISCIPULADOR ou CO_LIDER do discipulado.
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/EncontroRequest' } } } }
+      responses: { '201': { description: Encontro criado, content: { application/json: { schema: { $ref: '#/components/schemas/Encontro' } } } } }
+  /encontros/{encontroId}:
+    patch:
+      tags: [Encontros]
+      summary: Altera situação ou data do encontro
+      parameters: [ { $ref: '#/components/parameters/EncontroId' } ]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/EncontroRequest' } } } }
+      responses: { '200': { description: Encontro atualizado, content: { application/json: { schema: { $ref: '#/components/schemas/Encontro' } } } } }
+  /encontros/{encontroId}/frequencias:
+    get:
+      tags: [Frequências]
+      summary: Lista a chamada do encontro
+      parameters: [ { $ref: '#/components/parameters/EncontroId' } ]
+      responses: { '200': { description: Chamada, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Frequencia' } } } } } }
+    put:
+      tags: [Frequências]
+      summary: Registra ou substitui a chamada do encontro
+      description: ADMIN, DISCIPULADOR ou CO_LIDER. Um adolescente só pode ter uma frequência por encontro (RN006).
+      parameters: [ { $ref: '#/components/parameters/EncontroId' } ]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [frequencias], properties: { frequencias: { type: array, items: { $ref: '#/components/schemas/FrequenciaRequest' } } } } } } }
+      responses: { '200': { description: Chamada salva, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Frequencia' } } } } }, '403': { description: Fora da janela de três horas para líder ou co-líder, $ref: '#/components/responses/Proibido' } }
+  /encontros/{encontroId}/visitantes:
+    put:
+      tags: [Frequências]
+      summary: Registra a quantidade de visitantes do encontro
+      parameters: [ { $ref: '#/components/parameters/EncontroId' } ]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [quantidade], properties: { quantidade: { type: integer, minimum: 0 } } } } } }
+      responses: { '200': { description: Visitantes registrados } }
+  /painel/lider:
+    get:
+      tags: [Indicadores e relatórios]
+      summary: Indicadores mensais do discipulador
+      parameters: [ { name: referencia, in: query, required: true, schema: { type: string, pattern: '^\\d{4}-\\d{2}$', example: '2026-07' } } ]
+      responses: { '200': { description: Indicadores, content: { application/json: { schema: { $ref: '#/components/schemas/Indicadores' } } } } }
+  /painel/gerencia:
+    get:
+      tags: [Indicadores e relatórios]
+      summary: Indicadores da gerência
+      parameters: [ { name: referencia, in: query, required: true, schema: { type: string, pattern: '^\\d{4}-\\d{2}$' } } ]
+      responses: { '200': { description: Indicadores, content: { application/json: { schema: { $ref: '#/components/schemas/Indicadores' } } } } }
+  /relatorios/mensal:
+    get:
+      tags: [Indicadores e relatórios]
+      summary: Exporta relatório mensal
+      parameters: [ { name: referencia, in: query, required: true, schema: { type: string, pattern: '^\\d{4}-\\d{2}$' } }, { name: formato, in: query, required: true, schema: { type: string, enum: [pdf, xlsx] } } ]
+      responses: { '200': { description: Arquivo gerado, content: { application/pdf: { schema: { type: string, format: binary } }, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet: { schema: { type: string, format: binary } } } } }
+  /auditoria:
+    get:
+      tags: [Indicadores e relatórios]
+      summary: Consulta registros de auditoria
+      description: Requer ADMIN.
+      parameters: [ { $ref: '#/components/parameters/Pagina' }, { $ref: '#/components/parameters/TamanhoPagina' }, { name: entidade, in: query, schema: { type: string } }, { name: usuarioId, in: query, schema: { type: integer, format: int64 } } ]
+      responses: { '200': { description: Eventos de auditoria, content: { application/json: { schema: { $ref: '#/components/schemas/PaginaAuditoria' } } } } }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+  parameters:
+    Pagina: { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+    TamanhoPagina: { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+    UsuarioId: { name: usuarioId, in: path, required: true, schema: { type: integer, format: int64 } }
+    GerenciaId: { name: gerenciaId, in: path, required: true, schema: { type: integer, format: int64 } }
+    DiscipuladoId: { name: discipuladoId, in: path, required: true, schema: { type: integer, format: int64 } }
+    AdolescenteId: { name: adolescenteId, in: path, required: true, schema: { type: integer, format: int64 } }
+    EncontroId: { name: encontroId, in: path, required: true, schema: { type: integer, format: int64 } }
+  responses:
+    NaoAutorizado: { description: Credenciais ausentes, inválidas ou expiradas, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
+    Proibido: { description: Usuário autenticado sem permissão para a operação, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
+    NaoEncontrado: { description: Recurso não encontrado, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
+    Conflito: { description: Violação de regra de negócio ou estado conflitante, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
+    PaginaUsuarios: { description: Página de usuários, content: { application/json: { schema: { $ref: '#/components/schemas/PaginaUsuario' } } } }
+    PaginaGerencias: { description: Página de gerências, content: { application/json: { schema: { $ref: '#/components/schemas/PaginaGerencia' } } } }
+    PaginaDiscipulados: { description: Página de discipulados, content: { application/json: { schema: { $ref: '#/components/schemas/PaginaDiscipulado' } } } }
+    PaginaAdolescentes: { description: Página de adolescentes, content: { application/json: { schema: { $ref: '#/components/schemas/PaginaAdolescente' } } } }
+  schemas:
+    Problema: { type: object, required: [type, title, status, detail, traceId], properties: { type: { type: string, format: uri }, title: { type: string }, status: { type: integer }, detail: { type: string }, traceId: { type: string } } }
+    LoginRequest: { type: object, required: [email, senha], properties: { email: { type: string, format: email }, senha: { type: string, format: password } } }
+    RefreshTokenRequest: { type: object, required: [refreshToken], properties: { refreshToken: { type: string } } }
+    EmailRequest: { type: object, required: [email], properties: { email: { type: string, format: email } } }
+    RedefinirSenhaRequest: { type: object, required: [token, novaSenha], properties: { token: { type: string }, novaSenha: { type: string, format: password, minLength: 12 } } }
+    SessaoResponse: { type: object, required: [accessToken, refreshToken, usuario], properties: { accessToken: { type: string }, refreshToken: { type: string }, usuario: { $ref: '#/components/schemas/Usuario' } } }
+    Perfil: { type: string, enum: [ADMIN, GERENTE, DISCIPULADOR, CO_LIDER] }
+    Usuario: { type: object, required: [id, nome, email, ativo, perfis], properties: { id: { type: integer, format: int64 }, nome: { type: string }, email: { type: string, format: email }, ativo: { type: boolean }, perfis: { type: array, items: { $ref: '#/components/schemas/Perfil' } } } }
+    CriarUsuarioRequest: { type: object, required: [nome, email, senha, perfis], properties: { nome: { type: string, minLength: 1, maxLength: 120 }, email: { type: string, format: email }, senha: { type: string, format: password, minLength: 12 }, perfis: { type: array, minItems: 1, items: { $ref: '#/components/schemas/Perfil' } } } }
+    AtualizarUsuarioRequest: { type: object, properties: { nome: { type: string, minLength: 1, maxLength: 120 }, perfis: { type: array, minItems: 1, items: { $ref: '#/components/schemas/Perfil' } }, ativo: { type: boolean } } }
+    GerenciaRequest: { type: object, required: [nome, gerenteId], properties: { nome: { type: string, minLength: 1, maxLength: 120 }, gerenteId: { type: integer, format: int64 } } }
+    Gerencia: { allOf: [ { $ref: '#/components/schemas/GerenciaRequest' }, { type: object, required: [id], properties: { id: { type: integer, format: int64 } } } ] }
+    DiscipuladoRequest: { type: object, required: [nome, sexo, gerenciaId, discipuladorId], properties: { nome: { type: string, minLength: 1, maxLength: 120 }, sexo: { type: string, enum: [MASCULINO, FEMININO] }, gerenciaId: { type: integer, format: int64 }, discipuladorId: { type: integer, format: int64 }, ativo: { type: boolean } } }
+    Discipulado: { allOf: [ { $ref: '#/components/schemas/DiscipuladoRequest' }, { type: object, required: [id, coLideres], properties: { id: { type: integer, format: int64 }, coLideres: { type: array, maxItems: 2, items: { $ref: '#/components/schemas/Usuario' } } } } ] }
+    AdolescenteRequest: { type: object, required: [nome, dataNascimento, discipuladoId], properties: { nome: { type: string, minLength: 1, maxLength: 120 }, dataNascimento: { type: string, format: date }, telefone: { type: string }, instagram: { type: string }, discipuladoId: { type: integer, format: int64 }, ativo: { type: boolean } } }
+    Adolescente: { allOf: [ { $ref: '#/components/schemas/AdolescenteRequest' }, { type: object, required: [id], properties: { id: { type: integer, format: int64 } } } ] }
+    Vinculo: { type: object, required: [id, adolescenteId, discipuladoId, dataInicio, ativo], properties: { id: { type: integer, format: int64 }, adolescenteId: { type: integer, format: int64 }, discipuladoId: { type: integer, format: int64 }, dataInicio: { type: string, format: date }, dataFim: { type: string, format: date }, ativo: { type: boolean } } }
+    EncontroRequest: { type: object, required: [discipuladoId, data, situacao], properties: { discipuladoId: { type: integer, format: int64 }, data: { type: string, format: date }, situacao: { type: string, enum: [REALIZADO, CANCELADO] } } }
+    Encontro: { allOf: [ { $ref: '#/components/schemas/EncontroRequest' }, { type: object, required: [id], properties: { id: { type: integer, format: int64 } } } ] }
+    FrequenciaRequest: { type: object, required: [adolescenteId, situacao], properties: { adolescenteId: { type: integer, format: int64 }, situacao: { type: string, enum: [PRESENTE, AUSENTE] } } }
+    Frequencia: { allOf: [ { $ref: '#/components/schemas/FrequenciaRequest' }, { type: object, required: [id, encontroId], properties: { id: { type: integer, format: int64 }, encontroId: { type: integer, format: int64 }, registradaEm: { type: string, format: date-time } } } ] }
+    Indicadores: { type: object, properties: { presentes: { type: integer }, ausentes: { type: integer }, visitantes: { type: integer }, percentualPresenca: { type: number, format: double } } }
+    PaginaUsuario: { type: object, properties: { content: { type: array, items: { $ref: '#/components/schemas/Usuario' } }, page: { type: integer }, size: { type: integer }, totalElements: { type: integer, format: int64 }, totalPages: { type: integer } } }
+    PaginaGerencia: { type: object, properties: { content: { type: array, items: { $ref: '#/components/schemas/Gerencia' } }, page: { type: integer }, size: { type: integer }, totalElements: { type: integer, format: int64 }, totalPages: { type: integer } } }
+    PaginaDiscipulado: { type: object, properties: { content: { type: array, items: { $ref: '#/components/schemas/Discipulado' } }, page: { type: integer }, size: { type: integer }, totalElements: { type: integer, format: int64 }, totalPages: { type: integer } } }
+    PaginaAdolescente: { type: object, properties: { content: { type: array, items: { $ref: '#/components/schemas/Adolescente' } }, page: { type: integer }, size: { type: integer }, totalElements: { type: integer, format: int64 }, totalPages: { type: integer } } }
+    PaginaAuditoria: { type: object, properties: { content: { type: array, items: { type: object, properties: { id: { type: integer, format: int64 }, usuarioId: { type: integer, format: int64 }, dataHora: { type: string, format: date-time }, entidade: { type: string }, acao: { type: string }, detalhes: { type: object } } } }, page: { type: integer }, size: { type: integer }, totalElements: { type: integer, format: int64 }, totalPages: { type: integer } } }
