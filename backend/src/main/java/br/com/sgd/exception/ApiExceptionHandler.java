@@ -7,6 +7,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import br.com.sgd.auth.AuthService;
+import br.com.sgd.user.UserService;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -14,6 +17,21 @@ public class ApiExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<Map<String, Object>> handleInvalidArgument(MethodArgumentTypeMismatchException exception) {
         return response(HttpStatus.BAD_REQUEST, "Parâmetro inválido.");
+    }
+
+    @ExceptionHandler({AuthService.InvalidCredentialsException.class, AuthService.InvalidTokenException.class})
+    public ResponseEntity<Map<String, Object>> handleUnauthorized(RuntimeException exception) {
+        return response(HttpStatus.UNAUTHORIZED, "Credenciais ou token inválidos.");
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException exception) {
+        return response(HttpStatus.BAD_REQUEST, "Dados de entrada inválidos.");
+    }
+
+    @ExceptionHandler(UserService.DuplicateEmailException.class)
+    public ResponseEntity<Map<String, Object>> handleDuplicateEmail(UserService.DuplicateEmailException exception) {
+        return response(HttpStatus.CONFLICT, "E-mail já cadastrado.");
     }
 
     @ExceptionHandler(Exception.class)
