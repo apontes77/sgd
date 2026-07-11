@@ -10,6 +10,9 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import br.com.sgd.auth.AuthService;
 import br.com.sgd.user.UserService;
+import br.com.sgd.organizacao.GerenciaService;
+import br.com.sgd.organizacao.DiscipuladoService;
+import br.com.sgd.organizacao.Discipulado;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -32,6 +35,20 @@ public class ApiExceptionHandler {
     @ExceptionHandler(UserService.DuplicateEmailException.class)
     public ResponseEntity<Map<String, Object>> handleDuplicateEmail(UserService.DuplicateEmailException exception) {
         return response(HttpStatus.CONFLICT, "E-mail já cadastrado.");
+    }
+
+    @ExceptionHandler({GerenciaService.GerenciaNotFoundException.class, GerenciaService.UsuarioOrganizacionalNotFoundException.class,
+            DiscipuladoService.DiscipuladoNotFoundException.class, DiscipuladoService.GerenciaNotFoundException.class,
+            DiscipuladoService.UsuarioOrganizacionalNotFoundException.class})
+    public ResponseEntity<Map<String, Object>> handleOrganizationalNotFound(RuntimeException exception) {
+        return response(HttpStatus.NOT_FOUND, "Recurso organizacional não encontrado.");
+    }
+
+    @ExceptionHandler({GerenciaService.GerenteInvalidoException.class, DiscipuladoService.GerenciaInativaException.class,
+            DiscipuladoService.DiscipuladorInvalidoException.class, DiscipuladoService.CoLiderInvalidoException.class,
+            Discipulado.CoLiderLimitExceededException.class})
+    public ResponseEntity<Map<String, Object>> handleOrganizationalRule(RuntimeException exception) {
+        return response(HttpStatus.UNPROCESSABLE_ENTITY, "Regra organizacional não atendida.");
     }
 
     @ExceptionHandler(Exception.class)
