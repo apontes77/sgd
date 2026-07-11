@@ -37,3 +37,15 @@ pnpm run dev
 - Endpoints da aplicação usam o prefixo `/api`; endpoints operacionais do Spring Actuator ficam em `/actuator`.
 - Respostas de erro não expõem detalhes internos; exceções de domínio serão convertidas para o contrato de erro padrão.
 - O pipeline valida backend (`mvn verify`) e frontend (lint e build) em push e pull request.
+
+## Autenticação
+
+Defina `ADMIN_INITIAL_EMAIL`, `ADMIN_INITIAL_PASSWORD` e `JWT_SECRET` no `.env` antes da primeira inicialização. A API cria o administrador somente se esse e-mail ainda não existir.
+
+- `POST /api/auth/login`: retorna access token e refresh token.
+- `POST /api/auth/refresh`: renova a sessão e invalida o refresh token anterior.
+- `POST /api/auth/forgot-password` e `POST /api/auth/reset-password`: fluxo de recuperação de senha.
+- `GET /api/auth/me`: retorna o usuário autenticado.
+- `/api/users/**`: gestão de usuários, restrita ao perfil `ADMIN`.
+
+Os tokens de redefinição não são expostos pela API. A entrega por e-mail deve ser conectada a um provedor transacional antes da publicação em produção.
