@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Alert, Box, Button, Card, CardContent, Checkbox, FormControl, InputLabel, MenuItem, Select, Stack, TextField, Typography } from '@mui/material'
 import { ApiError } from './api'
 import { frequenciaApi, type AdolescenteResumo, type Encontro, type SituacaoEncontro, type SituacaoFrequencia } from './frequenciaApi'
@@ -9,8 +9,8 @@ export default function FrequencyManagement({discipuladoId,podeAdministrar=false
  const [chamada,setChamada]=useState<Record<number,SituacaoFrequencia>>({}),[data,setData]=useState(new Date().toISOString().slice(0,10)),[situacao,setSituacao]=useState<SituacaoEncontro>('REALIZADO')
  const [visitantes,setVisitantes]=useState(0),[erro,setErro]=useState(''),[sucesso,setSucesso]=useState(''),[carregando,setCarregando]=useState(false)
  const editavel=useMemo(()=>selecionado&&selecionado.situacao==='REALIZADO'&&(podeAdministrar||Date.now()<=new Date(selecionado.criadoEm).getTime()+3*60*60*1000),[selecionado,podeAdministrar])
- async function carregar(){setErro('');try{setEncontros(await frequenciaApi.listarEncontros(discipuladoId));const p=await frequenciaApi.listarAdolescentes(discipuladoId);setAdolescentes(p.content)}catch(e){setErro(mensagem(e))}}
- useEffect(()=>{void carregar()},[discipuladoId])
+ const carregar=useCallback(async()=>{setErro('');try{setEncontros(await frequenciaApi.listarEncontros(discipuladoId));const p=await frequenciaApi.listarAdolescentes(discipuladoId);setAdolescentes(p.content)}catch(e){setErro(mensagem(e))}},[discipuladoId])
+ useEffect(()=>{void carregar()},[carregar])
  async function abrir(e:Encontro){setSelecionado(e);setErro('');try{const existentes=await frequenciaApi.listarChamada(e.id);const mapa:Record<number,SituacaoFrequencia>={};adolescentes.forEach(a=>mapa[a.id]='AUSENTE');existentes.forEach(f=>mapa[f.adolescenteId]=f.situacao);setChamada(mapa)}catch(x){setErro(mensagem(x))}}
  async function criar(){setCarregando(true);setErro('');try{const novo=await frequenciaApi.criarEncontro({discipuladoId,data,situacao});setSucesso('Encontro criado.');await carregar();await abrir(novo)}catch(e){setErro(mensagem(e))}finally{setCarregando(false)}}
  async function salvar(){if(!selecionado)return;setCarregando(true);setErro('');try{await frequenciaApi.salvarChamada(selecionado.id,adolescentes.map(a=>({adolescenteId:a.id,situacao:chamada[a.id]??'AUSENTE'})));await frequenciaApi.salvarVisitantes(selecionado.id,visitantes);setSucesso('Chamada salva.')}catch(e){setErro(mensagem(e))}finally{setCarregando(false)}}

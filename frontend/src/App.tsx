@@ -1,6 +1,6 @@
 import { Alert, Box, Button, Container, Paper, TextField, Typography } from '@mui/material'
 import { FormEvent, useEffect, useState } from 'react'
-import OrganizationManagement from './OrganizationManagement'
+import AuthenticatedApp from './AuthenticatedApp'
 import { authApi, Usuario } from './api'
 
 export default function App() {
@@ -28,7 +28,7 @@ export default function App() {
     finally { setPassword(''); setCurrentUser(undefined) }
   }
   if (checkingSession) return <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}><Typography>Validando sessão...</Typography></Box>
-  if (currentUser) return <OrganizationManagement currentUser={currentUser} onLogout={logout} />
+  if (currentUser) return <AuthenticatedApp currentUser={currentUser} onLogout={() => void logout()} />
   return <Box component="main" sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', p: 3 }}><Container maxWidth="sm"><Paper component="form" onSubmit={login} elevation={1} sx={{ p: 4, textAlign: 'center' }}>
     <Typography component="h1" variant="h4" color="primary" gutterBottom>SGD</Typography><Typography variant="h6" gutterBottom>Sistema de Gerenciamento de Discipulados</Typography>
     <Typography color="text.secondary" sx={{ mb: 3 }}>Entre com suas credenciais para acessar o sistema.</Typography>

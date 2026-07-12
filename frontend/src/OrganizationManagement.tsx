@@ -18,7 +18,7 @@ function userName(users: Usuario[], id: number) {
   return users.find((user) => user.id === id)?.nome ?? `Usuário #${id}`
 }
 
-export default function OrganizationManagement({ currentUser, onLogout }: { currentUser: Usuario; onLogout: () => void }) {
+export default function OrganizationManagement() {
   const [tab, setTab] = useState(0)
   const [users, setUsers] = useState<Usuario[]>([])
   const [gerencias, setGerencias] = useState<Gerencia[]>([])
@@ -86,8 +86,8 @@ export default function OrganizationManagement({ currentUser, onLogout }: { curr
 
   return <Box component="main" sx={{ minHeight: '100vh', p: { xs: 2, md: 4 } }}>
     <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} spacing={2} sx={{ mb: 3 }}>
-      <Box><Typography component="h1" variant="h4">Estrutura organizacional</Typography><Typography color="text.secondary">{currentUser.nome} · {currentUser.perfis.map((perfil) => roleLabel[perfil]).join(', ')}</Typography></Box>
-      <Stack direction="row" spacing={1}><Button color="inherit" onClick={onLogout}>Sair</Button><Button variant="contained" onClick={() => { setPendingDiscipuladoId(undefined); setModal(tab === 0 ? { kind: 'gerencia' } : { kind: 'discipulado' }) }}>Nova {tab === 0 ? 'gerência' : 'discipulado'}</Button></Stack>
+      <Box><Typography component="h1" variant="h4">Estrutura organizacional</Typography><Typography color="text.secondary">Gerencie gerências, discipulados e suas lideranças.</Typography></Box>
+      <Button variant="contained" onClick={() => { setPendingDiscipuladoId(undefined); setModal(tab === 0 ? { kind: 'gerencia' } : { kind: 'discipulado' }) }}>Nova {tab === 0 ? 'gerência' : 'discipulado'}</Button>
     </Stack>
     {error && <Alert severity="error" onClose={() => setError('')} sx={{ mb: 2 }}>{error}</Alert>}
     <Paper>
