@@ -5,16 +5,21 @@ import AuthenticatedApp from './AuthenticatedApp'
 import type { Usuario } from './api'
 
 const emptyPage = { content: [], page: 0, size: 100, totalElements: 0, totalPages: 0 }
+const emptyDashboard = { dataInicio: '2026-01-01', dataFim: '2026-07-01', resumo: { encontrosRealizados: 0, presentes: 0, ausentes: 0, visitantes: 0, percentualPresenca: 0 }, evolucao: [], gerencias: [], sexos: [{ sexo: 'MASCULINO', presentes: 0, ausentes: 0, percentualPresenca: 0 }, { sexo: 'FEMININO', presentes: 0, ausentes: 0, percentualPresenca: 0 }] }
+
+vi.mock('echarts-for-react', () => ({ default: () => <div data-testid="grafico" /> }))
 
 describe('navegação autenticada', () => {
   beforeEach(() => {
     sessionStorage.setItem('sgd.access-token', 'token')
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(emptyPage), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => new Response(JSON.stringify(String(input).includes('/painel/admin') ? emptyDashboard : emptyPage), { status: 200, headers: { 'Content-Type': 'application/json' } }))
   })
   afterEach(() => { cleanup(); vi.restoreAllMocks(); sessionStorage.clear() })
 
   it('oferece todos os módulos administrativos ao ADMIN', () => {
     render(<AuthenticatedApp currentUser={user(['ADMIN'])} onLogout={() => undefined} />)
+    expect(screen.getByRole('tab', { name: 'Painel' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Painel' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tab', { name: 'Estrutura' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Usuários' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Adolescentes' })).toBeInTheDocument()
@@ -31,7 +36,7 @@ describe('navegação autenticada', () => {
   it('lista usuários já cadastrados na área administrativa', async () => {
     vi.mocked(globalThis.fetch).mockImplementation(async (input) => {
       const url = String(input)
-      const page = url.includes('/usuarios') ? { ...emptyPage, content: [user(['GERENTE'])], totalElements: 1, totalPages: 1 } : emptyPage
+      const page = url.includes('/painel/admin') ? emptyDashboard : url.includes('/usuarios') ? { ...emptyPage, content: [user(['GERENTE'])], totalElements: 1, totalPages: 1 } : emptyPage
       return new Response(JSON.stringify(page), { status: 200, headers: { 'Content-Type': 'application/json' } })
     })
     render(<AuthenticatedApp currentUser={user(['ADMIN'])} onLogout={() => undefined} />)
