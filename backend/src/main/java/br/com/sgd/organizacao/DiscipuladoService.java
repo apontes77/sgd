@@ -59,10 +59,13 @@ public class DiscipuladoService {
 
     @Transactional(readOnly = true)
     public Page<Discipulado> list(Long gerenciaId, Boolean ativo, Pageable pageable) {
-        if (gerenciaId != null && ativo != null) return discipulados.findAllByGerenciaIdAndAtivo(gerenciaId, ativo, pageable);
-        if (gerenciaId != null) return discipulados.findAllByGerenciaId(gerenciaId, pageable);
-        if (ativo != null) return discipulados.findAllByAtivo(ativo, pageable);
-        return discipulados.findAll(pageable);
+        Page<Discipulado> result;
+        if (gerenciaId != null && ativo != null) result = discipulados.findAllByGerenciaIdAndAtivo(gerenciaId, ativo, pageable);
+        else if (gerenciaId != null) result = discipulados.findAllByGerenciaId(gerenciaId, pageable);
+        else if (ativo != null) result = discipulados.findAllByAtivo(ativo, pageable);
+        else result = discipulados.findAll(pageable);
+        result.forEach(discipulado -> discipulado.getCoLideres().forEach(User::getPerfis));
+        return result;
     }
 
     @Transactional(readOnly = true)

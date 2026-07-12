@@ -9,15 +9,22 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import br.com.sgd.auth.AuthService;
+import br.com.sgd.auth.OAuthIdentityService;
 import br.com.sgd.user.UserService;
 import br.com.sgd.organizacao.GerenciaService;
 import br.com.sgd.organizacao.DiscipuladoService;
 import br.com.sgd.organizacao.Discipulado;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.server.ResponseStatusException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<Map<String, Object>> handleInvalidArgument(MethodArgumentTypeMismatchException exception) {
@@ -34,6 +41,11 @@ public class ApiExceptionHandler {
         return response(HttpStatus.BAD_REQUEST, "Dados de entrada inválidos.");
     }
 
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleUnreadable(HttpMessageNotReadableException exception) {
+        return response(HttpStatus.BAD_REQUEST, "O corpo da requisição é inválido.");
+    }
+
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<Map<String, Object>> handleConstraintViolation(ConstraintViolationException exception) {
         return response(HttpStatus.BAD_REQUEST, "Parâmetros de entrada inválidos.");
@@ -42,6 +54,32 @@ public class ApiExceptionHandler {
     @ExceptionHandler(AuthorizationDeniedException.class)
     public ResponseEntity<Map<String, Object>> handleForbidden(AuthorizationDeniedException exception) {
         return response(HttpStatus.FORBIDDEN, "Você não possui permissão para realizar esta operação.");
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>> handleResponseStatus(ResponseStatusException exception) {
+        HttpStatus status = HttpStatus.valueOf(exception.getStatusCode().value());
+        return response(status, exception.getReason() == null ? status.getReasonPhrase() : exception.getReason());
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException exception) {
+        return response(HttpStatus.BAD_REQUEST, exception.getMessage() == null ? "Dados de entrada inválidos." : exception.getMessage());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrity(DataIntegrityViolationException exception) {
+        return response(HttpStatus.CONFLICT, "A operação viola uma restrição de integridade dos dados.");
+    }
+
+    @ExceptionHandler(OAuthIdentityService.InvalidOAuthIdentityException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidOAuth(OAuthIdentityService.InvalidOAuthIdentityException exception) {
+        return response(HttpStatus.UNAUTHORIZED, "A identidade externa não corresponde a um usuário ativo cadastrado.");
+    }
+
+    @ExceptionHandler(OAuthIdentityService.OAuthIdentityConflictException.class)
+    public ResponseEntity<Map<String, Object>> handleOAuthConflict(OAuthIdentityService.OAuthIdentityConflictException exception) {
+        return response(HttpStatus.CONFLICT, "O provedor externo já está vinculado a outra identidade.");
     }
 
     @ExceptionHandler(UserService.DuplicateEmailException.class)
@@ -77,6 +115,7 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleUnexpected(Exception exception) {
+        LOGGER.error("Erro inesperado ao processar requisição", exception);
         return response(HttpStatus.INTERNAL_SERVER_ERROR, "Erro interno inesperado.");
     }
 
