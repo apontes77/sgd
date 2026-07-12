@@ -69,8 +69,7 @@ let refreshInFlight: Promise<boolean> | undefined
 interface SessaoResponse {
   accessToken: string
   refreshToken: string
-  usuario?: Usuario
-  user?: Usuario
+  usuario: Usuario
 }
 
 function saveSession(session: SessaoResponse) {
@@ -129,9 +128,17 @@ export const authApi = {
   login: async (email: string, senha: string) => {
     const response = await request<SessaoResponse>('/autenticacao/login', { method: 'POST', body: JSON.stringify({ email, senha }) }, false)
     saveSession(response)
-    return response.usuario ?? response.user
+    return response.usuario
   },
   me: () => request<Usuario>('/autenticacao/eu'),
+  logout: async () => {
+    const refreshToken = sessionStorage.getItem(REFRESH_TOKEN_KEY)
+    try {
+      if (refreshToken) await request<void>('/autenticacao/logout', { method: 'POST', body: JSON.stringify({ refreshToken }) }, false)
+    } finally {
+      clearSession()
+    }
+  },
   logoutLocal: clearSession,
   hasSession: () => Boolean(sessionStorage.getItem(ACCESS_TOKEN_KEY) && sessionStorage.getItem(REFRESH_TOKEN_KEY)),
 }

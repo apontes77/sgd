@@ -23,10 +23,9 @@ export default function App() {
       setCurrentUser(user ?? await authApi.me())
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Não foi possível entrar.') } finally { setLoading(false) }
   }
-  function logout() {
-    authApi.logoutLocal()
-    setPassword('')
-    setCurrentUser(undefined)
+  async function logout() {
+    try { await authApi.logout() }
+    finally { setPassword(''); setCurrentUser(undefined) }
   }
   if (checkingSession) return <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}><Typography>Validando sessão...</Typography></Box>
   if (currentUser) return <OrganizationManagement currentUser={currentUser} onLogout={logout} />
