@@ -35,6 +35,12 @@ export interface CriarUsuarioRequest {
   perfis: Perfil[]
 }
 
+export interface AtualizarUsuarioRequest {
+  nome?: string
+  perfis?: Perfil[]
+  ativo?: boolean
+}
+
 export type SexoDiscipulado = 'MASCULINO' | 'FEMININO'
 
 export interface Discipulado {
@@ -144,8 +150,13 @@ export const authApi = {
 }
 
 export const organizationApi = {
-  listarUsuarios: () => request<Pagina<Usuario>>('/usuarios?page=0&size=100'),
+  listarUsuarios: (page = 0, size = 100, ativo?: boolean) => {
+    const params = new URLSearchParams({ page: String(page), size: String(size) })
+    if (ativo !== undefined) params.set('ativo', String(ativo))
+    return request<Pagina<Usuario>>(`/usuarios?${params}`)
+  },
   criarUsuario: (body: CriarUsuarioRequest) => request<Usuario>('/usuarios', { method: 'POST', body: JSON.stringify(body) }),
+  atualizarUsuario: (id: number, body: AtualizarUsuarioRequest) => request<Usuario>(`/usuarios/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   listarGerencias: () => request<Pagina<Gerencia>>('/gerencias?page=0&size=100'),
   criarGerencia: (body: GerenciaRequest) => request<Gerencia>('/gerencias', { method: 'POST', body: JSON.stringify(body) }),
   atualizarGerencia: (id: number, body: GerenciaRequest) => request<Gerencia>(`/gerencias/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
@@ -153,4 +164,10 @@ export const organizationApi = {
   criarDiscipulado: (body: DiscipuladoRequest) => request<Discipulado>('/discipulados', { method: 'POST', body: JSON.stringify(body) }),
   atualizarDiscipulado: (id: number, body: DiscipuladoRequest) => request<Discipulado>(`/discipulados/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   definirCoLideres: (id: number, usuarioIds: number[]) => request<Discipulado>(`/discipulados/${id}/co-lideres`, { method: 'PUT', body: JSON.stringify({ usuarioIds }) }),
+}
+
+export const userManagementClient = {
+  list: (page: number, size: number, active?: boolean) => organizationApi.listarUsuarios(page, size, active),
+  create: (body: CriarUsuarioRequest) => organizationApi.criarUsuario(body),
+  update: (id: number, body: AtualizarUsuarioRequest) => organizationApi.atualizarUsuario(id, body),
 }
