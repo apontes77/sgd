@@ -27,11 +27,14 @@ public class AuthService {
     private final PasswordEncoder passwords;
     private final JwtService jwt;
     private final SecurityProperties properties;
+    private final PasswordResetNotifier passwordResetNotifier;
 
     public AuthService(UserRepository users, RefreshTokenRepository refreshTokens, PasswordResetTokenRepository resetTokens,
-                       AuditLogRepository audit, PasswordEncoder passwords, JwtService jwt, SecurityProperties properties) {
+                       AuditLogRepository audit, PasswordEncoder passwords, JwtService jwt, SecurityProperties properties,
+                       PasswordResetNotifier passwordResetNotifier) {
         this.users = users; this.refreshTokens = refreshTokens; this.resetTokens = resetTokens;
         this.audit = audit; this.passwords = passwords; this.jwt = jwt; this.properties = properties;
+        this.passwordResetNotifier = passwordResetNotifier;
     }
     public Tokens login(String email, String password) {
         User user = users.findByEmailIgnoreCase(email).filter(User::isAtivo)
@@ -47,13 +50,20 @@ public class AuthService {
         if (!stored.getUsuario().isAtivo()) throw new InvalidCredentialsException();
         return issueTokens(stored.getUsuario());
     }
+    public void logout(String rawToken) {
+        if (rawToken == null || rawToken.isBlank()) return;
+        refreshTokens.findByTokenHash(hash(rawToken)).filter(RefreshToken::isValid).ifPresent(token -> {
+            token.revoke();
+            audit.save(new AuditLog(token.getUsuario(), "USUARIO", "LOGOUT", "{}"));
+        });
+    }
     public void requestPasswordReset(String email) {
         users.findByEmailIgnoreCase(email).filter(User::isAtivo).ifPresent(user -> {
             String rawToken = randomToken();
+            resetTokens.invalidateAllByUserId(user.getId(), Instant.now());
             resetTokens.save(new PasswordResetToken(user, hash(rawToken), Instant.now().plus(properties.passwordResetMinutes(), ChronoUnit.MINUTES)));
             audit.save(new AuditLog(user, "USUARIO", "SOLICITACAO_REDEFINICAO_SENHA", "{}"));
-            // Integre um provedor de e-mail aqui. O token não é retornado pela API por segurança.
-            org.slf4j.LoggerFactory.getLogger(AuthService.class).info("Redefinição solicitada para {}", user.getEmail());
+            passwordResetNotifier.notify(user, rawToken);
         });
     }
     public void resetPassword(String rawToken, String newPassword) {
@@ -61,6 +71,8 @@ public class AuthService {
                 .orElseThrow(() -> new InvalidTokenException());
         token.getUsuario().updatePassword(passwords.encode(newPassword));
         token.use();
+        resetTokens.invalidateAllByUserId(token.getUsuario().getId(), Instant.now());
+        refreshTokens.revokeAllByUserId(token.getUsuario().getId(), Instant.now());
         audit.save(new AuditLog(token.getUsuario(), "USUARIO", "REDEFINICAO_SENHA", "{}"));
     }
     public void bootstrapAdmin() {

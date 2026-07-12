@@ -8,6 +8,10 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Map;
+import java.util.UUID;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.http.MediaType;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -33,11 +37,22 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class SecurityConfig {
     @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
     @Bean ApplicationRunner adminBootstrap(AuthService authService) { return arguments -> authService.bootstrapAdmin(); }
-    @Bean SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter) throws Exception {
+    @Bean SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter, ObjectMapper json) throws Exception {
         return http.csrf(csrf -> csrf.disable()).sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/api/auth/**", "/api/health", "/actuator/health/**").permitAll()
-                        .requestMatchers("/api/users/**").hasRole("ADMIN").anyRequest().authenticated())
+                .exceptionHandling(errors -> errors.authenticationEntryPoint((request, response, exception) ->
+                        writeProblem(response, json, HttpServletResponse.SC_UNAUTHORIZED, "Não autorizado", "A autenticação é obrigatória ou expirou."))
+                        .accessDeniedHandler((request, response, exception) ->
+                        writeProblem(response, json, HttpServletResponse.SC_FORBIDDEN, "Acesso proibido", "Você não possui permissão para realizar esta operação.")))
+                .authorizeHttpRequests(auth -> auth.requestMatchers("/api/v1/autenticacao/**", "/api/health", "/actuator/health/**").permitAll()
+                        .requestMatchers("/api/v1/usuarios/**").hasRole("ADMIN").anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class).build();
+    }
+
+    private static void writeProblem(HttpServletResponse response, ObjectMapper json, int status, String title, String detail) throws IOException {
+        response.setStatus(status);
+        response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
+        json.writeValue(response.getOutputStream(), Map.of("type", "about:blank", "title", title, "status", status,
+                "detail", detail, "traceId", UUID.randomUUID().toString()));
     }
 
     @Component

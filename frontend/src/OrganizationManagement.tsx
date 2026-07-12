@@ -5,7 +5,7 @@ import {
 } from '@mui/material'
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  Discipulado, DiscipuladoRequest, Gerencia, GerenciaRequest, Perfil, Usuario, organizationApi,
+  CriarUsuarioRequest, Discipulado, DiscipuladoRequest, Gerencia, GerenciaRequest, Perfil, Usuario, organizationApi,
 } from './api'
 
 type Modal = { kind: 'gerencia'; item?: Gerencia } | { kind: 'discipulado'; item?: Discipulado } | undefined
@@ -18,7 +18,7 @@ function userName(users: Usuario[], id: number) {
   return users.find((user) => user.id === id)?.nome ?? `Usuário #${id}`
 }
 
-export default function OrganizationManagement() {
+export default function OrganizationManagement({ currentUser, onLogout }: { currentUser: Usuario; onLogout: () => void }) {
   const [tab, setTab] = useState(0)
   const [users, setUsers] = useState<Usuario[]>([])
   const [gerencias, setGerencias] = useState<Gerencia[]>([])
@@ -27,6 +27,7 @@ export default function OrganizationManagement() {
   const [error, setError] = useState('')
   const [modal, setModal] = useState<Modal>()
   const [saving, setSaving] = useState(false)
+  const [pendingDiscipuladoId, setPendingDiscipuladoId] = useState<number>()
 
   const load = useCallback(async () => {
     setLoading(true); setError('')
@@ -55,14 +56,22 @@ export default function OrganizationManagement() {
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Não foi possível salvar a gerência.') } finally { setSaving(false) }
   }
 
+  async function createUser(body: CriarUsuarioRequest) {
+    const created = await organizationApi.criarUsuario(body)
+    setUsers((current) => [...current.filter((user) => user.id !== created.id), created])
+    return created
+  }
+
   async function saveDiscipulado(body: DiscipuladoRequest, coLiderIds: number[]) {
     setSaving(true); setError('')
     try {
-      const saved = modal?.item
-        ? await organizationApi.atualizarDiscipulado(modal.item.id, body)
+      const existingId = modal?.item?.id ?? pendingDiscipuladoId
+      const saved = existingId
+        ? await organizationApi.atualizarDiscipulado(existingId, body)
         : await organizationApi.criarDiscipulado(body)
+      setPendingDiscipuladoId(saved.id)
       await organizationApi.definirCoLideres(saved.id, coLiderIds)
-      setModal(undefined); await load()
+      setPendingDiscipuladoId(undefined); setModal(undefined); await load()
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Não foi possível salvar o discipulado.') } finally { setSaving(false) }
   }
 
@@ -77,8 +86,8 @@ export default function OrganizationManagement() {
 
   return <Box component="main" sx={{ minHeight: '100vh', p: { xs: 2, md: 4 } }}>
     <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} spacing={2} sx={{ mb: 3 }}>
-      <Box><Typography component="h1" variant="h4">Estrutura organizacional</Typography><Typography color="text.secondary">Gerencie gerências, discipulados e suas lideranças.</Typography></Box>
-      <Button variant="contained" onClick={() => setModal(tab === 0 ? { kind: 'gerencia' } : { kind: 'discipulado' })}>Nova {tab === 0 ? 'gerência' : 'discipulado'}</Button>
+      <Box><Typography component="h1" variant="h4">Estrutura organizacional</Typography><Typography color="text.secondary">{currentUser.nome} · {currentUser.perfis.map((perfil) => roleLabel[perfil]).join(', ')}</Typography></Box>
+      <Stack direction="row" spacing={1}><Button color="inherit" onClick={onLogout}>Sair</Button><Button variant="contained" onClick={() => { setPendingDiscipuladoId(undefined); setModal(tab === 0 ? { kind: 'gerencia' } : { kind: 'discipulado' }) }}>Nova {tab === 0 ? 'gerência' : 'discipulado'}</Button></Stack>
     </Stack>
     {error && <Alert severity="error" onClose={() => setError('')} sx={{ mb: 2 }}>{error}</Alert>}
     <Paper>
@@ -87,8 +96,8 @@ export default function OrganizationManagement() {
         ? <GerenciaList items={gerencias} users={users} onEdit={(item) => setModal({ kind: 'gerencia', item })} />
         : <DiscipuladoList items={discipulados} users={users} gerencias={gerencias} onEdit={(item) => setModal({ kind: 'discipulado', item })} onDeactivate={(item) => void deactivate(item)} />}
     </Paper>
-    {modal?.kind === 'gerencia' && <GerenciaDialog item={modal.item} users={gerentes} saving={saving} onClose={() => setModal(undefined)} onSave={(body) => void saveGerencia(body)} />}
-    {modal?.kind === 'discipulado' && <DiscipuladoDialog item={modal.item} gerencias={gerencias} discipuladores={discipuladores} coLideres={coLideres} saving={saving} onClose={() => setModal(undefined)} onSave={(body, ids) => void saveDiscipulado(body, ids)} />}
+    {modal?.kind === 'gerencia' && <GerenciaDialog item={modal.item} users={gerentes} saving={saving} onCreateUser={createUser} onClose={() => setModal(undefined)} onSave={(body) => void saveGerencia(body)} />}
+    {modal?.kind === 'discipulado' && <DiscipuladoDialog item={modal.item} gerencias={gerencias.filter((item) => item.ativo !== false)} discipuladores={discipuladores} coLideres={coLideres} saving={saving} onCreateUser={createUser} onClose={() => { setPendingDiscipuladoId(undefined); setModal(undefined) }} onSave={(body, ids) => void saveDiscipulado(body, ids)} />}
   </Box>
 }
 
@@ -102,22 +111,40 @@ function DiscipuladoList({ items, users, gerencias, onEdit, onDeactivate }: { it
 
 function EmptyState({ label }: { label: string }) { return <Box sx={{ p: 4 }}><Typography color="text.secondary">{label}</Typography></Box> }
 
-function GerenciaDialog({ item, users, saving, onClose, onSave }: { item?: Gerencia; users: Usuario[]; saving: boolean; onClose: () => void; onSave: (body: GerenciaRequest) => void }) {
+function GerenciaDialog({ item, users, saving, onCreateUser, onClose, onSave }: { item?: Gerencia; users: Usuario[]; saving: boolean; onCreateUser: (body: CriarUsuarioRequest) => Promise<Usuario>; onClose: () => void; onSave: (body: GerenciaRequest) => void }) {
   const [nome, setNome] = useState(item?.nome ?? '')
   const [gerenteId, setGerenteId] = useState(String(item?.gerenteId ?? ''))
+  const [creatingUser, setCreatingUser] = useState(false)
   function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); onSave({ nome, gerenteId: Number(gerenteId) }) }
-  return <Dialog open onClose={onClose} fullWidth maxWidth="sm" PaperProps={{ component: 'form', onSubmit: submit }}><DialogTitle>{item ? 'Editar gerência' : 'Nova gerência'}</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}><TextField required autoFocus label="Nome" value={nome} onChange={(event) => setNome(event.target.value)} inputProps={{ maxLength: 120 }} /><UserSelect required label="Gerente" value={gerenteId} users={users} onChange={setGerenteId} /></Stack></DialogContent><DialogActions><Button onClick={onClose}>Cancelar</Button><Button type="submit" variant="contained" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</Button></DialogActions></Dialog>
+  return <><Dialog open onClose={onClose} fullWidth maxWidth="sm" PaperProps={{ component: 'form', onSubmit: submit }}><DialogTitle>{item ? 'Editar gerência' : 'Nova gerência'}</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}><TextField required autoFocus label="Nome" value={nome} onChange={(event) => setNome(event.target.value)} inputProps={{ maxLength: 120 }} /><UserSelect required label="Gerente" value={gerenteId} users={users} onChange={setGerenteId} /><Button type="button" onClick={() => setCreatingUser(true)}>Cadastrar novo gerente</Button></Stack></DialogContent><DialogActions><Button onClick={onClose}>Cancelar</Button><Button type="submit" variant="contained" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</Button></DialogActions></Dialog>{creatingUser && <QuickUserDialog role="GERENTE" onClose={() => setCreatingUser(false)} onCreate={async (body) => { const user = await onCreateUser(body); setGerenteId(String(user.id)); setCreatingUser(false) }} />}</>
 }
 
-function DiscipuladoDialog({ item, gerencias, discipuladores, coLideres, saving, onClose, onSave }: { item?: Discipulado; gerencias: Gerencia[]; discipuladores: Usuario[]; coLideres: Usuario[]; saving: boolean; onClose: () => void; onSave: (body: DiscipuladoRequest, coLiderIds: number[]) => void }) {
+function DiscipuladoDialog({ item, gerencias, discipuladores, coLideres, saving, onCreateUser, onClose, onSave }: { item?: Discipulado; gerencias: Gerencia[]; discipuladores: Usuario[]; coLideres: Usuario[]; saving: boolean; onCreateUser: (body: CriarUsuarioRequest) => Promise<Usuario>; onClose: () => void; onSave: (body: DiscipuladoRequest, coLiderIds: number[]) => void }) {
   const [nome, setNome] = useState(item?.nome ?? '')
   const [sexo, setSexo] = useState(item?.sexo ?? 'MASCULINO')
   const [gerenciaId, setGerenciaId] = useState(String(item?.gerenciaId ?? ''))
   const [discipuladorId, setDiscipuladorId] = useState(String(item?.discipuladorId ?? ''))
   const [coLiderIds, setCoLiderIds] = useState<number[]>(item?.coLideres.map((user) => user.id) ?? [])
+  const [creatingRole, setCreatingRole] = useState<'DISCIPULADOR' | 'CO_LIDER'>()
   function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); onSave({ nome, sexo, gerenciaId: Number(gerenciaId), discipuladorId: Number(discipuladorId), ativo: item?.ativo ?? true }, coLiderIds) }
   function toggleCoLider(id: number) { setCoLiderIds((ids) => ids.includes(id) ? ids.filter((value) => value !== id) : ids.length < 2 ? [...ids, id] : ids) }
-  return <Dialog open onClose={onClose} fullWidth maxWidth="sm" PaperProps={{ component: 'form', onSubmit: submit }}><DialogTitle>{item ? 'Editar discipulado' : 'Novo discipulado'}</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}><TextField required autoFocus label="Nome" value={nome} onChange={(event) => setNome(event.target.value)} inputProps={{ maxLength: 120 }} /><FormControl required><InputLabel id="sexo-label">Sexo</InputLabel><Select labelId="sexo-label" label="Sexo" value={sexo} onChange={(event) => setSexo(event.target.value as DiscipuladoRequest['sexo'])}><MenuItem value="MASCULINO">Masculino</MenuItem><MenuItem value="FEMININO">Feminino</MenuItem></Select></FormControl><FormControl required><InputLabel id="gerencia-label">Gerência</InputLabel><Select labelId="gerencia-label" label="Gerência" value={gerenciaId} onChange={(event) => setGerenciaId(event.target.value)}>{gerencias.map((gerencia) => <MenuItem key={gerencia.id} value={String(gerencia.id)}>{gerencia.nome}</MenuItem>)}</Select></FormControl><UserSelect required label="Discipulador" value={discipuladorId} users={discipuladores} onChange={setDiscipuladorId} /><Box><Typography variant="subtitle2">Co-líderes (até 2)</Typography>{coLideres.length === 0 ? <Typography variant="body2" color="text.secondary">Não há usuários com o perfil de co-líder.</Typography> : coLideres.map((user) => <FormControlLabel key={user.id} control={<Checkbox checked={coLiderIds.includes(user.id)} disabled={!coLiderIds.includes(user.id) && coLiderIds.length >= 2} onChange={() => toggleCoLider(user.id)} />} label={user.nome} />)}</Box></Stack></DialogContent><DialogActions><Button onClick={onClose}>Cancelar</Button><Button type="submit" variant="contained" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</Button></DialogActions></Dialog>
+  return <><Dialog open onClose={onClose} fullWidth maxWidth="sm" PaperProps={{ component: 'form', onSubmit: submit }}><DialogTitle>{item ? 'Editar discipulado' : 'Novo discipulado'}</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}><TextField required autoFocus label="Nome" value={nome} onChange={(event) => setNome(event.target.value)} inputProps={{ maxLength: 120 }} /><FormControl required><InputLabel id="sexo-label">Sexo</InputLabel><Select labelId="sexo-label" label="Sexo" value={sexo} onChange={(event) => setSexo(event.target.value as DiscipuladoRequest['sexo'])}><MenuItem value="MASCULINO">Masculino</MenuItem><MenuItem value="FEMININO">Feminino</MenuItem></Select></FormControl><FormControl required><InputLabel id="gerencia-label">Gerência</InputLabel><Select labelId="gerencia-label" label="Gerência" value={gerenciaId} onChange={(event) => setGerenciaId(event.target.value)}>{gerencias.map((gerencia) => <MenuItem key={gerencia.id} value={String(gerencia.id)}>{gerencia.nome}</MenuItem>)}</Select></FormControl><UserSelect required label="Discipulador" value={discipuladorId} users={discipuladores} onChange={setDiscipuladorId} /><Button type="button" onClick={() => setCreatingRole('DISCIPULADOR')}>Cadastrar novo discipulador</Button><Box><Typography variant="subtitle2">Co-líderes (até 2)</Typography>{coLideres.length === 0 ? <Typography variant="body2" color="text.secondary">Não há usuários com o perfil de co-líder.</Typography> : coLideres.map((user) => <FormControlLabel key={user.id} control={<Checkbox checked={coLiderIds.includes(user.id)} disabled={user.id === Number(discipuladorId) || (!coLiderIds.includes(user.id) && coLiderIds.length >= 2)} onChange={() => toggleCoLider(user.id)} />} label={user.nome} />)}<Button type="button" disabled={coLiderIds.length >= 2} onClick={() => setCreatingRole('CO_LIDER')}>Cadastrar novo co-líder</Button></Box></Stack></DialogContent><DialogActions><Button onClick={onClose}>Cancelar</Button><Button type="submit" variant="contained" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</Button></DialogActions></Dialog>{creatingRole && <QuickUserDialog role={creatingRole} onClose={() => setCreatingRole(undefined)} onCreate={async (body) => { const user = await onCreateUser(body); if (creatingRole === 'DISCIPULADOR') setDiscipuladorId(String(user.id)); else setCoLiderIds((ids) => [...ids, user.id]); setCreatingRole(undefined) }} />}</>
+}
+
+function QuickUserDialog({ role, onClose, onCreate }: { role: 'GERENTE' | 'DISCIPULADOR' | 'CO_LIDER'; onClose: () => void; onCreate: (body: CriarUsuarioRequest) => Promise<void> }) {
+  const [nome, setNome] = useState('')
+  const [email, setEmail] = useState('')
+  const [senha, setSenha] = useState('')
+  const [perfis, setPerfis] = useState<Perfil[]>([role])
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setSaving(true); setError('')
+    try { await onCreate({ nome, email, senha, perfis }) }
+    catch (reason) { setError(reason instanceof Error ? reason.message : 'Não foi possível cadastrar o usuário.') }
+    finally { setSaving(false) }
+  }
+  return <Dialog open onClose={onClose} fullWidth maxWidth="sm" PaperProps={{ component: 'form', onSubmit: submit }}><DialogTitle>Cadastrar {roleLabel[role].toLowerCase()}</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>{error && <Alert severity="error">{error}</Alert>}<TextField required autoFocus label="Nome" value={nome} inputProps={{ maxLength: 120 }} onChange={(event) => setNome(event.target.value)} /><TextField required type="email" label="E-mail" value={email} onChange={(event) => setEmail(event.target.value)} /><TextField required type="password" label="Senha inicial" helperText="Use pelo menos 12 caracteres." value={senha} inputProps={{ minLength: 12 }} onChange={(event) => setSenha(event.target.value)} /><Box><Typography variant="subtitle2">Perfis adicionais</Typography>{(Object.keys(roleLabel) as Perfil[]).map((perfil) => <FormControlLabel key={perfil} control={<Checkbox checked={perfis.includes(perfil)} disabled={perfil === role} onChange={() => setPerfis((current) => current.includes(perfil) ? current.filter((item) => item !== perfil) : [...current, perfil])} />} label={roleLabel[perfil]} />)}</Box></Stack></DialogContent><DialogActions><Button onClick={onClose}>Cancelar</Button><Button type="submit" variant="contained" disabled={saving}>{saving ? 'Cadastrando...' : 'Cadastrar'}</Button></DialogActions></Dialog>
 }
 
 function UserSelect({ label, value, users, required, onChange }: { label: string; value: string; users: Usuario[]; required?: boolean; onChange: (value: string) => void }) {

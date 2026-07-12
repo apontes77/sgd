@@ -69,6 +69,13 @@ paths:
       tags: [Autenticação]
       summary: Retorna o usuário autenticado
       responses: { '200': { description: Usuário atual, content: { application/json: { schema: { $ref: '#/components/schemas/Usuario' } } } } }
+  /autenticacao/logout:
+    post:
+      tags: [Autenticação]
+      summary: Revoga o refresh token e encerra a sessão
+      security: []
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/RefreshTokenRequest' } } } }
+      responses: { '204': { description: Sessão encerrada } }
   /usuarios:
     get:
       tags: [Usuários]

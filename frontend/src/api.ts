@@ -20,11 +20,19 @@ export interface Gerencia {
   id: number
   nome: string
   gerenteId: number
+  ativo?: boolean
 }
 
 export interface GerenciaRequest {
   nome: string
   gerenteId: number
+}
+
+export interface CriarUsuarioRequest {
+  nome: string
+  email: string
+  senha: string
+  perfis: Perfil[]
 }
 
 export type SexoDiscipulado = 'MASCULINO' | 'FEMININO'
@@ -54,9 +62,45 @@ export class ApiError extends Error {
 }
 
 const API_BASE_URL = '/api/v1'
+const ACCESS_TOKEN_KEY = 'sgd.access-token'
+const REFRESH_TOKEN_KEY = 'sgd.refresh-token'
+let refreshInFlight: Promise<boolean> | undefined
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = sessionStorage.getItem('sgd.access-token')
+interface SessaoResponse {
+  accessToken: string
+  refreshToken: string
+  usuario?: Usuario
+  user?: Usuario
+}
+
+function saveSession(session: SessaoResponse) {
+  sessionStorage.setItem(ACCESS_TOKEN_KEY, session.accessToken)
+  sessionStorage.setItem(REFRESH_TOKEN_KEY, session.refreshToken)
+}
+
+export function clearSession() {
+  sessionStorage.removeItem(ACCESS_TOKEN_KEY)
+  sessionStorage.removeItem(REFRESH_TOKEN_KEY)
+  window.dispatchEvent(new Event('sgd:session-expired'))
+}
+
+async function refreshSession() {
+  if (refreshInFlight) return refreshInFlight
+  refreshInFlight = (async () => {
+    const refreshToken = sessionStorage.getItem(REFRESH_TOKEN_KEY)
+    if (!refreshToken) return false
+    const response = await fetch(`${API_BASE_URL}/autenticacao/atualizar-token`, {
+      method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify({ refreshToken }),
+    })
+    if (!response.ok) return false
+    saveSession(await response.json() as SessaoResponse)
+    return true
+  })().catch(() => false).finally(() => { refreshInFlight = undefined })
+  return refreshInFlight
+}
+
+export async function request<T>(path: string, options: RequestInit = {}, retry = true): Promise<T> {
+  const token = sessionStorage.getItem(ACCESS_TOKEN_KEY)
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
@@ -67,6 +111,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     },
   })
 
+  if (response.status === 401 && retry && path !== '/autenticacao/atualizar-token') {
+    if (await refreshSession()) return request<T>(path, options, false)
+    clearSession()
+  }
+
   if (!response.ok) {
     const problem = await response.json().catch(() => null) as { detail?: string; title?: string } | null
     throw new ApiError(problem?.detail ?? problem?.title ?? 'Não foi possível concluir a operação.', response.status)
@@ -76,8 +125,20 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return response.json() as Promise<T>
 }
 
+export const authApi = {
+  login: async (email: string, senha: string) => {
+    const response = await request<SessaoResponse>('/autenticacao/login', { method: 'POST', body: JSON.stringify({ email, senha }) }, false)
+    saveSession(response)
+    return response.usuario ?? response.user
+  },
+  me: () => request<Usuario>('/autenticacao/eu'),
+  logoutLocal: clearSession,
+  hasSession: () => Boolean(sessionStorage.getItem(ACCESS_TOKEN_KEY) && sessionStorage.getItem(REFRESH_TOKEN_KEY)),
+}
+
 export const organizationApi = {
   listarUsuarios: () => request<Pagina<Usuario>>('/usuarios?page=0&size=100'),
+  criarUsuario: (body: CriarUsuarioRequest) => request<Usuario>('/usuarios', { method: 'POST', body: JSON.stringify(body) }),
   listarGerencias: () => request<Pagina<Gerencia>>('/gerencias?page=0&size=100'),
   criarGerencia: (body: GerenciaRequest) => request<Gerencia>('/gerencias', { method: 'POST', body: JSON.stringify(body) }),
   atualizarGerencia: (id: number, body: GerenciaRequest) => request<Gerencia>(`/gerencias/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),

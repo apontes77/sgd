@@ -4,6 +4,7 @@ import br.com.sgd.user.Role;
 import br.com.sgd.user.User;
 import br.com.sgd.user.UserRepository;
 import java.util.LinkedHashSet;
+import java.util.Collection;
 import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -38,9 +39,11 @@ public class DiscipuladoService {
         return discipulado;
     }
 
-    public Discipulado replaceCoLideres(long discipuladoId, Set<Long> usuarioIds) {
+    public Discipulado replaceCoLideres(long discipuladoId, Collection<Long> usuarioIds) {
         if (usuarioIds == null) throw new IllegalArgumentException("A lista de co-líderes é obrigatória.");
-        if (usuarioIds.size() > Discipulado.MAX_CO_LIDERES) throw new Discipulado.CoLiderLimitExceededException();
+        if (usuarioIds.size() > Discipulado.MAX_CO_LIDERES || new LinkedHashSet<>(usuarioIds).size() != usuarioIds.size()) {
+            throw new Discipulado.CoLiderLimitExceededException();
+        }
         Discipulado discipulado = findById(discipuladoId);
         Set<User> coLideres = new LinkedHashSet<>();
         for (Long usuarioId : usuarioIds) {

@@ -13,6 +13,7 @@ import br.com.sgd.user.UserRepository;
 import java.util.LinkedHashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -99,6 +100,14 @@ class DiscipuladoServiceTest {
         Set<Long> ids = new LinkedHashSet<>(Set.of(3L, 4L, 5L));
 
         assertThatThrownBy(() -> service.replaceCoLideres(7L, ids))
+            .isInstanceOf(Discipulado.CoLiderLimitExceededException.class);
+
+        verify(discipulados, never()).findById(any());
+    }
+
+    @Test
+    void rejeitaCoLiderDuplicadoAntesDeModificarODiscipulado() {
+        assertThatThrownBy(() -> service.replaceCoLideres(7L, List.of(3L, 3L)))
             .isInstanceOf(Discipulado.CoLiderLimitExceededException.class);
 
         verify(discipulados, never()).findById(any());
