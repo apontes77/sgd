@@ -224,6 +224,19 @@ paths:
       summary: Indicadores da gerência
       parameters: [ { name: referencia, in: query, required: true, schema: { type: string, pattern: '^\\d{4}-\\d{2}$' } } ]
       responses: { '200': { description: Indicadores, content: { application/json: { schema: { $ref: '#/components/schemas/Indicadores' } } } } }
+  /painel/admin:
+    get:
+      tags: [Indicadores e relatórios]
+      summary: Retorna o painel administrativo de frequência
+      description: Requer ADMIN. Exclui encontros cancelados e não inclui visitantes no percentual de presença.
+      parameters:
+        - { name: dataInicio, in: query, required: true, schema: { type: string, format: date } }
+        - { name: dataFim, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200': { description: Painel administrativo, content: { application/json: { schema: { $ref: '#/components/schemas/PainelAdminResponse' } } } }
+        '400': { description: Período ausente, invertido ou superior a 24 meses, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Proibido' }
   /relatorios/mensal:
     get:
       tags: [Indicadores e relatórios]
@@ -282,6 +295,11 @@ components:
     FrequenciaRequest: { type: object, required: [adolescenteId, situacao], properties: { adolescenteId: { type: integer, format: int64 }, situacao: { type: string, enum: [PRESENTE, AUSENTE] } } }
     Frequencia: { allOf: [ { $ref: '#/components/schemas/FrequenciaRequest' }, { type: object, required: [id, encontroId], properties: { id: { type: integer, format: int64 }, encontroId: { type: integer, format: int64 }, registradaEm: { type: string, format: date-time } } } ] }
     Indicadores: { type: object, properties: { presentes: { type: integer }, ausentes: { type: integer }, visitantes: { type: integer }, percentualPresenca: { type: number, format: double } } }
+    ResumoPainelAdmin: { type: object, required: [encontrosRealizados, presentes, ausentes, visitantes, percentualPresenca], properties: { encontrosRealizados: { type: integer, format: int64 }, presentes: { type: integer, format: int64 }, ausentes: { type: integer, format: int64 }, visitantes: { type: integer, format: int64 }, percentualPresenca: { type: number, format: double } } }
+    EvolucaoPainelAdmin: { type: object, required: [referencia, presentes, ausentes, visitantes, percentualPresenca], properties: { referencia: { type: string, pattern: '^\\d{4}-\\d{2}$' }, presentes: { type: integer, format: int64 }, ausentes: { type: integer, format: int64 }, visitantes: { type: integer, format: int64 }, percentualPresenca: { type: number, format: double } } }
+    GerenciaPainelAdmin: { type: object, required: [id, nome, presentes, ausentes, percentualPresenca], properties: { id: { type: integer, format: int64 }, nome: { type: string }, presentes: { type: integer, format: int64 }, ausentes: { type: integer, format: int64 }, percentualPresenca: { type: number, format: double } } }
+    SexoPainelAdmin: { type: object, required: [sexo, presentes, ausentes, percentualPresenca], properties: { sexo: { type: string, enum: [MASCULINO, FEMININO] }, presentes: { type: integer, format: int64 }, ausentes: { type: integer, format: int64 }, percentualPresenca: { type: number, format: double } } }
+    PainelAdminResponse: { type: object, required: [dataInicio, dataFim, resumo, evolucao, gerencias, sexos], properties: { dataInicio: { type: string, format: date }, dataFim: { type: string, format: date }, resumo: { $ref: '#/components/schemas/ResumoPainelAdmin' }, evolucao: { type: array, items: { $ref: '#/components/schemas/EvolucaoPainelAdmin' } }, gerencias: { type: array, items: { $ref: '#/components/schemas/GerenciaPainelAdmin' } }, sexos: { type: array, items: { $ref: '#/components/schemas/SexoPainelAdmin' } } } }
     PaginaUsuario: { type: object, properties: { content: { type: array, items: { $ref: '#/components/schemas/Usuario' } }, page: { type: integer }, size: { type: integer }, totalElements: { type: integer, format: int64 }, totalPages: { type: integer } } }
     PaginaGerencia: { type: object, properties: { content: { type: array, items: { $ref: '#/components/schemas/Gerencia' } }, page: { type: integer }, size: { type: integer }, totalElements: { type: integer, format: int64 }, totalPages: { type: integer } } }
     PaginaDiscipulado: { type: object, properties: { content: { type: array, items: { $ref: '#/components/schemas/Discipulado' } }, page: { type: integer }, size: { type: integer }, totalElements: { type: integer, format: int64 }, totalPages: { type: integer } } }
