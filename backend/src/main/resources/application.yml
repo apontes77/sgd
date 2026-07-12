@@ -29,3 +29,10 @@ management:
 app:
   cors:
     allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:5173}
+  security:
+    jwt-secret: ${JWT_SECRET:desenvolvimento-apenas-troque-por-um-segredo-com-32-bytes}
+    access-token-minutes: ${JWT_ACCESS_TOKEN_MINUTES:15}
+    refresh-token-days: ${JWT_REFRESH_TOKEN_DAYS:7}
+    password-reset-minutes: ${PASSWORD_RESET_MINUTES:60}
+    admin-email: ${ADMIN_INITIAL_EMAIL:}
+    admin-password: ${ADMIN_INITIAL_PASSWORD:}
