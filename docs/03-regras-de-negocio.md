@@ -38,7 +38,7 @@ RN013 - Administradores criam usuários.
 
 RN014 - Administradores gerenciam permissões.
 
-RN015 - Um usuário pode acumular papéis.
+RN015 - Um usuário pode acumular papéis e recebe a união das visões e permissões correspondentes a cada papel.
 
 Exemplo:
 
@@ -49,9 +49,9 @@ Exemplo:
 
 ## Adolescentes
 
-RN016 - Líderes podem cadastrar adolescentes.
+RN016 - Discipuladores podem cadastrar, atualizar e inativar adolescentes somente no próprio discipulado.
 
-RN017 - Co-líderes podem cadastrar adolescentes.
+RN017 - Co-líderes podem cadastrar, atualizar e inativar adolescentes somente no próprio discipulado.
 
 RN018 - O histórico de adolescentes inativados deve ser preservado.
 
@@ -80,3 +80,15 @@ RN025 - O sistema deve suportar OAuth2.
 RN026 - O sistema deve suportar login Google.
 
 RN027 - O sistema deve suportar login Microsoft.
+
+---
+
+## Liderança e indicadores
+
+RN028 - Um usuário pode exercer a função de discipulador ou co-líder em apenas um discipulado no total, mesmo que acumule ambos os perfis.
+
+RN029 - Somente administradores podem transferir adolescentes entre discipulados.
+
+RN030 - Discipulador e co-líder podem consultar o histórico gráfico do próprio discipulado.
+
+RN031 - O painel do discipulado considera somente o grupo no qual o usuário exerce liderança, independentemente de outros perfis acumulados.

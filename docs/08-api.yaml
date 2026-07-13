@@ -154,14 +154,14 @@ paths:
     post:
       tags: [Adolescentes]
       summary: Cadastra adolescente e vínculo atual
-      description: ADMIN, DISCIPULADOR ou CO_LIDER; os dois últimos só podem usar seu discipulado (RN016 e RN017).
+      description: ADMIN, DISCIPULADOR ou CO_LIDER; os dois últimos só podem usar seu próprio discipulado (RN016 e RN017).
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AdolescenteRequest' } } } }
       responses: { '201': { description: Adolescente criado, content: { application/json: { schema: { $ref: '#/components/schemas/Adolescente' } } } } }
   /adolescentes/{adolescenteId}:
     patch:
       tags: [Adolescentes]
       summary: Atualiza cadastro ou inativa adolescente
-      description: A inativação preserva histórico (RN018).
+      description: ADMIN ou liderança do próprio discipulado. A inativação preserva histórico (RN016, RN017 e RN018); alterar discipulado por esta operação é proibido.
       parameters: [ { $ref: '#/components/parameters/AdolescenteId' } ]
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AdolescenteRequest' } } } }
       responses: { '200': { description: Adolescente atualizado, content: { application/json: { schema: { $ref: '#/components/schemas/Adolescente' } } } } }
@@ -169,10 +169,10 @@ paths:
     post:
       tags: [Adolescentes]
       summary: Transfere adolescente para outro discipulado
-      description: Encerra o vínculo ativo anterior e cria outro; mantém histórico (RN001 e RN002).
+      description: Requer ADMIN. Encerra o vínculo ativo anterior e cria outro; mantém histórico (RN001, RN002 e RN029).
       parameters: [ { $ref: '#/components/parameters/AdolescenteId' } ]
       requestBody: { required: true, content: { application/json: { schema: { type: object, required: [discipuladoId, dataInicio], properties: { discipuladoId: { type: integer, format: int64 }, dataInicio: { type: string, format: date } } } } } }
-      responses: { '201': { description: Vínculo criado, content: { application/json: { schema: { $ref: '#/components/schemas/Vinculo' } } } }, '409': { $ref: '#/components/responses/Conflito' } }
+      responses: { '201': { description: Vínculo criado, content: { application/json: { schema: { $ref: '#/components/schemas/Vinculo' } } } }, '401': { $ref: '#/components/responses/NaoAutorizado' }, '403': { $ref: '#/components/responses/Proibido' }, '404': { $ref: '#/components/responses/NaoEncontrado' }, '409': { $ref: '#/components/responses/Conflito' } }
   /encontros:
     get:
       tags: [Encontros]
@@ -215,9 +215,18 @@ paths:
   /painel/lider:
     get:
       tags: [Indicadores e relatórios]
-      summary: Indicadores mensais do discipulador
-      parameters: [ { name: referencia, in: query, required: true, schema: { type: string, pattern: '^\\d{4}-\\d{2}$', example: '2026-07' } } ]
-      responses: { '200': { description: Indicadores, content: { application/json: { schema: { $ref: '#/components/schemas/Indicadores' } } } } }
+      summary: Histórico de frequência do discipulado liderado pelo usuário autenticado
+      description: Requer DISCIPULADOR ou CO_LIDER. Outros perfis acumulados não ampliam o escopo deste painel; exige exatamente uma associação de liderança (RN028, RN030 e RN031).
+      parameters:
+        - { name: dataInicio, in: query, required: true, schema: { type: string, format: date } }
+        - { name: dataFim, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200': { description: Histórico do discipulado, content: { application/json: { schema: { $ref: '#/components/schemas/PainelLiderResponse' } } } }
+        '400': { description: Período ausente, invertido ou superior a 24 meses, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Proibido' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflito' }
   /painel/gerencia:
     get:
       tags: [Indicadores e relatórios]
@@ -312,6 +321,8 @@ components:
     GerenciaPainel: { type: object, required: [id, nome], properties: { id: { type: integer, format: int64 }, nome: { type: string } } }
     DiscipuladoPainelGerencia: { type: object, required: [id, nome, sexo, ativo, resumo, evolucao], properties: { id: { type: integer, format: int64 }, nome: { type: string }, sexo: { type: string, enum: [MASCULINO, FEMININO] }, ativo: { type: boolean }, resumo: { $ref: '#/components/schemas/ResumoPainelAdmin' }, evolucao: { type: array, items: { $ref: '#/components/schemas/EvolucaoPainelAdmin' } } } }
     PainelGerenciaResponse: { type: object, required: [dataInicio, dataFim, gerencia, resumo, evolucao, discipulados], properties: { dataInicio: { type: string, format: date }, dataFim: { type: string, format: date }, gerencia: { $ref: '#/components/schemas/GerenciaPainel' }, resumo: { $ref: '#/components/schemas/ResumoPainelAdmin' }, evolucao: { type: array, items: { $ref: '#/components/schemas/EvolucaoPainelAdmin' } }, discipulados: { type: array, items: { $ref: '#/components/schemas/DiscipuladoPainelGerencia' } } } }
+    DiscipuladoPainelLider: { type: object, required: [id, nome, sexo, ativo], properties: { id: { type: integer, format: int64 }, nome: { type: string }, sexo: { type: string, enum: [MASCULINO, FEMININO] }, ativo: { type: boolean } } }
+    PainelLiderResponse: { type: object, required: [dataInicio, dataFim, discipulado, resumo, evolucao], properties: { dataInicio: { type: string, format: date }, dataFim: { type: string, format: date }, discipulado: { $ref: '#/components/schemas/DiscipuladoPainelLider' }, resumo: { $ref: '#/components/schemas/ResumoPainelAdmin' }, evolucao: { type: array, items: { $ref: '#/components/schemas/EvolucaoPainelAdmin' } } } }
     PaginaUsuario: { type: object, properties: { content: { type: array, items: { $ref: '#/components/schemas/Usuario' } }, page: { type: integer }, size: { type: integer }, totalElements: { type: integer, format: int64 }, totalPages: { type: integer } } }
     PaginaGerencia: { type: object, properties: { content: { type: array, items: { $ref: '#/components/schemas/Gerencia' } }, page: { type: integer }, size: { type: integer }, totalElements: { type: integer, format: int64 }, totalPages: { type: integer } } }
     PaginaDiscipulado: { type: object, properties: { content: { type: array, items: { $ref: '#/components/schemas/Discipulado' } }, page: { type: integer }, size: { type: integer }, totalElements: { type: integer, format: int64 }, totalPages: { type: integer } } }

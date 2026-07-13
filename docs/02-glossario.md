@@ -6,11 +6,11 @@ Grupo de adolescentes liderado por um discipulador.
 
 ## Discipulador
 
-Líder responsável pelo discipulado.
+Líder responsável por um único discipulado. Um usuário não pode exercer liderança em outro grupo simultaneamente, nem como co-líder.
 
 ## Co-líder
 
-Pessoa que auxilia o discipulador.
+Pessoa que auxilia o discipulador em um único grupo e possui a mesma visão histórica do discipulado. Um usuário não pode exercer liderança em outro grupo simultaneamente.
 
 ## Gerência
 
