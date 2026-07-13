@@ -17,6 +17,7 @@ public interface DiscipuladoRepository extends JpaRepository<Discipulado, Long> 
     Optional<Discipulado> findById(Long id);
 
     List<Discipulado> findAllByGerenciaIdAndAtivoTrue(Long gerenciaId);
+    List<Discipulado> findAllByGerenciaIdOrderByNomeAsc(Long gerenciaId);
     @EntityGraph(attributePaths = {"gerencia", "discipulador"})
     Page<Discipulado> findAllByGerenciaId(Long gerenciaId, Pageable pageable);
     @EntityGraph(attributePaths = {"gerencia", "discipulador"})
