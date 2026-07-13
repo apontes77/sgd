@@ -31,6 +31,14 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
 function FrequencyPage({ currentUser }: { currentUser: Usuario }) {
   const [discipulados, setDiscipulados] = useState<Discipulado[]>([])
   const [discipuladoId, setDiscipuladoId] = useState<number>(0)
-  useEffect(() => { organizationApi.listarDiscipulados().then((page) => { setDiscipulados(page.content.filter((item) => item.ativo !== false)); setDiscipuladoId((current) => current || page.content.find((item) => item.ativo !== false)?.id || 0) }).catch(() => { setDiscipulados([]); setDiscipuladoId(0) }) }, [])
+  useEffect(() => {
+    const consulta = currentUser.perfis.includes('ADMIN')
+      ? organizationApi.listarDiscipulados(true).then((page) => page.content)
+      : organizationApi.listarDiscipuladosLiderados(true)
+    consulta.then((items) => {
+      setDiscipulados(items)
+      setDiscipuladoId((current) => items.some((item) => item.id === current) ? current : items[0]?.id ?? 0)
+    }).catch(() => { setDiscipulados([]); setDiscipuladoId(0) })
+  }, [currentUser.perfis])
   return <Stack spacing={3}><FormControl size="small" sx={{ maxWidth: 420 }}><InputLabel>Discipulado</InputLabel><Select label="Discipulado" value={discipuladoId || ''} onChange={(event) => setDiscipuladoId(Number(event.target.value))}>{discipulados.map((item) => <MenuItem key={item.id} value={item.id}>{item.nome}</MenuItem>)}</Select></FormControl>{discipuladoId ? <FrequencyManagement discipuladoId={discipuladoId} podeAdministrar={currentUser.perfis.includes('ADMIN')} /> : <Typography color="text.secondary">Nenhum discipulado disponível no seu escopo.</Typography>}</Stack>
 }

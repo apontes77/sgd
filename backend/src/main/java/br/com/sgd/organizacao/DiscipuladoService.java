@@ -5,6 +5,8 @@ import br.com.sgd.user.User;
 import br.com.sgd.user.UserRepository;
 import java.util.LinkedHashSet;
 import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -66,6 +68,15 @@ public class DiscipuladoService {
         else result = discipulados.findAll(pageable);
         result.forEach(discipulado -> discipulado.getCoLideres().forEach(User::getPerfis));
         return result;
+    }
+
+    @Transactional(readOnly = true)
+    public List<Discipulado> listLiderados(User usuario, Boolean ativo) {
+        return discipulados.findAllByLiderancaUsuarioId(usuario.getId()).stream()
+                .filter(discipulado -> ativo == null || discipulado.isAtivo() == ativo)
+                .peek(discipulado -> discipulado.getCoLideres().forEach(User::getPerfis))
+                .sorted(Comparator.comparing(Discipulado::getNome, String.CASE_INSENSITIVE_ORDER))
+                .toList();
     }
 
     @Transactional(readOnly = true)

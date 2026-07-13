@@ -71,6 +71,25 @@ describe('navegação autenticada', () => {
     expect(await screen.findByText('usuario@sgd.local')).toBeInTheDocument()
     expect(screen.getAllByText('GERENTE')).not.toHaveLength(0)
   })
+
+  it('carrega e seleciona somente discipulados liderados para discipulador', async () => {
+    const fetchMock = vi.mocked(globalThis.fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      const body = url.includes('/painel/lider') ? emptyLeaderDashboard
+        : url.endsWith('/discipulados/liderados?ativo=true') ? [{ id: 7, nome: 'Meu grupo', sexo: 'MASCULINO', gerenciaId: 1, discipuladorId: 1, ativo: true, coLideres: [] }]
+        : url.includes('/encontros?discipuladoId=7') ? []
+        : url.includes('/adolescentes?discipuladoId=7') ? emptyPage
+        : emptyPage
+      return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    })
+    render(<AuthenticatedApp currentUser={user(['DISCIPULADOR'])} onLogout={() => undefined} />)
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Registrar frequência' }))
+
+    expect(await screen.findByText('Meu grupo')).toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/discipulados?'))).toBe(false)
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/discipulados/liderados?ativo=true'))).toBe(true)
+  })
 })
 
 function user(perfis: Usuario['perfis']): Usuario {

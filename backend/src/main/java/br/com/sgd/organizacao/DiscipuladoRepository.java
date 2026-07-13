@@ -20,7 +20,7 @@ public interface DiscipuladoRepository extends JpaRepository<Discipulado, Long> 
 
     List<Discipulado> findAllByGerenciaIdAndAtivoTrue(Long gerenciaId);
     List<Discipulado> findAllByGerenciaIdOrderByNomeAsc(Long gerenciaId);
-    @EntityGraph(attributePaths = {"gerencia", "discipulador", "coLideres"})
+    @EntityGraph(attributePaths = {"gerencia", "discipulador", "coLideres", "coLideres.perfis"})
     @Query("select distinct d from Discipulado d left join d.coLideres c where d.discipulador.id = :usuarioId or c.id = :usuarioId")
     List<Discipulado> findAllByLiderancaUsuarioId(@Param("usuarioId") Long usuarioId);
     @EntityGraph(attributePaths = {"gerencia", "discipulador"})

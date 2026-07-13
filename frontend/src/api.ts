@@ -160,7 +160,17 @@ export const organizationApi = {
   listarGerencias: () => request<Pagina<Gerencia>>('/gerencias?page=0&size=100'),
   criarGerencia: (body: GerenciaRequest) => request<Gerencia>('/gerencias', { method: 'POST', body: JSON.stringify(body) }),
   atualizarGerencia: (id: number, body: GerenciaRequest) => request<Gerencia>(`/gerencias/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
-  listarDiscipulados: () => request<Pagina<Discipulado>>('/discipulados?page=0&size=100'),
+  listarDiscipulados: (ativo?: boolean) => {
+    const params = new URLSearchParams({ page: '0', size: '100' })
+    if (ativo !== undefined) params.set('ativo', String(ativo))
+    return request<Pagina<Discipulado>>(`/discipulados?${params}`)
+  },
+  listarDiscipuladosLiderados: (ativo?: boolean) => {
+    const params = new URLSearchParams()
+    if (ativo !== undefined) params.set('ativo', String(ativo))
+    const query = params.size ? `?${params}` : ''
+    return request<Discipulado[]>(`/discipulados/liderados${query}`)
+  },
   criarDiscipulado: (body: DiscipuladoRequest) => request<Discipulado>('/discipulados', { method: 'POST', body: JSON.stringify(body) }),
   atualizarDiscipulado: (id: number, body: DiscipuladoRequest) => request<Discipulado>(`/discipulados/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   definirCoLideres: (id: number, usuarioIds: number[]) => request<Discipulado>(`/discipulados/${id}/co-lideres`, { method: 'PUT', body: JSON.stringify({ usuarioIds }) }),
