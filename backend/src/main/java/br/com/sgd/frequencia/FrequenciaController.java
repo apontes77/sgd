@@ -21,7 +21,7 @@ public class FrequenciaController {
  @PutMapping("/{id}/visitantes") public VisitantesResponse visitantes(@AuthenticationPrincipal User u,@PathVariable long id,@Valid @RequestBody VisitantesRequest r){return new VisitantesResponse(chamadas.salvarVisitantes(u,id,r.quantidade()));}
  public record EncontroRequest(@NotNull Long discipuladoId,@NotNull LocalDate data,@NotNull SituacaoEncontro situacao){}
  public record AtualizarEncontroRequest(LocalDate data,SituacaoEncontro situacao){}
- public record ChamadaRequest(@NotNull List<@Valid FrequenciaRequest> frequencias){}
+ public record ChamadaRequest(@NotNull List<@NotNull @Valid FrequenciaRequest> frequencias){}
  public record FrequenciaRequest(@NotNull Long adolescenteId,@NotNull SituacaoFrequencia situacao){}
  public record VisitantesRequest(@Min(0) int quantidade){} public record VisitantesResponse(int quantidade){}
  public record EncontroResponse(Long id,Long discipuladoId,LocalDate data,SituacaoEncontro situacao,Instant criadoEm){static EncontroResponse of(Encontro e){return new EncontroResponse(e.getId(),e.getDiscipulado().getId(),e.getData(),e.getSituacao(),e.getCriadoEm());}}
