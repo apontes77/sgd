@@ -8,8 +8,10 @@ export interface IndicadorSexo extends IndicadorFrequencia { sexo: 'MASCULINO' |
 export interface PainelAdminResponse { dataInicio: string; dataFim: string; resumo: ResumoPainel; evolucao: EvolucaoMensal[]; gerencias: IndicadorGerencia[]; sexos: IndicadorSexo[] }
 export interface DiscipuladoPainel { id: number; nome: string; sexo: 'MASCULINO' | 'FEMININO'; ativo: boolean; resumo: ResumoPainel; evolucao: EvolucaoMensal[] }
 export interface PainelGerenciaResponse { dataInicio: string; dataFim: string; gerencia: { id: number; nome: string }; resumo: ResumoPainel; evolucao: EvolucaoMensal[]; discipulados: DiscipuladoPainel[] }
+export interface PainelLiderResponse { dataInicio: string; dataFim: string; discipulado: { id: number; nome: string; sexo: 'MASCULINO' | 'FEMININO'; ativo: boolean }; resumo: ResumoPainel; evolucao: EvolucaoMensal[] }
 
 export const painelApi = {
   consultar: (dataInicio: string, dataFim: string) => request<PainelAdminResponse>(`/painel/admin?${new URLSearchParams({ dataInicio, dataFim })}`),
   consultarGerencia: (dataInicio: string, dataFim: string) => request<PainelGerenciaResponse>(`/painel/gerencia?${new URLSearchParams({ dataInicio, dataFim })}`),
+  consultarLider: (dataInicio: string, dataFim: string) => request<PainelLiderResponse>(`/painel/lider?${new URLSearchParams({ dataInicio, dataFim })}`),
 }
