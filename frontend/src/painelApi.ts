@@ -6,7 +6,10 @@ export interface EvolucaoMensal extends IndicadorFrequencia { referencia: string
 export interface IndicadorGerencia extends IndicadorFrequencia { id: number; nome: string }
 export interface IndicadorSexo extends IndicadorFrequencia { sexo: 'MASCULINO' | 'FEMININO' }
 export interface PainelAdminResponse { dataInicio: string; dataFim: string; resumo: ResumoPainel; evolucao: EvolucaoMensal[]; gerencias: IndicadorGerencia[]; sexos: IndicadorSexo[] }
+export interface DiscipuladoPainel { id: number; nome: string; sexo: 'MASCULINO' | 'FEMININO'; ativo: boolean; resumo: ResumoPainel; evolucao: EvolucaoMensal[] }
+export interface PainelGerenciaResponse { dataInicio: string; dataFim: string; gerencia: { id: number; nome: string }; resumo: ResumoPainel; evolucao: EvolucaoMensal[]; discipulados: DiscipuladoPainel[] }
 
 export const painelApi = {
   consultar: (dataInicio: string, dataFim: string) => request<PainelAdminResponse>(`/painel/admin?${new URLSearchParams({ dataInicio, dataFim })}`),
+  consultarGerencia: (dataInicio: string, dataFim: string) => request<PainelGerenciaResponse>(`/painel/gerencia?${new URLSearchParams({ dataInicio, dataFim })}`),
 }
