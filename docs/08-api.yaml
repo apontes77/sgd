@@ -129,6 +129,17 @@ paths:
       description: Requer ADMIN. RN003 exige exatamente um discipulador.
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/DiscipuladoRequest' } } } }
       responses: { '201': { description: Discipulado criado, content: { application/json: { schema: { $ref: '#/components/schemas/Discipulado' } } } } }
+  /discipulados/liderados:
+    get:
+      tags: [Discipulados]
+      summary: Lista os discipulados liderados pelo usuário autenticado
+      description: Requer DISCIPULADOR ou CO_LIDER. Retorna somente grupos em que o usuário é discipulador ou co-líder.
+      parameters: [ { name: ativo, in: query, schema: { type: boolean } } ]
+      responses:
+        '200':
+          description: Discipulados próprios da liderança
+          content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Discipulado' } } } }
+        '403': { $ref: '#/components/responses/Proibido' }
   /discipulados/{discipuladoId}:
     patch:
       tags: [Discipulados]
@@ -201,7 +212,7 @@ paths:
     put:
       tags: [Frequências]
       summary: Registra ou substitui a chamada do encontro
-      description: ADMIN, DISCIPULADOR ou CO_LIDER. Um adolescente só pode ter uma frequência por encontro (RN006).
+      description: ADMIN, DISCIPULADOR ou CO_LIDER do discipulado. A chamada contém os vínculos ativos atuais, independentemente da data do encontro, e preserva participantes já registrados anteriormente. Um adolescente só pode ter uma frequência por encontro (RN006).
       parameters: [ { $ref: '#/components/parameters/EncontroId' } ]
       requestBody: { required: true, content: { application/json: { schema: { type: object, required: [frequencias], properties: { frequencias: { type: array, items: { $ref: '#/components/schemas/FrequenciaRequest' } } } } } } }
       responses: { '200': { description: Chamada salva, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Frequencia' } } } } }, '403': { description: Fora da janela de três horas para líder ou co-líder, $ref: '#/components/responses/Proibido' } }
