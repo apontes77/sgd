@@ -12,5 +12,6 @@ public class Visitante {
     protected Visitante() { }
     public Visitante(Encontro encontro, int quantidade, Instant agora){this.encontro=encontro; atualizar(quantidade, agora);}
     public void atualizar(int quantidade, Instant agora){if(quantidade<0)throw new IllegalArgumentException("A quantidade não pode ser negativa.");this.quantidade=quantidade;this.atualizadoEm=agora;}
+    public Encontro getEncontro(){return encontro;}
     public int getQuantidade(){return quantidade;}
 }

@@ -26,6 +26,7 @@ describe('navegação autenticada', () => {
     expect(screen.getByRole('tab', { name: 'Usuários' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Adolescentes' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Registrar frequência' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Relatórios' })).toBeInTheDocument()
   })
 
   it('oferece o painel gerencial ao GERENTE', () => {
@@ -35,6 +36,7 @@ describe('navegação autenticada', () => {
     expect(screen.getByRole('tab', { name: 'Adolescentes' })).toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Usuários' })).not.toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Frequência' })).not.toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Relatórios' })).toBeInTheDocument()
   })
 
   it('mantém os painéis administrativo e gerencial para perfil combinado', () => {
@@ -47,8 +49,10 @@ describe('navegação autenticada', () => {
     const { rerender } = render(<AuthenticatedApp currentUser={user(['DISCIPULADOR'])} onLogout={() => undefined} />)
     expect(screen.getByRole('tab', { name: 'Meu discipulado' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tab', { name: 'Registrar frequência' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Relatórios' })).toBeInTheDocument()
     rerender(<AuthenticatedApp currentUser={user(['CO_LIDER'])} onLogout={() => undefined} />)
     expect(screen.getByRole('tab', { name: 'Meu discipulado' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Relatórios' })).toBeInTheDocument()
   })
 
   it('soma Meu discipulado aos painéis de perfis acumulados', () => {
