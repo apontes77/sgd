@@ -92,3 +92,17 @@ RN029 - Somente administradores podem transferir adolescentes entre discipulados
 RN030 - Discipulador e co-líder podem consultar o histórico gráfico do próprio discipulado.
 
 RN031 - O painel do discipulado considera somente o grupo no qual o usuário exerce liderança, independentemente de outros perfis acumulados.
+
+---
+
+## Relatório diário de frequência
+
+RN032 - Administradores consultam todos os discipulados; gerentes consultam os discipulados das suas gerências ativas; discipuladores e co-líderes consultam somente os grupos em que exercem liderança.
+
+RN033 - Usuários com perfis acumulados recebem a união dos escopos de relatório, e o perfil de administrador equivale ao acesso total.
+
+RN034 - O relatório diário inclui somente encontros realizados e frequências efetivamente persistidas, preservando adolescentes transferidos ou inativados que constem na chamada histórica.
+
+RN035 - Cada encontro gera uma página independente, ordenada por gerência, discipulado e encontro, e pode ser impressa ou salva como PDF pelo diálogo nativo do navegador.
+
+RN036 - Cada linha do relatório diário deve apresentar o nome e o telefone do adolescente, a data do encontro e a situação presente ou ausente.

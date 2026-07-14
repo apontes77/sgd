@@ -71,16 +71,24 @@ O acesso é cumulativo: `GERENTE + DISCIPULADOR` visualiza “Minha gerência”
 
 ---
 
-## UC006 - Exportar Relatório
+## UC006 - Consultar e imprimir relatório diário de frequência
 
 Ator:
-Administrador
+Administrador, Gerente, Discipulador ou Co-líder
 
 Fluxo:
 
-1. Selecionar relatório.
-2. Selecionar período.
-3. Exportar.
+1. Acessar “Relatórios”.
+2. Selecionar uma data.
+3. Consultar os encontros realizados dentro do escopo dos perfis acumulados do usuário.
+4. Visualizar uma página por encontro, com nome e telefone de cada adolescente, data do encontro, situação presente/ausente, visitantes e totais.
+5. Acionar “Imprimir / salvar como PDF” e usar o diálogo nativo do navegador.
+
+Fluxos alternativos:
+
+- Usuário com perfil permitido, mas sem associação organizacional aplicável: retornar `404`.
+- Escopo válido sem encontro realizado na data: retornar lista vazia e informar o estado na tela.
+- Encontros cancelados não são exibidos.
 
 ---
 
