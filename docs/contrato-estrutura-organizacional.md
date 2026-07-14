@@ -34,6 +34,9 @@ de autorização.
 | EO-12 | Autorização | Usuário não autenticado tenta mutação organizacional. | `401`. |
 | EO-13 | Autorização | Usuário autenticado sem `ADMIN` tenta criar, alterar ou trocar co-líderes. | `403`. |
 | EO-14 | Inativação | `PATCH /discipulados/{id}` com `ativo=false`. | `200`; o recurso continua consultável quando solicitado com `ativo=false`, sem exclusão física. |
+| EO-15 | RN028 | Associar como discipulador um usuário que já lidera ou co-lidera outro discipulado. | `409`; nenhuma associação é modificada. |
+| EO-16 | RN028 | Associar como co-líder um usuário que já lidera ou co-lidera outro discipulado. | `409`; a lista anterior permanece inalterada. |
+| EO-17 | RN015 | Usuário acumula `GERENTE + DISCIPULADOR` ou `ADMIN + DISCIPULADOR`. | Mantém os painéis do papel administrativo/gerencial e recebe também “Meu discipulado”. |
 
 ## Testes automatizados previstos
 
@@ -45,6 +48,7 @@ de autorização.
 3. Substituir co-líderes aceita no máximo dois, elimina a associação anterior
    e rejeita ids repetidos e perfis inválidos.
 4. Criar ou trocar gerente exige um usuário ativo com perfil `GERENTE`.
+5. Criar ou trocar discipulador e co-líder rejeita qualquer usuário já associado a outro discipulado em uma dessas funções.
 
 ### Integração HTTP
 
@@ -52,6 +56,7 @@ de autorização.
 2. Garantir que o payload de três co-líderes não persista modificação parcial.
 3. Confirmar que os campos obrigatórios de `GerenciaRequest` e
    `DiscipuladoRequest` retornam erro de validação no formato Problem Details.
+4. Confirmar `409` sem persistência parcial quando duas requisições concorrentes tentarem associar o mesmo usuário a discipulados diferentes.
 
 ### Banco de dados
 
@@ -61,6 +66,9 @@ de autorização.
 3. A tabela de co-líderes deve ter chave única em
    `(discipulado_id, usuario_id)`; o teto de dois é uma regra transacional da
    aplicação, protegida por teste de concorrência quando houver suporte.
+4. A exclusividade do usuário entre `discipulados.discipulador_id` e
+   `discipulado_co_lideres.usuario_id` deve ser protegida transacionalmente,
+   considerando as duas relações como uma única ocupação de liderança.
 
 ## Pontos a confirmar antes da automação
 

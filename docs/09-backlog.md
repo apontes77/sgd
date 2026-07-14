@@ -39,6 +39,13 @@
 - Dashboard gerente
 - Dashboard administrador
 
+### Divergências a corrigir antes de concluir o dashboard líder
+
+- Restringir transferência de adolescente a `ADMIN` no backend e ocultar a ação para os demais perfis.
+- Implementar “Meu discipulado” com histórico mensal para discipulador e co-líder.
+- Garantir uma única associação de liderança por usuário, somando discipulador e co-líder, inclusive sob concorrência.
+- Restringir seletores e ações de adolescentes ao próprio grupo para discipulador e co-líder.
+
 ---
 
 ## Sprint 6

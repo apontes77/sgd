@@ -1,0 +1,50 @@
+import { Alert, Box, Button, Chip, CircularProgress, FormControl, InputLabel, MenuItem, Paper, Select, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@mui/material'
+import ReactECharts from 'echarts-for-react'
+import { useEffect, useMemo, useState } from 'react'
+import { FiltroPeriodo, GraficoEvolucao, KpisPresenca, TabelaEvolucao } from './dashboardComponents'
+import { normalizarMeses, percentual, periodoPadrao } from './dashboardUtils'
+import { painelApi, type DiscipuladoPainel, type PainelGerenciaResponse } from './painelApi'
+
+const REFERENCIA_INFORMATIVA = 70
+
+export default function ManagerDashboard() {
+  const inicial = periodoPadrao()
+  const [dataInicio, setDataInicio] = useState(inicial.inicio)
+  const [dataFim, setDataFim] = useState(inicial.fim)
+  const [periodo, setPeriodo] = useState(inicial)
+  const [dados, setDados] = useState<PainelGerenciaResponse>()
+  const [selecionadoId, setSelecionadoId] = useState(0)
+  const [carregando, setCarregando] = useState(true)
+  const [erro, setErro] = useState('')
+  useEffect(() => { let ativo = true; setCarregando(true); setErro(''); painelApi.consultarGerencia(periodo.inicio, periodo.fim).then((resposta) => { if (!ativo) return; setDados(resposta); const preferido = resposta.discipulados.find((item) => item.ativo) ?? resposta.discipulados[0]; setSelecionadoId(preferido?.id ?? 0) }).catch((error: Error) => { if (ativo) { setDados(undefined); setErro(error.message) } }).finally(() => { if (ativo) setCarregando(false) }); return () => { ativo = false } }, [periodo])
+  const selecionado = useMemo(() => dados?.discipulados.find((item) => item.id === selecionadoId), [dados, selecionadoId])
+  return <Stack spacing={3}>
+    <Box><Typography variant="h4">Minha gerência</Typography><Typography color="text.secondary">{dados?.gerencia.nome ?? 'Acompanhamento dos discipulados sob sua gerência.'}</Typography></Box>
+    <FiltroPeriodo dataInicio={dataInicio} dataFim={dataFim} onInicio={setDataInicio} onFim={setDataFim} onAplicar={() => setPeriodo({ inicio: dataInicio, fim: dataFim })} />
+    {carregando && <Box role="status" sx={{ py: 8, textAlign: 'center' }}><CircularProgress /><Typography>Carregando painel...</Typography></Box>}
+    {erro && <Alert severity="error">{erro}</Alert>}
+    {!carregando && dados && <><KpisPresenca resumo={dados.resumo} />{dados.resumo.encontrosRealizados === 0 && <Alert severity="info">Não há encontros realizados no período selecionado.</Alert>}<GraficoEvolucao titulo="Evolução mensal da gerência" dados={normalizarMeses(dados.dataInicio, dados.dataFim, dados.evolucao)} /><TabelaEvolucao titulo="Resumo mensal da gerência" dados={normalizarMeses(dados.dataInicio, dados.dataFim, dados.evolucao)} />
+      {dados.discipulados.length === 0 ? <Alert severity="info">Não há discipulados com histórico no período.</Alert> : <><ResumoAtencao dados={dados.discipulados} /><GraficoComparacao dados={dados.discipulados} onSelecionar={setSelecionadoId} /><TabelaComparacao dados={dados.discipulados} onSelecionar={setSelecionadoId} /><FormControl sx={{ maxWidth: 460 }}><InputLabel id="discipulado-painel-label">Discipulado</InputLabel><Select labelId="discipulado-painel-label" value={selecionadoId || ''} label="Discipulado" onChange={(event) => setSelecionadoId(Number(event.target.value))}>{dados.discipulados.map((item) => <MenuItem value={item.id} key={item.id}>{item.nome}{item.ativo ? '' : ' (inativo)'}</MenuItem>)}</Select></FormControl>{selecionado && <Detalhe discipulado={selecionado} inicio={dados.dataInicio} fim={dados.dataFim} />}</>}
+    </>}
+  </Stack>
+}
+
+function ResumoAtencao({ dados }: { dados: DiscipuladoPainel[] }) {
+  const abaixo = dados.filter((item) => item.resumo.encontrosRealizados > 0 && item.resumo.percentualPresenca < REFERENCIA_INFORMATIVA).length
+  const semEncontros = dados.filter((item) => item.resumo.encontrosRealizados === 0).length
+  const quedas = dados.filter(temQuedaRecente).length
+  return <Alert severity={abaixo || semEncontros || quedas ? 'warning' : 'info'}><strong>Leitura do período:</strong> {abaixo} de {dados.length} discipulados abaixo da referência informativa de {REFERENCIA_INFORMATIVA}%; {semEncontros} sem encontros e {quedas} com queda no último mês disponível. Essa referência não representa uma meta pastoral.</Alert>
+}
+
+function temQuedaRecente(item: DiscipuladoPainel) { const meses = item.evolucao.filter((mes) => mes.presentes + mes.ausentes > 0); return meses.length >= 2 && meses.at(-1)!.percentualPresenca < meses.at(-2)!.percentualPresenca }
+
+function GraficoComparacao({ dados, onSelecionar }: { dados: DiscipuladoPainel[]; onSelecionar: (id: number) => void }) {
+  const ordenados = [...dados].sort((a, b) => a.resumo.percentualPresenca - b.resumo.percentualPresenca || a.nome.localeCompare(b.nome, 'pt-BR'))
+  return <Paper sx={{ p: 2 }}><Typography variant="h6">Presença por discipulado</Typography><Typography color="text.secondary" variant="body2">Selecione uma barra para abrir o histórico detalhado.</Typography><Box role="img" aria-label="Gráfico de barras do percentual de presença por discipulado."><ReactECharts onEvents={{ click: (param: { dataIndex: number }) => { const item = ordenados[param.dataIndex]; if (item) onSelecionar(item.id) } }} style={{ height: Math.min(650, Math.max(300, ordenados.length * 48)) }} option={{ aria: { enabled: true }, tooltip: { trigger: 'axis', valueFormatter: (valor: number) => percentual(valor) }, grid: { left: 150, right: 60, bottom: 40 }, xAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%' } }, yAxis: { type: 'category', data: ordenados.map((item) => item.nome) }, series: [{ type: 'bar', name: 'Presença', data: ordenados.map((item) => ({ value: item.resumo.percentualPresenca, itemStyle: { color: item.resumo.encontrosRealizados === 0 ? '#78909c' : item.resumo.percentualPresenca < REFERENCIA_INFORMATIVA ? '#ed6c02' : '#2e7d32' } })), label: { show: true, position: 'right', formatter: '{c}%' } }] }} /></Box></Paper>
+}
+
+function TabelaComparacao({ dados, onSelecionar }: { dados: DiscipuladoPainel[]; onSelecionar: (id: number) => void }) { return <TableContainer component={Paper}><Table size="small"><caption style={caption}>Resumo por discipulado</caption><TableHead><TableRow><TableCell scope="col">Discipulado</TableCell><TableCell scope="col">Encontros</TableCell><TableCell scope="col">Presentes</TableCell><TableCell scope="col">Ausentes</TableCell><TableCell scope="col">Presença</TableCell><TableCell scope="col">Sinais</TableCell></TableRow></TableHead><TableBody>{dados.map((item) => <TableRow key={item.id} hover><TableCell component="th" scope="row"><Button color="inherit" onClick={() => onSelecionar(item.id)}>{item.nome}{!item.ativo && ' (inativo)'}</Button></TableCell><TableCell>{item.resumo.encontrosRealizados}</TableCell><TableCell>{item.resumo.presentes}</TableCell><TableCell>{item.resumo.ausentes}</TableCell><TableCell>{percentual(item.resumo.percentualPresenca)}</TableCell><TableCell><Stack direction="row" spacing={0.5} flexWrap="wrap">{item.resumo.encontrosRealizados === 0 && <Chip size="small" label="Sem encontros" />}{temQuedaRecente(item) && <Chip size="small" color="warning" label="Queda recente" />}</Stack></TableCell></TableRow>)}</TableBody></Table></TableContainer> }
+
+function Detalhe({ discipulado, inicio, fim }: { discipulado: DiscipuladoPainel; inicio: string; fim: string }) { return <Stack spacing={2}><Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap"><Typography variant="h5">{discipulado.nome}</Typography>{!discipulado.ativo && <Chip color="warning" label="Inativo" size="small" />}{temQuedaRecente(discipulado) && <Chip color="warning" variant="outlined" label="Queda no último mês disponível" size="small" />}</Stack><KpisPresenca resumo={discipulado.resumo} /><GraficoEvolucao titulo="Evolução mensal do discipulado" dados={normalizarMeses(inicio, fim, discipulado.evolucao)} /><TabelaEvolucao titulo="Histórico mensal do discipulado" dados={normalizarMeses(inicio, fim, discipulado.evolucao)} /></Stack> }
+
+const caption = { captionSide: 'top' as const, textAlign: 'left' as const, padding: 16, fontSize: '1.25rem', fontWeight: 500, color: 'inherit' }

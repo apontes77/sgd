@@ -36,11 +36,16 @@ O refresh token é rotacionado a cada renovação. Tokens de redefinição não 
 | Usuários e perfis | Total | Não | Não | Não |
 | Gerências | Total | Própria, leitura | Não | Não |
 | Discipulados | Total | Da gerência | Próprio | Próprio, leitura limitada |
-| Adolescentes | Total | Da gerência | Próprio | Próprio |
+| Adolescentes — leitura | Total | Da gerência | Próprio | Próprio |
+| Adolescentes — cadastro/edição/inativação | Total | Não, salvo se acumular papel de líder | Próprio | Próprio |
+| Adolescentes — transferência | Total | Não | Não | Não |
 | Encontros e chamada | Total | Da gerência, leitura | Próprio | Próprio |
+| Painel do discipulado | Se também for líder | Se também for líder | Próprio | Próprio |
 | Auditoria | Total | Não | Não | Não |
 
 Além do perfil, a API valida o vínculo do usuário com o discipulado solicitado.
+
+Os acessos são cumulativos: `GERENTE + DISCIPULADOR` recebe “Minha gerência” e “Meu discipulado”; `ADMIN + DISCIPULADOR` recebe o painel administrativo e “Meu discipulado”. Administradores não exercem o papel de gerente no cenário atual, sem impedir futuras combinações de perfis.
 
 ## Regras importantes
 
@@ -48,14 +53,19 @@ Além do perfil, a API valida o vínculo do usuário com o discipulado solicitad
 - Um discipulado tem exatamente um discipulador e até dois co-líderes.
 - Um encontro é `REALIZADO` ou `CANCELADO`.
 - Há uma única frequência por adolescente e encontro.
+- A chamada usa os vínculos ativos atuais sem comparar a data de início do vínculo com a data do encontro; participantes anteriormente registrados permanecem disponíveis para preservar o histórico.
 - Discipulador e co-líder alteram frequência por até três horas; após isso, somente `ADMIN` pode fazê-lo. Todas as alterações são auditadas.
+- Discipulador e co-líder registram encontros, chamadas e visitantes somente nos discipulados em que exercem liderança; `ADMIN` pode registrar em qualquer discipulado ativo.
+- Discipulador e co-líder cadastram, atualizam e inativam adolescentes somente no próprio discipulado; somente `ADMIN` transfere adolescentes entre grupos.
+- Um usuário exerce liderança em apenas um discipulado no total, seja como discipulador ou co-líder.
+- Permissões e painéis são cumulativos. O painel “Meu discipulado” sempre usa a associação de liderança, mesmo quando o usuário também é `ADMIN` ou `GERENTE`.
 
 ## Domínios disponíveis
 
 | Domínio | Rotas principais |
 | --- | --- |
 | Usuários | `/usuarios` |
-| Estrutura | `/gerencias`, `/discipulados`, `/discipulados/{id}/co-lideres` |
+| Estrutura | `/gerencias`, `/discipulados`, `/discipulados/liderados`, `/discipulados/{id}/co-lideres` |
 | Cadastro | `/adolescentes`, `/adolescentes/{id}/vinculos` |
 | Frequência | `/encontros`, `/encontros/{id}/frequencias`, `/encontros/{id}/visitantes` |
 | Indicadores | `/painel/lider`, `/painel/gerencia` |

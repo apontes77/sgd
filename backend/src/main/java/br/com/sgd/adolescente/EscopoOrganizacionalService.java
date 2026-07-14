@@ -24,7 +24,7 @@ public class EscopoOrganizacionalService {
     }
 
     public void exigirAlteracao(User usuario, Discipulado discipulado) {
-        if (!podeAlterar(usuario, discipulado)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "O usuário não pode alterar adolescentes deste discipulado.");
+        if (!podeAlterar(usuario, discipulado)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "O usuário não pode alterar dados deste discipulado.");
     }
 
     private boolean liderDoDiscipulado(User usuario, Discipulado discipulado) {

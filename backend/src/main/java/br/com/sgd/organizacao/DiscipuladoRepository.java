@@ -5,6 +5,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 
 public interface DiscipuladoRepository extends JpaRepository<Discipulado, Long> {
@@ -17,6 +19,10 @@ public interface DiscipuladoRepository extends JpaRepository<Discipulado, Long> 
     Optional<Discipulado> findById(Long id);
 
     List<Discipulado> findAllByGerenciaIdAndAtivoTrue(Long gerenciaId);
+    List<Discipulado> findAllByGerenciaIdOrderByNomeAsc(Long gerenciaId);
+    @EntityGraph(attributePaths = {"gerencia", "discipulador", "coLideres", "coLideres.perfis"})
+    @Query("select distinct d from Discipulado d left join d.coLideres c where d.discipulador.id = :usuarioId or c.id = :usuarioId")
+    List<Discipulado> findAllByLiderancaUsuarioId(@Param("usuarioId") Long usuarioId);
     @EntityGraph(attributePaths = {"gerencia", "discipulador"})
     Page<Discipulado> findAllByGerenciaId(Long gerenciaId, Pageable pageable);
     @EntityGraph(attributePaths = {"gerencia", "discipulador"})
