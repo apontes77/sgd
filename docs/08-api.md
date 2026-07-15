@@ -29,6 +29,8 @@ Usuários, adolescentes e discipulados não são excluídos fisicamente. Use `PA
 
 O refresh token é rotacionado a cada renovação. Tokens de redefinição não são expostos pela API e devem ser entregues por provedor transacional de e-mail.
 
+Solicitações de recuperação sempre retornam a mesma resposta, exista ou não uma conta ativa para o e-mail informado. O link é de uso único, expira e a definição de uma nova senha encerra todas as sessões existentes. Novos usuários não recebem senha inicial: após o cadastro administrativo, recebem por e-mail um convite para definir a própria senha.
+
 ## Autorização
 
 | Recurso | ADMIN | GERENTE | DISCIPULADOR | CO_LIDER |

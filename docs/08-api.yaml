@@ -52,7 +52,9 @@ paths:
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: '#/components/schemas/EmailRequest' } } }
-      responses: { '204': { description: Solicitação recebida } }
+      responses:
+        '204': { description: Solicitação recebida, inclusive quando o e-mail não identifica uma conta ativa }
+        '429': { description: Limite de solicitações por origem excedido }
   /autenticacao/redefinir-senha:
     post:
       tags: [Autenticação]
@@ -64,6 +66,7 @@ paths:
       responses:
         '204': { description: Senha alterada }
         '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '429': { description: Limite de tentativas por origem excedido }
   /autenticacao/eu:
     get:
       tags: [Autenticação]
@@ -86,7 +89,7 @@ paths:
     post:
       tags: [Usuários]
       summary: Cria usuário
-      description: Requer ADMIN. Um usuário pode receber múltiplos perfis.
+      description: Requer ADMIN. Um usuário pode receber múltiplos perfis e recebe por e-mail um convite para definir a própria senha.
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CriarUsuarioRequest' } } } }
       responses: { '201': { description: Usuário criado, content: { application/json: { schema: { $ref: '#/components/schemas/Usuario' } } } }, '409': { $ref: '#/components/responses/Conflito' } }
   /usuarios/{usuarioId}:
@@ -317,11 +320,11 @@ components:
     LoginRequest: { type: object, required: [email, senha], properties: { email: { type: string, format: email }, senha: { type: string, format: password } } }
     RefreshTokenRequest: { type: object, required: [refreshToken], properties: { refreshToken: { type: string } } }
     EmailRequest: { type: object, required: [email], properties: { email: { type: string, format: email } } }
-    RedefinirSenhaRequest: { type: object, required: [token, novaSenha], properties: { token: { type: string }, novaSenha: { type: string, format: password, minLength: 12 } } }
+    RedefinirSenhaRequest: { type: object, required: [token, novaSenha], properties: { token: { type: string }, novaSenha: { type: string, format: password, minLength: 12, maxLength: 72, description: Entre 12 e 72 bytes em UTF-8 } } }
     SessaoResponse: { type: object, required: [accessToken, refreshToken, usuario], properties: { accessToken: { type: string }, refreshToken: { type: string }, usuario: { $ref: '#/components/schemas/Usuario' } } }
     Perfil: { type: string, enum: [ADMIN, GERENTE, DISCIPULADOR, CO_LIDER] }
-    Usuario: { type: object, required: [id, nome, email, ativo, perfis], properties: { id: { type: integer, format: int64 }, nome: { type: string }, email: { type: string, format: email }, ativo: { type: boolean }, perfis: { type: array, items: { $ref: '#/components/schemas/Perfil' } } } }
-    CriarUsuarioRequest: { type: object, required: [nome, email, senha, perfis], properties: { nome: { type: string, minLength: 1, maxLength: 120 }, email: { type: string, format: email }, senha: { type: string, format: password, minLength: 12 }, perfis: { type: array, minItems: 1, items: { $ref: '#/components/schemas/Perfil' } } } }
+    Usuario: { type: object, required: [id, nome, email, ativo, senhaDefinida, perfis], properties: { id: { type: integer, format: int64 }, nome: { type: string }, email: { type: string, format: email }, ativo: { type: boolean }, senhaDefinida: { type: boolean, description: Indica se a conta já possui credencial local definida }, perfis: { type: array, items: { $ref: '#/components/schemas/Perfil' } } } }
+    CriarUsuarioRequest: { type: object, required: [nome, email, perfis], properties: { nome: { type: string, minLength: 1, maxLength: 120 }, email: { type: string, format: email }, perfis: { type: array, minItems: 1, items: { $ref: '#/components/schemas/Perfil' } } } }
     AtualizarUsuarioRequest: { type: object, properties: { nome: { type: string, minLength: 1, maxLength: 120 }, perfis: { type: array, minItems: 1, items: { $ref: '#/components/schemas/Perfil' } }, ativo: { type: boolean } } }
     GerenciaRequest: { type: object, required: [nome, gerenteId], properties: { nome: { type: string, minLength: 1, maxLength: 120 }, gerenteId: { type: integer, format: int64 } } }
     AtualizarGerenciaRequest: { type: object, minProperties: 1, properties: { nome: { type: string, minLength: 1, maxLength: 120 }, gerenteId: { type: integer, format: int64 }, ativo: { type: boolean } } }
