@@ -2,6 +2,7 @@ package br.com.sgd.config;
 
 import br.com.sgd.auth.AuthService;
 import br.com.sgd.auth.JwtService;
+import br.com.sgd.observability.TraceContext;
 import br.com.sgd.user.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -9,7 +10,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Map;
-import java.util.UUID;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.MediaType;
 import org.springframework.boot.ApplicationRunner;
@@ -17,6 +17,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -35,7 +36,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @EnableMethodSecurity
 @EnableConfigurationProperties(SecurityProperties.class)
 public class SecurityConfig {
-    @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
+    @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(12); }
     @Bean ApplicationRunner adminBootstrap(AuthService authService) { return arguments -> authService.bootstrapAdmin(); }
     @Bean SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter, ObjectMapper json) throws Exception {
         return http.csrf(csrf -> csrf.disable()).sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -43,7 +44,10 @@ public class SecurityConfig {
                         writeProblem(response, json, HttpServletResponse.SC_UNAUTHORIZED, "Não autorizado", "A autenticação é obrigatória ou expirou."))
                         .accessDeniedHandler((request, response, exception) ->
                         writeProblem(response, json, HttpServletResponse.SC_FORBIDDEN, "Acesso proibido", "Você não possui permissão para realizar esta operação.")))
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/api/v1/autenticacao/**", "/api/health", "/actuator/health/**").permitAll()
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.POST, "/api/v1/autenticacao/login", "/api/v1/autenticacao/atualizar-token",
+                                "/api/v1/autenticacao/esqueci-a-senha", "/api/v1/autenticacao/redefinir-senha").permitAll()
+                        .requestMatchers("/api/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/api/v1/usuarios/**").hasRole("ADMIN").anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class).build();
     }
@@ -52,7 +56,7 @@ public class SecurityConfig {
         response.setStatus(status);
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         json.writeValue(response.getOutputStream(), Map.of("type", "about:blank", "title", title, "status", status,
-                "detail", detail, "traceId", UUID.randomUUID().toString()));
+                "detail", detail, "traceId", TraceContext.currentTraceId()));
     }
 
     @Component

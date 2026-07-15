@@ -1,7 +1,7 @@
 package br.com.sgd.exception;
 
 import java.util.Map;
-import java.util.UUID;
+import br.com.sgd.observability.TraceContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -10,6 +10,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import br.com.sgd.auth.AuthService;
 import br.com.sgd.auth.OAuthIdentityService;
+import br.com.sgd.auth.PasswordPolicy;
 import br.com.sgd.user.UserService;
 import br.com.sgd.organizacao.GerenciaService;
 import br.com.sgd.organizacao.DiscipuladoService;
@@ -39,6 +40,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException exception) {
         return response(HttpStatus.BAD_REQUEST, "Dados de entrada inválidos.");
+    }
+
+    @ExceptionHandler(PasswordPolicy.InvalidPasswordException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidPassword(PasswordPolicy.InvalidPasswordException exception) {
+        return response(HttpStatus.BAD_REQUEST, "A senha deve conter entre 12 e 72 bytes UTF-8.");
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
@@ -125,6 +131,6 @@ public class ApiExceptionHandler {
                 "title", status.getReasonPhrase(),
                 "status", status.value(),
                 "detail", message,
-                "traceId", UUID.randomUUID().toString()));
+                "traceId", TraceContext.currentTraceId()));
     }
 }
