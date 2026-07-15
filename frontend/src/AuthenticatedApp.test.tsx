@@ -29,6 +29,14 @@ describe('navegação autenticada', () => {
     expect(screen.getByRole('tab', { name: 'Relatórios' })).toBeInTheDocument()
   })
 
+  it('usa o gênero correto no botão de criação da estrutura', async () => {
+    render(<AuthenticatedApp currentUser={user(['ADMIN'])} onLogout={() => undefined} />)
+    await userEvent.click(screen.getByRole('tab', { name: 'Estrutura' }))
+    expect(await screen.findByRole('button', { name: 'Nova gerência' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('tab', { name: 'Discipulados' }))
+    expect(screen.getByRole('button', { name: 'Novo discipulado' })).toBeInTheDocument()
+  })
+
   it('oferece o painel gerencial ao GERENTE', () => {
     render(<AuthenticatedApp currentUser={user(['GERENTE'])} onLogout={() => undefined} />)
     expect(screen.getByRole('tab', { name: 'Minha gerência' })).toBeInTheDocument()

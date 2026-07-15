@@ -87,7 +87,7 @@ export default function OrganizationManagement() {
   return <Box component="main" sx={{ minHeight: '100vh', p: { xs: 2, md: 4 } }}>
     <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} spacing={2} sx={{ mb: 3 }}>
       <Box><Typography component="h1" variant="h4">Estrutura organizacional</Typography><Typography color="text.secondary">Gerencie gerências, discipulados e suas lideranças.</Typography></Box>
-      <Button variant="contained" onClick={() => { setPendingDiscipuladoId(undefined); setModal(tab === 0 ? { kind: 'gerencia' } : { kind: 'discipulado' }) }}>Nova {tab === 0 ? 'gerência' : 'discipulado'}</Button>
+      <Button variant="contained" onClick={() => { setPendingDiscipuladoId(undefined); setModal(tab === 0 ? { kind: 'gerencia' } : { kind: 'discipulado' }) }}>{tab === 0 ? 'Nova gerência' : 'Novo discipulado'}</Button>
     </Stack>
     {error && <Alert severity="error" onClose={() => setError('')} sx={{ mb: 2 }}>{error}</Alert>}
     <Paper>
