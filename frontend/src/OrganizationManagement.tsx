@@ -1,5 +1,6 @@
+import { AddRounded } from '@mui/icons-material'
 import {
-  Alert, Box, Button, Checkbox, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
+  Alert, Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent,
   DialogTitle, FormControl, FormControlLabel, InputLabel, List, ListItem, ListItemText,
   MenuItem, Paper, Select, Stack, Tab, Tabs, TextField, Typography,
 } from '@mui/material'
@@ -7,6 +8,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   CriarUsuarioRequest, Discipulado, DiscipuladoRequest, Gerencia, GerenciaRequest, Perfil, Usuario, organizationApi,
 } from './api'
+import { LoadingState, PageHeader } from './ui'
 
 type Modal = { kind: 'gerencia'; item?: Gerencia } | { kind: 'discipulado'; item?: Discipulado } | undefined
 
@@ -28,6 +30,7 @@ export default function OrganizationManagement() {
   const [modal, setModal] = useState<Modal>()
   const [saving, setSaving] = useState(false)
   const [pendingDiscipuladoId, setPendingDiscipuladoId] = useState<number>()
+  const [pendingDeactivate, setPendingDeactivate] = useState<Discipulado>()
 
   const load = useCallback(async () => {
     setLoading(true); setError('')
@@ -75,30 +78,29 @@ export default function OrganizationManagement() {
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Não foi possível salvar o discipulado.') } finally { setSaving(false) }
   }
 
-  async function deactivate(item: Discipulado) {
-    if (!window.confirm(`Inativar o discipulado “${item.nome}”? Os dados históricos serão preservados.`)) return
+  async function deactivate() {
+    if (!pendingDeactivate) return
+    const item = pendingDeactivate
     setSaving(true); setError('')
     try {
       await organizationApi.atualizarDiscipulado(item.id, { nome: item.nome, sexo: item.sexo, gerenciaId: item.gerenciaId, discipuladorId: item.discipuladorId, ativo: false })
-      await load()
+      setPendingDeactivate(undefined); await load()
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Não foi possível inativar o discipulado.') } finally { setSaving(false) }
   }
 
-  return <Box component="main" sx={{ minHeight: '100vh', p: { xs: 2, md: 4 } }}>
-    <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} spacing={2} sx={{ mb: 3 }}>
-      <Box><Typography component="h1" variant="h4">Estrutura organizacional</Typography><Typography color="text.secondary">Gerencie gerências, discipulados e suas lideranças.</Typography></Box>
-      <Button variant="contained" onClick={() => { setPendingDiscipuladoId(undefined); setModal(tab === 0 ? { kind: 'gerencia' } : { kind: 'discipulado' }) }}>{tab === 0 ? 'Nova gerência' : 'Novo discipulado'}</Button>
-    </Stack>
+  return <Stack spacing={3}>
+    <PageHeader title="Estrutura organizacional" description="Gerencie gerências, discipulados e suas lideranças." eyebrow="Gestão" action={<Button variant="contained" startIcon={<AddRounded />} onClick={() => { setPendingDiscipuladoId(undefined); setModal(tab === 0 ? { kind: 'gerencia' } : { kind: 'discipulado' }) }}>{tab === 0 ? 'Nova gerência' : 'Novo discipulado'}</Button>} />
     {error && <Alert severity="error" onClose={() => setError('')} sx={{ mb: 2 }}>{error}</Alert>}
-    <Paper>
+    <Paper variant="outlined" sx={{ overflow: 'hidden' }}>
       <Tabs value={tab} onChange={(_, value: number) => setTab(value)} aria-label="Seções da estrutura organizacional"><Tab label="Gerências" /><Tab label="Discipulados" /></Tabs>
-      {loading ? <Box sx={{ p: 6, display: 'grid', placeItems: 'center' }}><CircularProgress aria-label="Carregando" /></Box> : tab === 0
+      {loading ? <Box sx={{ p: 3 }}><LoadingState label="Carregando estrutura..." /></Box> : tab === 0
         ? <GerenciaList items={gerencias} users={users} onEdit={(item) => setModal({ kind: 'gerencia', item })} />
-        : <DiscipuladoList items={discipulados} users={users} gerencias={gerencias} onEdit={(item) => setModal({ kind: 'discipulado', item })} onDeactivate={(item) => void deactivate(item)} />}
+        : <DiscipuladoList items={discipulados} users={users} gerencias={gerencias} onEdit={(item) => setModal({ kind: 'discipulado', item })} onDeactivate={setPendingDeactivate} />}
     </Paper>
     {modal?.kind === 'gerencia' && <GerenciaDialog item={modal.item} users={gerentes} saving={saving} onCreateUser={createUser} onClose={() => setModal(undefined)} onSave={(body) => void saveGerencia(body)} />}
     {modal?.kind === 'discipulado' && <DiscipuladoDialog item={modal.item} gerencias={gerencias.filter((item) => item.ativo !== false)} discipuladores={discipuladores} coLideres={coLideres} saving={saving} onCreateUser={createUser} onClose={() => { setPendingDiscipuladoId(undefined); setModal(undefined) }} onSave={(body, ids) => void saveDiscipulado(body, ids)} />}
-  </Box>
+    <Dialog open={Boolean(pendingDeactivate)} onClose={() => setPendingDeactivate(undefined)} fullWidth maxWidth="xs"><DialogTitle>Inativar discipulado?</DialogTitle><DialogContent><Typography color="text.secondary">O discipulado “{pendingDeactivate?.nome}” será inativado, mas seus dados históricos serão preservados.</Typography></DialogContent><DialogActions><Button onClick={() => setPendingDeactivate(undefined)}>Cancelar</Button><Button color="warning" variant="contained" disabled={saving} onClick={() => void deactivate()}>Inativar</Button></DialogActions></Dialog>
+  </Stack>
 }
 
 function GerenciaList({ items, users, onEdit }: { items: Gerencia[]; users: Usuario[]; onEdit: (item: Gerencia) => void }) {

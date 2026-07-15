@@ -12,9 +12,11 @@ describe('painel administrativo', () => {
   it('consulta seis meses e apresenta KPIs, gráficos e tabelas', async () => {
     const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(resposta), { status: 200, headers: { 'Content-Type': 'application/json' } }))
     render(<AdminDashboard />)
+    expect(await screen.findByRole('heading', { name: 'Painel administrativo' })).toBeInTheDocument()
+    expect(await screen.findAllByTestId('grafico')).toHaveLength(3)
+    await userEvent.click(screen.getAllByRole('button', { name: 'Dados' })[1])
     expect(await screen.findByText('Gerência Centro')).toBeInTheDocument()
     expect(screen.getAllByText('75,00%').length).toBeGreaterThan(0)
-    expect(screen.getAllByTestId('grafico')).toHaveLength(3)
     const url = String(fetch.mock.calls[0][0])
     const params = new URL(url, 'http://localhost').searchParams
     const inicio = new Date(`${params.get('dataInicio')}T12:00:00`)
@@ -25,7 +27,7 @@ describe('painel administrativo', () => {
   it('aplica um novo período', async () => {
     const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(resposta), { status: 200, headers: { 'Content-Type': 'application/json' } }))
     render(<AdminDashboard />)
-    await screen.findByText('Gerência Centro')
+    await screen.findAllByTestId('grafico')
     await userEvent.clear(screen.getByLabelText(/Data inicial/)); await userEvent.type(screen.getByLabelText(/Data inicial/), '2026-02-01')
     await userEvent.clear(screen.getByLabelText(/Data final/)); await userEvent.type(screen.getByLabelText(/Data final/), '2026-04-30')
     await userEvent.click(screen.getByRole('button', { name: 'Aplicar' }))
