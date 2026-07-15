@@ -5,6 +5,7 @@ export interface Usuario {
   nome: string
   email: string
   ativo?: boolean
+  senhaDefinida: boolean
   perfis: Perfil[]
 }
 
@@ -31,7 +32,6 @@ export interface GerenciaRequest {
 export interface CriarUsuarioRequest {
   nome: string
   email: string
-  senha: string
   perfis: Perfil[]
 }
 
@@ -147,6 +147,15 @@ export const authApi = {
   },
   logoutLocal: clearSession,
   hasSession: () => Boolean(sessionStorage.getItem(ACCESS_TOKEN_KEY) && sessionStorage.getItem(REFRESH_TOKEN_KEY)),
+}
+
+export const passwordRecoveryApi = {
+  request: (email: string) => request<void>('/autenticacao/esqueci-a-senha', {
+    method: 'POST', body: JSON.stringify({ email }),
+  }, false),
+  reset: (token: string, novaSenha: string) => request<void>('/autenticacao/redefinir-senha', {
+    method: 'POST', body: JSON.stringify({ token, novaSenha }),
+  }, false),
 }
 
 export const organizationApi = {

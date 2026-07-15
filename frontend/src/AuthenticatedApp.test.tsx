@@ -97,5 +97,5 @@ describe('navegação autenticada', () => {
 })
 
 function user(perfis: Usuario['perfis']): Usuario {
-  return { id: 1, nome: 'Usuário', email: 'usuario@sgd.local', ativo: true, perfis }
+  return { id: 1, nome: 'Usuário', email: 'usuario@sgd.local', ativo: true, senhaDefinida: true, perfis }
 }

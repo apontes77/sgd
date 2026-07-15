@@ -134,17 +134,16 @@ function DiscipuladoDialog({ item, gerencias, discipuladores, coLideres, saving,
 function QuickUserDialog({ role, onClose, onCreate }: { role: 'GERENTE' | 'DISCIPULADOR' | 'CO_LIDER'; onClose: () => void; onCreate: (body: CriarUsuarioRequest) => Promise<void> }) {
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
-  const [senha, setSenha] = useState('')
   const [perfis, setPerfis] = useState<Perfil[]>([role])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setSaving(true); setError('')
-    try { await onCreate({ nome, email, senha, perfis }) }
+    try { await onCreate({ nome, email, perfis }) }
     catch (reason) { setError(reason instanceof Error ? reason.message : 'Não foi possível cadastrar o usuário.') }
     finally { setSaving(false) }
   }
-  return <Dialog open onClose={onClose} fullWidth maxWidth="sm" PaperProps={{ component: 'form', onSubmit: submit }}><DialogTitle>Cadastrar {roleLabel[role].toLowerCase()}</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>{error && <Alert severity="error">{error}</Alert>}<TextField required autoFocus label="Nome" value={nome} inputProps={{ maxLength: 120 }} onChange={(event) => setNome(event.target.value)} /><TextField required type="email" label="E-mail" value={email} onChange={(event) => setEmail(event.target.value)} /><TextField required type="password" label="Senha inicial" helperText="Use pelo menos 12 caracteres." value={senha} inputProps={{ minLength: 12 }} onChange={(event) => setSenha(event.target.value)} /><Box><Typography variant="subtitle2">Perfis adicionais</Typography>{(Object.keys(roleLabel) as Perfil[]).map((perfil) => <FormControlLabel key={perfil} control={<Checkbox checked={perfis.includes(perfil)} disabled={perfil === role} onChange={() => setPerfis((current) => current.includes(perfil) ? current.filter((item) => item !== perfil) : [...current, perfil])} />} label={roleLabel[perfil]} />)}</Box></Stack></DialogContent><DialogActions><Button onClick={onClose}>Cancelar</Button><Button type="submit" variant="contained" disabled={saving}>{saving ? 'Cadastrando...' : 'Cadastrar'}</Button></DialogActions></Dialog>
+  return <Dialog open onClose={onClose} fullWidth maxWidth="sm" PaperProps={{ component: 'form', onSubmit: submit }}><DialogTitle>Cadastrar {roleLabel[role].toLowerCase()}</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>{error && <Alert severity="error">{error}</Alert>}<TextField required autoFocus label="Nome" value={nome} inputProps={{ maxLength: 120 }} onChange={(event) => setNome(event.target.value)} /><TextField required type="email" label="E-mail" value={email} onChange={(event) => setEmail(event.target.value)} /><Alert severity="info">O usuário receberá um convite por e-mail para definir a senha.</Alert><Box><Typography variant="subtitle2">Perfis adicionais</Typography>{(Object.keys(roleLabel) as Perfil[]).map((perfil) => <FormControlLabel key={perfil} control={<Checkbox checked={perfis.includes(perfil)} disabled={perfil === role} onChange={() => setPerfis((current) => current.includes(perfil) ? current.filter((item) => item !== perfil) : [...current, perfil])} />} label={roleLabel[perfil]} />)}</Box></Stack></DialogContent><DialogActions><Button onClick={onClose}>Cancelar</Button><Button type="submit" variant="contained" disabled={saving}>{saving ? 'Cadastrando...' : 'Cadastrar'}</Button></DialogActions></Dialog>
 }
 
 function UserSelect({ label, value, users, required, onChange }: { label: string; value: string; users: Usuario[]; required?: boolean; onChange: (value: string) => void }) {
