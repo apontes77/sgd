@@ -81,7 +81,7 @@ describe('navegação autenticada', () => {
     await userEvent.click(screen.getByRole('tab', { name: 'Usuários' }))
 
     expect(await screen.findByText('usuario@sgd.local')).toBeInTheDocument()
-    expect(screen.getAllByText('GERENTE')).not.toHaveLength(0)
+    expect(screen.getAllByText('Gerente')).not.toHaveLength(0)
   })
 
   it('carrega e seleciona somente discipulados liderados para discipulador', async () => {
