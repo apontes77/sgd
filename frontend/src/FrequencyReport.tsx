@@ -1,14 +1,16 @@
+import { PrintRounded, SearchRounded } from '@mui/icons-material'
 import { FormEvent, useState } from 'react'
 import { Alert, Box, Button, Chip, GlobalStyles, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from '@mui/material'
 import { relatorioApi, type RelatorioDiarioResponse, type RelatorioEncontro } from './relatorioApi'
+import { FilterToolbar, PageHeader } from './ui'
 
 export default function FrequencyReport(){
  const [data,setData]=useState(dataAtual()),[dados,setDados]=useState<RelatorioDiarioResponse>(),[erro,setErro]=useState(''),[carregando,setCarregando]=useState(false)
  async function consultar(event:FormEvent){event.preventDefault();setCarregando(true);setErro('');try{setDados(await relatorioApi.consultarFrequenciaDiaria(data))}catch(e){setDados(undefined);setErro(e instanceof Error?e.message:'Não foi possível consultar o relatório.')}finally{setCarregando(false)}}
  return <Stack spacing={3}>
   <GlobalStyles styles={{'@page':{size:'A4 portrait',margin:'12mm'},'@media print':{'body *':{visibility:'hidden'},'#relatorio-frequencia-impressao, #relatorio-frequencia-impressao *':{visibility:'visible'},'#relatorio-frequencia-impressao':{position:'absolute',inset:0,width:'100%'},'.relatorio-frequencia-pagina':{boxShadow:'none !important',margin:0,padding:'0 !important',maxWidth:'none !important',breakAfter:'page',pageBreakAfter:'always'},'.relatorio-frequencia-pagina:last-child':{breakAfter:'auto',pageBreakAfter:'auto'}}}} />
-  <Box><Typography component="h1" variant="h4">Relatórios de frequência</Typography><Typography color="text.secondary">Consulte os encontros realizados na data e use a impressão do navegador para salvar o documento como PDF.</Typography></Box>
-  <Paper component="form" onSubmit={consultar} sx={{p:2}}><Stack direction={{xs:'column',sm:'row'}} spacing={2} alignItems={{sm:'center'}}><TextField required type="date" label="Data" value={data} onChange={e=>setData(e.target.value)} slotProps={{inputLabel:{shrink:true}}}/><Button type="submit" variant="contained" disabled={carregando}>{carregando?'Consultando...':'Consultar'}</Button><Button variant="outlined" disabled={!dados?.relatorios.length} onClick={()=>window.print()}>Imprimir / salvar como PDF</Button></Stack></Paper>
+  <PageHeader title="Relatórios de frequência" description="Consulte os encontros realizados e gere uma versão pronta para impressão." eyebrow="Análises" />
+  <FilterToolbar component="form" onSubmit={consultar}><Stack direction={{xs:'column',sm:'row'}} spacing={1.5} alignItems={{sm:'center'}}><TextField required type="date" label="Data" value={data} onChange={e=>setData(e.target.value)} slotProps={{inputLabel:{shrink:true}}}/><Button type="submit" variant="contained" startIcon={<SearchRounded />} disabled={carregando}>{carregando?'Consultando...':'Consultar'}</Button><Button variant="outlined" startIcon={<PrintRounded />} disabled={!dados?.relatorios.length} onClick={()=>window.print()}>Imprimir / salvar como PDF</Button></Stack></FilterToolbar>
   {erro&&<Alert severity="error">{erro}</Alert>}
   {dados&&dados.relatorios.length===0&&<Alert severity="info">Não há encontros realizados no seu escopo em {formatarData(dados.data)}.</Alert>}
   {dados?.relatorios.length?<Box id="relatorio-frequencia-impressao"><Stack spacing={3}>{dados.relatorios.map(item=><PaginaRelatorio key={item.encontroId} item={item} emitidoEm={dados.emitidoEm}/>)}</Stack></Box>:null}
