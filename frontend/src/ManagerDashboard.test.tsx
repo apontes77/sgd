@@ -13,9 +13,10 @@ describe('painel da gerência', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(resposta), { status: 200, headers: { 'Content-Type': 'application/json' } }))
     render(<ManagerDashboard />)
     expect(await screen.findByText('Gerência Centro')).toBeInTheDocument()
-    expect(screen.getByText('Resumo por discipulado')).toBeInTheDocument()
-    expect(screen.getAllByText('Discipulado A').length).toBeGreaterThan(0)
     expect(screen.getAllByTestId('grafico')).toHaveLength(3)
+    await userEvent.click(screen.getAllByRole('button', { name: 'Dados' })[1])
+    expect(screen.getByRole('table', { name: 'Resumo por discipulado' })).toBeInTheDocument()
+    expect(screen.getAllByText('Discipulado A').length).toBeGreaterThan(0)
   })
   it('permite selecionar um discipulado inativo', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(resposta), { status: 200, headers: { 'Content-Type': 'application/json' } }))

@@ -1,4 +1,5 @@
 import { cleanup, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import LeaderDashboard from './LeaderDashboard'
 
@@ -12,6 +13,7 @@ describe('painel do líder', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(resposta), { status: 200, headers: { 'Content-Type': 'application/json' } }))
     render(<LeaderDashboard />)
     expect(await screen.findByText('Discipulado Esperança')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Dados' }))
     expect(screen.getAllByText('75,00%')).toHaveLength(2)
     expect(screen.getAllByText('Sem encontros realizados')).toHaveLength(2)
     expect(screen.getByRole('table', { name: 'Histórico mensal do discipulado' })).toBeInTheDocument()
