@@ -4,6 +4,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -107,6 +108,34 @@ class EstruturaOrganizacionalHttpTest {
             .andExpect(jsonPath("$.status").value(409))
             .andExpect(jsonPath("$.detail").isNotEmpty())
             .andExpect(jsonPath("$.traceId").isNotEmpty());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void atualizaGerenciaEDiscipuladoParcialmente() throws Exception {
+        String sufixo = java.util.UUID.randomUUID().toString();
+        long gerenteId = criarUsuario("Gerente", "gerente-patch-" + sufixo + "@sgd.local", "GERENTE");
+        long gerenciaId = idDaResposta(post("/api/v1/gerencias"),
+            "{\"nome\":\"Gerencia original\",\"gerenteId\":" + gerenteId + "}");
+        long discipuladorId = criarUsuario("Discipulador", "discipulador-patch-" + sufixo + "@sgd.local", "DISCIPULADOR");
+        long discipuladoId = idDaResposta(post("/api/v1/discipulados"),
+            "{\"nome\":\"Discipulado original\",\"sexo\":\"MASCULINO\",\"gerenciaId\":" + gerenciaId
+                + ",\"discipuladorId\":" + discipuladorId + "}");
+
+        mvc.perform(patch("/api/v1/gerencias/{id}", gerenciaId).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nome\":\"Gerencia atualizada\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.nome").value("Gerencia atualizada"))
+            .andExpect(jsonPath("$.gerenteId").value(gerenteId));
+
+        mvc.perform(patch("/api/v1/discipulados/{id}", discipuladoId).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nome\":\"Discipulado atualizado\",\"sexo\":\"FEMININO\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.nome").value("Discipulado atualizado"))
+            .andExpect(jsonPath("$.sexo").value("FEMININO"))
+            .andExpect(jsonPath("$.gerenciaId").value(gerenciaId));
     }
 
     private long criarUsuario(String nome, String email, String perfil) throws Exception {
