@@ -31,6 +31,10 @@ pnpm install
 pnpm run dev
 ```
 
+## Deploy em produção
+
+O deploy recomendado usa Render para o frontend estático, a API Docker e o PostgreSQL gerenciado. Consulte [Deploy no Render](docs/deploy-render.md) para provisionamento e operação e [Observabilidade](docs/observability.md) para OTLP, dashboards, alertas e proteção de dados.
+
 ## Convenções iniciais
 
 - Alterações no banco são feitas exclusivamente em `backend/src/main/resources/db/migration/`, em novas migrações Flyway.

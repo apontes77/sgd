@@ -2,6 +2,7 @@ package br.com.sgd.config;
 
 import br.com.sgd.auth.AuthService;
 import br.com.sgd.auth.JwtService;
+import br.com.sgd.observability.TraceIds;
 import br.com.sgd.user.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -9,7 +10,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Map;
-import java.util.UUID;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.MediaType;
 import org.springframework.boot.ApplicationRunner;
@@ -52,7 +52,7 @@ public class SecurityConfig {
         response.setStatus(status);
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         json.writeValue(response.getOutputStream(), Map.of("type", "about:blank", "title", title, "status", status,
-                "detail", detail, "traceId", UUID.randomUUID().toString()));
+                "detail", detail, "traceId", TraceIds.currentOrRandom()));
     }
 
     @Component
