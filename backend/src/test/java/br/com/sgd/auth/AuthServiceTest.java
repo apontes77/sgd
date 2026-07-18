@@ -5,6 +5,7 @@ import static org.mockito.Mockito.*;
 
 import br.com.sgd.audit.AuditLogRepository;
 import br.com.sgd.config.SecurityProperties;
+import br.com.sgd.user.Role;
 import br.com.sgd.user.User;
 import br.com.sgd.user.UserRepository;
 import java.nio.charset.StandardCharsets;
@@ -13,7 +14,10 @@ import java.util.HexFormat;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.mail.MailSendException;
 
 class AuthServiceTest {
     private UserRepository users; private RefreshTokenRepository refreshTokens; private PasswordResetTokenRepository resetTokens;
@@ -41,6 +45,33 @@ class AuthServiceTest {
         verify(resetTokens).invalidateAllByUserId(eq(42L), any());
         verify(resetTokens).save(any(PasswordResetToken.class));
         verify(notifier).notify(eq(user), anyString());
+    }
+
+    @ParameterizedTest
+    @EnumSource(Role.class)
+    void passwordResetIsAvailableForEveryLocalRole(Role role) {
+        String email = role.name().toLowerCase() + "@example.com";
+        User user = mock(User.class);
+        when(user.getId()).thenReturn(42L);
+        when(user.getEmail()).thenReturn(email);
+        when(user.getPerfis()).thenReturn(java.util.Set.of(role));
+        when(user.isAtivo()).thenReturn(true);
+        when(users.findByEmailIgnoreCase(email)).thenReturn(Optional.of(user));
+
+        service.requestPasswordReset(email);
+
+        verify(resetTokens).save(any(PasswordResetToken.class));
+        verify(notifier).notify(eq(user), anyString());
+    }
+
+    @Test void passwordResetRequestRemainsNeutralWhenEmailDeliveryFails() {
+        User user = mock(User.class); when(user.getId()).thenReturn(42L); when(user.isAtivo()).thenReturn(true);
+        when(users.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.of(user));
+        doThrow(new MailSendException("smtp unavailable")).when(notifier).notify(eq(user), anyString());
+
+        service.requestPasswordReset("user@example.com");
+
+        verify(resetTokens).save(any(PasswordResetToken.class));
     }
 
     private String hash(String value) throws Exception { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8))); }

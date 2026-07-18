@@ -145,6 +145,7 @@ class ChamadaServiceTest {
     }
     private static Adolescente adolescente(long id, String nome) {
         Adolescente a = org.mockito.Mockito.mock(Adolescente.class);
-        when(a.getId()).thenReturn(id); when(a.getNome()).thenReturn(nome); return a;
+        when(a.getId()).thenReturn(id);
+        return a;
     }
 }

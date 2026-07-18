@@ -69,8 +69,10 @@ describe('relatório diário de frequência', () => {
     expect(screen.getByText('(11) 97777-1111')).toBeInTheDocument()
     expect(screen.getByText('Não informado')).toBeInTheDocument()
     expect(screen.getAllByText('21/07/2026')).toHaveLength(4)
-    expect(screen.getByText('Ausente')).toBeInTheDocument()
-    expect(screen.getByText('Presente')).toBeInTheDocument()
+    expect(screen.queryByText(/Encontro:/)).not.toBeInTheDocument()
+    expect(screen.queryByText('#10')).not.toBeInTheDocument()
+    expect(screen.getByText('Ausente')).toHaveClass('frequencia-ausente')
+    expect(screen.getByText('Presente')).toHaveClass('frequencia-presente')
     expect(screen.getByText('Nenhuma frequência registrada neste encontro.')).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith('/api/v1/relatorios/frequencia-diaria?data=2026-07-21', expect.anything())
 

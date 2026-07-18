@@ -39,7 +39,7 @@ public class AuditoriaController {
         } catch (Exception e) {
             detalhes = Map.of("texto", a.getDetalhes());
         }
-        return new AuditoriaResponse(a.getId(), a.getUsuarioId(), a.getDataHora(), a.getEntidade(), a.getAcao(), detalhes);
+        return new AuditoriaResponse(a.getId(), a.getUsuarioId(), java.time.Instant.from(a.getDataHora()), a.getEntidade(), a.getAcao(), detalhes);
     }
 
     public record AuditoriaResponse(Long id, Long usuarioId, java.time.Instant dataHora, String entidade, String acao,

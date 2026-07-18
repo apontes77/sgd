@@ -146,6 +146,12 @@ export const authApi = {
     }
   },
   logoutLocal: clearSession,
+  solicitarRedefinicaoSenha: (email: string) => request<void>('/autenticacao/esqueci-a-senha', {
+    method: 'POST', body: JSON.stringify({ email }),
+  }, false),
+  redefinirSenha: (token: string, novaSenha: string) => request<void>('/autenticacao/redefinir-senha', {
+    method: 'POST', body: JSON.stringify({ token, novaSenha }),
+  }, false),
   hasSession: () => Boolean(sessionStorage.getItem(ACCESS_TOKEN_KEY) && sessionStorage.getItem(REFRESH_TOKEN_KEY)),
 }
 

@@ -52,7 +52,7 @@ class EncontroServiceTest {
         User ator = usuario(Role.DISCIPULADOR);
         when(discipulados.findById(10L)).thenReturn(Optional.of(discipulado));
         when(discipulado.isAtivo()).thenReturn(true);
-        when(encontros.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(encontros.save(any())).thenAnswer(i -> withId(i.getArgument(0), 1L));
         when(json.writeValueAsString(any())).thenReturn("{}");
 
         Encontro criado = service.criar(ator, 10L, LocalDate.of(2026, 7, 17), SituacaoEncontro.REALIZADO);
@@ -131,5 +131,15 @@ class EncontroServiceTest {
         return new Encontro(discipulado, LocalDate.of(2026, 7, 17), SituacaoEncontro.REALIZADO, criadoEm);
     }
 
+    private static Encontro withId(Encontro encontro, long id) {
+        try {
+            var field = Encontro.class.getDeclaredField("id");
+            field.setAccessible(true);
+            field.set(encontro, id);
+            return encontro;
+        } catch (ReflectiveOperationException exception) {
+            throw new AssertionError(exception);
+        }
+    }
     private static User usuario(Role role) { return new User("Ator", "ator@teste.local", "hash", Set.of(role)); }
 }

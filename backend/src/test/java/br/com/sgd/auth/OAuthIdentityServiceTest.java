@@ -73,8 +73,8 @@ class OAuthIdentityServiceTest {
         when(identities.findByProviderAndExternalSubject(OAuthProvider.GOOGLE, "new-subject")).thenReturn(Optional.empty());
         when(users.findByEmailIgnoreCase("new@example.com")).thenReturn(Optional.empty());
         when(passwords.encode(any())).thenReturn("encoded-random-password");
-        when(users.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(identities.findByProviderAndUsuarioId(OAuthProvider.GOOGLE, 0L)).thenReturn(Optional.empty());
+        when(users.save(any(User.class))).thenAnswer(invocation -> withId(invocation.getArgument(0), 15L));
+        when(identities.findByProviderAndUsuarioId(OAuthProvider.GOOGLE, 15L)).thenReturn(Optional.empty());
 
         User created = service.resolveOrProvision(OAuthProvider.GOOGLE, "new-subject", "new@example.com", " ");
 
@@ -109,5 +109,16 @@ class OAuthIdentityServiceTest {
         when(user.isAtivo()).thenReturn(active);
         when(user.getId()).thenReturn(id);
         return user;
+    }
+
+    private static User withId(User user, long id) {
+        try {
+            var field = User.class.getDeclaredField("id");
+            field.setAccessible(true);
+            field.set(user, id);
+            return user;
+        } catch (ReflectiveOperationException exception) {
+            throw new AssertionError(exception);
+        }
     }
 }

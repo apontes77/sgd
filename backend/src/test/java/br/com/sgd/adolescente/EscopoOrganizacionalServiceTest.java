@@ -2,6 +2,7 @@ package br.com.sgd.adolescente;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import br.com.sgd.organizacao.Discipulado;
@@ -30,10 +31,10 @@ class EscopoOrganizacionalServiceTest {
         gerente = usuario(1L, Role.GERENTE);
         discipulador = usuario(2L, Role.DISCIPULADOR);
         coLider = usuario(3L, Role.CO_LIDER);
-        when(discipulado.getGerencia()).thenReturn(gerencia);
-        when(gerencia.getGerente()).thenReturn(gerente);
-        when(discipulado.getDiscipulador()).thenReturn(discipulador);
-        when(discipulado.getCoLideres()).thenReturn(Set.of(coLider));
+        lenient().when(discipulado.getGerencia()).thenReturn(gerencia);
+        lenient().when(gerencia.getGerente()).thenReturn(gerente);
+        lenient().when(discipulado.getDiscipulador()).thenReturn(discipulador);
+        lenient().when(discipulado.getCoLideres()).thenReturn(Set.of(coLider));
     }
 
     @Test void adminPodeLerEAlterar() {
