@@ -18,7 +18,7 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-      - run: mvn --batch-mode verify
+      - run: mvn clean verify
 
   frontend:
     runs-on: ubuntu-latest
