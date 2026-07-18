@@ -19,6 +19,8 @@ jobs:
           java-version: '21'
           cache: maven
       - run: mvn clean verify
+      - name: Build production image
+        run: docker build --tag sgd-api:ci .
 
   frontend:
     runs-on: ubuntu-latest
@@ -36,5 +38,14 @@ jobs:
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      - run: pnpm run test
       - run: pnpm run lint
       - run: pnpm run build
+
+  infrastructure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Render Blueprint YAML
+        run: |
+          ruby -e "require 'yaml'; spec = YAML.safe_load(File.read('render.yaml'), aliases: true); abort 'missing Render services' unless spec.fetch('services').map { |service| service.fetch('name') }.sort == %w[sgd-api sgd-web]; abort 'missing Render database' unless spec.fetch('databases').map { |database| database.fetch('name') } == %w[sgd-db]"
