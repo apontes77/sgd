@@ -67,7 +67,12 @@ export class ApiError extends Error {
   }
 }
 
-const API_BASE_URL = '/api/v1'
+export function buildApiBaseUrl(origin?: string) {
+  const normalizedOrigin = origin?.trim().replace(/\/+$/, '') ?? ''
+  return `${normalizedOrigin}/api/v1`
+}
+
+const API_BASE_URL = buildApiBaseUrl(import.meta.env.VITE_API_ORIGIN)
 const ACCESS_TOKEN_KEY = 'sgd.access-token'
 const REFRESH_TOKEN_KEY = 'sgd.refresh-token'
 let refreshInFlight: Promise<boolean> | undefined
