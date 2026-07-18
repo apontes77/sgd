@@ -1,7 +1,7 @@
 package br.com.sgd.exception;
 
+import br.com.sgd.observability.TraceIds;
 import java.util.Map;
-import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -125,6 +125,6 @@ public class ApiExceptionHandler {
                 "title", status.getReasonPhrase(),
                 "status", status.value(),
                 "detail", message,
-                "traceId", UUID.randomUUID().toString()));
+                "traceId", TraceIds.currentOrRandom()));
     }
 }
