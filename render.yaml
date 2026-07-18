@@ -113,11 +113,9 @@ services:
 databases:
   - name: sgd-db
     region: virginia
-    plan: basic-1gb
+    plan: free
     postgresMajorVersion: "16"
     databaseName: sgd
     user: sgd
-    diskSizeGB: 15
-    storageAutoscalingEnabled: true
     connectionPool: none
     ipAllowList: []
