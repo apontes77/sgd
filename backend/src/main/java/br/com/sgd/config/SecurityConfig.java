@@ -39,7 +39,8 @@ public class SecurityConfig {
     @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
     @Bean ApplicationRunner adminBootstrap(AuthService authService) { return arguments -> authService.bootstrapAdmin(); }
     @Bean SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter, ObjectMapper json) throws Exception {
-        return http.csrf(csrf -> csrf.disable()).sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        return http.cors(cors -> {}).csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(errors -> errors.authenticationEntryPoint((request, response, exception) ->
                         writeProblem(response, json, HttpServletResponse.SC_UNAUTHORIZED, "Não autorizado", "A autenticação é obrigatória ou expirou."))
                         .accessDeniedHandler((request, response, exception) ->
