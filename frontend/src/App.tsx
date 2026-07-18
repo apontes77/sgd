@@ -3,19 +3,61 @@ import { Alert, Box, Button, Card, CircularProgress, InputAdornment, Stack, Text
 import { FormEvent, useEffect, useState } from 'react'
 import AuthenticatedApp from './AuthenticatedApp'
 import { authApi, Usuario } from './api'
+import { ForgotPassword, PasswordRecoveryClient, ResetPassword } from './PasswordRecovery'
+
+type PublicView = 'login' | 'forgot' | 'reset'
+
+function initialPublicState(): { view: PublicView; token: string } {
+  const url = new URL(window.location.href)
+  const token = url.searchParams.get('token') ?? ''
+  if (url.pathname.endsWith('/redefinir-senha') && token) return { view: 'reset', token }
+  if (url.pathname.endsWith('/esqueci-senha')) return { view: 'forgot', token: '' }
+  return { view: 'login', token: '' }
+}
 
 export default function App() {
+  const initial = initialPublicState()
+  const [publicView, setPublicView] = useState<PublicView>(initial.view)
+  const [resetToken, setResetToken] = useState(initial.token)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [currentUser, setCurrentUser] = useState<Usuario>()
-  const [checkingSession, setCheckingSession] = useState(authApi.hasSession())
+  const [checkingSession, setCheckingSession] = useState(publicView === 'login' && authApi.hasSession())
+  const passwordRecoveryClient: PasswordRecoveryClient = {
+    request: authApi.solicitarRedefinicaoSenha,
+    reset: authApi.redefinirSenha,
+  }
+
+  function navigatePublic(view: PublicView, token = '') {
+    const path = view === 'forgot' ? '/esqueci-senha' : view === 'reset' ? '/redefinir-senha' : '/'
+    const url = new URL(path, window.location.origin)
+    if (view === 'reset' && token) url.searchParams.set('token', token)
+    window.history.pushState({}, '', url)
+    setPublicView(view)
+    setResetToken(token)
+    setError('')
+  }
+  function finishPasswordReset() {
+    authApi.logoutLocal()
+    navigatePublic('login')
+  }
   useEffect(() => {
     const expire = () => { setCurrentUser(undefined); setCheckingSession(false) }
     window.addEventListener('sgd:session-expired', expire)
-    if (authApi.hasSession()) authApi.me().then(setCurrentUser).catch(() => authApi.logoutLocal()).finally(() => setCheckingSession(false))
+    if (publicView === 'login' && authApi.hasSession()) authApi.me().then(setCurrentUser).catch(() => authApi.logoutLocal()).finally(() => setCheckingSession(false))
     return () => window.removeEventListener('sgd:session-expired', expire)
+  }, [publicView])
+  useEffect(() => {
+    const navigateFromHistory = () => {
+      const state = initialPublicState()
+      setPublicView(state.view)
+      setResetToken(state.token)
+      setError('')
+    }
+    window.addEventListener('popstate', navigateFromHistory)
+    return () => window.removeEventListener('popstate', navigateFromHistory)
   }, [])
   async function login(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(''); setLoading(true)
@@ -30,6 +72,11 @@ export default function App() {
   }
   if (checkingSession) return <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}><Stack alignItems="center" spacing={2}><CircularProgress size={32} /><Typography color="text.secondary">Validando sessão...</Typography></Stack></Box>
   if (currentUser) return <AuthenticatedApp currentUser={currentUser} onLogout={() => void logout()} />
+  if (publicView !== 'login') return <PublicRecoveryLayout>
+    {publicView === 'forgot'
+      ? <ForgotPassword client={passwordRecoveryClient} onBack={() => navigatePublic('login')} />
+      : <ResetPassword client={passwordRecoveryClient} token={resetToken} onSuccess={finishPasswordReset} />}
+  </PublicRecoveryLayout>
   return <Box component="main" sx={{ minHeight: '100vh', display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1.2fr) minmax(460px, .8fr)' }, bgcolor: 'background.paper' }}>
     <Box sx={{ display: { xs: 'none', md: 'flex' }, position: 'relative', overflow: 'hidden', p: { md: 6, lg: 9 }, color: '#fff', background: 'linear-gradient(145deg, #243B80 0%, #3451B2 52%, #0F8B8D 140%)', alignItems: 'center' }}>
       <Box sx={{ position: 'absolute', width: 480, height: 480, borderRadius: '50%', border: '1px solid rgba(255,255,255,.16)', top: -180, right: -120 }} />
@@ -50,11 +97,16 @@ export default function App() {
             <TextField fullWidth required type="password" label="Senha" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} InputProps={{ startAdornment: <InputAdornment position="start"><LockRounded fontSize="small" /></InputAdornment> }} />
           </Stack>
           <Button fullWidth size="large" type="submit" variant="contained" disabled={loading}>{loading ? 'Entrando...' : 'Entrar no SGD'}</Button>
+          <Button type="button" onClick={() => navigatePublic('forgot')}>Esqueci minha senha</Button>
           <Typography variant="caption" color="text.secondary" textAlign="center">Acesso restrito a usuários autorizados.</Typography>
         </Stack>
       </Card>
     </Box>
   </Box>
+}
+
+function PublicRecoveryLayout({ children }: { children: React.ReactNode }) {
+  return <Box component="main" sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', p: 2.5, bgcolor: 'background.default' }}>{children}</Box>
 }
 
 function Feature({ icon, label }: { icon: React.ReactNode; label: string }) { return <Stack direction="row" spacing={1.25} alignItems="center"><Box sx={{ width: 38, height: 38, borderRadius: 2, display: 'grid', placeItems: 'center', bgcolor: 'rgba(255,255,255,.12)' }}>{icon}</Box><Typography variant="body2" fontWeight={600}>{label}</Typography></Stack> }

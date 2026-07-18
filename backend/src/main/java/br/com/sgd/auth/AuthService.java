@@ -13,6 +13,9 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.mail.MailException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class AuthService {
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuthService.class);
     private final UserRepository users;
     private final RefreshTokenRepository refreshTokens;
     private final PasswordResetTokenRepository resetTokens;
@@ -63,7 +67,11 @@ public class AuthService {
             resetTokens.invalidateAllByUserId(user.getId(), Instant.now());
             resetTokens.save(new PasswordResetToken(user, hash(rawToken), Instant.now().plus(properties.passwordResetMinutes(), ChronoUnit.MINUTES)));
             audit.save(new AuditLog(user, "USUARIO", "SOLICITACAO_REDEFINICAO_SENHA", "{}"));
-            passwordResetNotifier.notify(user, rawToken);
+            try {
+                passwordResetNotifier.notify(user, rawToken);
+            } catch (MailException exception) {
+                LOGGER.error("Nao foi possivel enviar o e-mail de redefinicao para o usuario {}", user.getId(), exception);
+            }
         });
     }
     public void resetPassword(String rawToken, String newPassword) {
