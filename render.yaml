@@ -98,11 +98,11 @@ services:
       - key: OTEL_EXPORTER_OTLP_COMPRESSION
         value: gzip
       - key: OTEL_TRACES_EXPORTER
-        value: otlp
+        value: none
       - key: OTEL_METRICS_EXPORTER
-        value: otlp
+        value: none
       - key: OTEL_LOGS_EXPORTER
-        value: otlp
+        value: none
       - key: OTEL_TRACES_SAMPLER
         value: parentbased_traceidratio
       - key: OTEL_TRACES_SAMPLER_ARG
