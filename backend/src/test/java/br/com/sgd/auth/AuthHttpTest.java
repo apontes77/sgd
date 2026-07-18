@@ -1,5 +1,6 @@
 package br.com.sgd.auth;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -79,5 +80,20 @@ class AuthHttpTest {
                 .content("{\"email\":\"admin@sgd.local\",\"password\":\"qualquer-senha\"}"))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    void exigeAutenticacaoParaConsultarUsuarioAtual() throws Exception {
+        mvc.perform(get("/api/v1/autenticacao/eu"))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.status").value(401));
+    }
+
+    @Test
+    void rejeitaTokenInvalidoAoConsultarUsuarioAtual() throws Exception {
+        mvc.perform(get("/api/v1/autenticacao/eu")
+                .header("Authorization", "Bearer token-invalido"))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.status").value(401));
     }
 }

@@ -17,6 +17,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -43,8 +44,16 @@ public class SecurityConfig {
                         writeProblem(response, json, HttpServletResponse.SC_UNAUTHORIZED, "Não autorizado", "A autenticação é obrigatória ou expirou."))
                         .accessDeniedHandler((request, response, exception) ->
                         writeProblem(response, json, HttpServletResponse.SC_FORBIDDEN, "Acesso proibido", "Você não possui permissão para realizar esta operação.")))
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/api/v1/autenticacao/**", "/api/health", "/actuator/health/**").permitAll()
-                        .requestMatchers("/api/v1/usuarios/**").hasRole("ADMIN").anyRequest().authenticated())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/autenticacao/login",
+                                "/api/v1/autenticacao/atualizar-token",
+                                "/api/v1/autenticacao/logout",
+                                "/api/v1/autenticacao/esqueci-a-senha",
+                                "/api/v1/autenticacao/redefinir-senha").permitAll()
+                        .requestMatchers("/api/health", "/actuator/health/**").permitAll()
+                        .requestMatchers("/api/v1/usuarios/**").hasRole("ADMIN")
+                        .anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class).build();
     }
 
