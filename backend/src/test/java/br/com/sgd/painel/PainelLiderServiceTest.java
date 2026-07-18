@@ -52,12 +52,41 @@ class PainelLiderServiceTest {
         when(painel.frequenciasMensais(11L, inicio, fim)).thenReturn(List.of(frequencias));
         when(painel.visitantesMensais(11L, inicio, fim)).thenReturn(List.of(visitantes));
         when(painel.encontrosRealizados(11L, inicio, fim)).thenReturn(4L);
+        var ana = mock(PainelLiderRepository.DiscipuloPeriodo.class);
+        when(ana.getAdolescenteId()).thenReturn(21L); when(ana.getNome()).thenReturn("Ana");
+        var frequenciaAna = mock(PainelLiderRepository.FrequenciaIndividualMensal.class);
+        when(frequenciaAna.getAdolescenteId()).thenReturn(21L); when(frequenciaAna.getNome()).thenReturn("Ana");
+        when(frequenciaAna.getReferencia()).thenReturn("2026-03"); when(frequenciaAna.getPresentes()).thenReturn(3L);
+        when(frequenciaAna.getAusentes()).thenReturn(1L);
+        when(painel.discipulosNoPeriodo(11L, inicio, fim)).thenReturn(List.of(ana));
+        when(painel.frequenciasIndividuaisMensais(11L, inicio, fim)).thenReturn(List.of(frequenciaAna));
 
         var resposta = service.consultar(lider, inicio, fim);
         assertThat(resposta.discipulado().nome()).isEqualTo("Esperança");
         assertThat(resposta.resumo().encontrosRealizados()).isEqualTo(4);
         assertThat(resposta.resumo().visitantes()).isEqualTo(2);
         assertThat(resposta.resumo().percentualPresenca()).isEqualByComparingTo("75.00");
+        assertThat(resposta.discipulos()).singleElement().satisfies(item -> {
+            assertThat(item.nome()).isEqualTo("Ana");
+            assertThat(item.percentualPresenca()).isEqualByComparingTo("75.00");
+            assertThat(item.evolucao()).singleElement().extracting(PainelLiderService.EvolucaoIndividual::referencia).isEqualTo("2026-03");
+        });
+    }
+
+    @Test void retornaPercentualNuloParaDiscipuloSemRegistros() {
+        Discipulado discipulado = mock(Discipulado.class);
+        when(discipulados.findAllByLiderancaUsuarioId(7L)).thenReturn(List.of(discipulado));
+        when(discipulado.getId()).thenReturn(11L); when(discipulado.getNome()).thenReturn("Esperança");
+        when(discipulado.getSexo()).thenReturn(Sexo.FEMININO); when(discipulado.isAtivo()).thenReturn(true);
+        var ana = mock(PainelLiderRepository.DiscipuloPeriodo.class);
+        when(ana.getAdolescenteId()).thenReturn(21L); when(ana.getNome()).thenReturn("Ana");
+        LocalDate inicioSemRegistros = LocalDate.of(2026, 1, 1);
+        LocalDate fimSemRegistros = LocalDate.of(2026, 1, 31);
+        when(painel.discipulosNoPeriodo(11L, inicioSemRegistros, fimSemRegistros)).thenReturn(List.of(ana));
+
+        var resposta = service.consultar(lider, inicioSemRegistros, fimSemRegistros);
+
+        assertThat(resposta.discipulos()).singleElement().extracting(PainelLiderService.Discipulo::percentualPresenca).isNull();
     }
 
     @Test void rejeitaPeriodoInvertidoOuSuperiorAVinteEQuatroMeses() {

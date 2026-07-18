@@ -8,6 +8,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -47,7 +48,29 @@ public class PainelLiderService {
         long visitantes = evolucao.stream().mapToLong(EvolucaoMensal::visitantes).sum();
         Resumo resumo = new Resumo(painel.encontrosRealizados(discipuladoId, inicio, fim), presentes, ausentes, visitantes, percentual(presentes, ausentes));
         DiscipuladoInfo info = new DiscipuladoInfo(discipuladoId, discipulado.getNome(), discipulado.getSexo().name(), discipulado.isAtivo());
-        return new PainelLiderResponse(inicio, fim, info, resumo, evolucao);
+        return new PainelLiderResponse(inicio, fim, info, resumo, evolucao, montarDiscipulos(discipuladoId, inicio, fim));
+    }
+
+    private List<Discipulo> montarDiscipulos(long discipuladoId, LocalDate inicio, LocalDate fim) {
+        Map<Long, DiscipuloAcumulado> resultado = new LinkedHashMap<>();
+        painel.discipulosNoPeriodo(discipuladoId, inicio, fim).forEach(item ->
+            resultado.put(item.getAdolescenteId(), new DiscipuloAcumulado(item.getAdolescenteId(), item.getNome())));
+        painel.frequenciasIndividuaisMensais(discipuladoId, inicio, fim).forEach(item -> {
+            DiscipuloAcumulado discipulo = resultado.computeIfAbsent(item.getAdolescenteId(),
+                id -> new DiscipuloAcumulado(id, item.getNome()));
+            long presentes = valor(item.getPresentes());
+            long ausentes = valor(item.getAusentes());
+            discipulo.presentes += presentes;
+            discipulo.ausentes += ausentes;
+            discipulo.evolucao.add(new EvolucaoIndividual(item.getReferencia(), presentes, ausentes,
+                percentual(presentes, ausentes)));
+        });
+        return resultado.values().stream()
+            .sorted(Comparator.comparing(DiscipuloAcumulado::nome, String.CASE_INSENSITIVE_ORDER)
+                .thenComparingLong(DiscipuloAcumulado::adolescenteId))
+            .map(item -> new Discipulo(item.adolescenteId, item.nome, item.presentes, item.ausentes,
+                percentualIndividual(item.presentes, item.ausentes), List.copyOf(item.evolucao)))
+            .toList();
     }
 
     private static long valor(Number valor) { return valor == null ? 0 : valor.longValue(); }
@@ -56,9 +79,27 @@ public class PainelLiderService {
         long total = presentes + ausentes;
         return total == 0 ? BigDecimal.ZERO : BigDecimal.valueOf(presentes).multiply(BigDecimal.valueOf(100)).divide(BigDecimal.valueOf(total), 2, RoundingMode.HALF_UP);
     }
+    private static BigDecimal percentualIndividual(long presentes, long ausentes) {
+        return presentes + ausentes == 0 ? null : percentual(presentes, ausentes);
+    }
 
-    public record PainelLiderResponse(LocalDate dataInicio, LocalDate dataFim, DiscipuladoInfo discipulado, Resumo resumo, List<EvolucaoMensal> evolucao) { }
+    public record PainelLiderResponse(LocalDate dataInicio, LocalDate dataFim, DiscipuladoInfo discipulado, Resumo resumo,
+            List<EvolucaoMensal> evolucao, List<Discipulo> discipulos) { }
     public record DiscipuladoInfo(long id, String nome, String sexo, boolean ativo) { }
     public record Resumo(long encontrosRealizados, long presentes, long ausentes, long visitantes, BigDecimal percentualPresenca) { }
     public record EvolucaoMensal(String referencia, long presentes, long ausentes, long visitantes, BigDecimal percentualPresenca) { }
+    public record Discipulo(long adolescenteId, String nome, long presentes, long ausentes,
+            BigDecimal percentualPresenca, List<EvolucaoIndividual> evolucao) { }
+    public record EvolucaoIndividual(String referencia, long presentes, long ausentes, BigDecimal percentualPresenca) { }
+
+    private static final class DiscipuloAcumulado {
+        private final long adolescenteId;
+        private final String nome;
+        private long presentes;
+        private long ausentes;
+        private final List<EvolucaoIndividual> evolucao = new ArrayList<>();
+        private DiscipuloAcumulado(long adolescenteId, String nome) { this.adolescenteId = adolescenteId; this.nome = nome; }
+        private long adolescenteId() { return adolescenteId; }
+        private String nome() { return nome; }
+    }
 }
