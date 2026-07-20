@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import FrequencyManagement from './FrequencyManagement'
 
-const encontro = { id: 10, discipuladoId: 1, data: '2026-06-01', situacao: 'REALIZADO', criadoEm: new Date().toISOString() }
+const encontro = { id: 10, discipuladoId: 1, data: '2026-06-01', situacao: 'REALIZADO', justificativa: null, criadoEm: new Date().toISOString() }
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
 describe('registro de frequência', () => {
@@ -38,5 +38,36 @@ describe('registro de frequência', () => {
     const salvamento = fetchMock.mock.calls.find(([url, init]) => String(url).endsWith('/encontros/10/frequencias') && init?.method === 'PUT')
     expect(JSON.parse(String(salvamento?.[1]?.body)).frequencias.map((item: { adolescenteId:number }) => item.adolescenteId)).toEqual([1, 2])
     await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+  })
+
+  it('permite apenas ao administrador registrar encontro não realizado com justificativa', async () => {
+    const cancelado = { ...encontro, situacao: 'CANCELADO', justificativa: 'Líder doente' }
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input)
+      const method = init?.method ?? 'GET'
+      if (url.includes('/adolescentes?')) return json({ content: [], page: 0, size: 100, totalElements: 0, totalPages: 0 })
+      if (url.endsWith('/encontros') && method === 'POST') return json(cancelado, 201)
+      if (url.includes('/encontros?')) return json([cancelado])
+      throw new Error(`Requisição inesperada: ${method} ${url}`)
+    })
+
+    render(<FrequencyManagement discipuladoId={1} podeAdministrar />)
+    await screen.findByRole('button', { name: 'Criar encontro' })
+    await userEvent.click(screen.getByLabelText('Situação'))
+    await userEvent.click(screen.getByRole('option', { name: 'Não realizado' }))
+    await userEvent.type(await screen.findByLabelText(/Justificativa/), 'Líder doente')
+    await userEvent.click(screen.getByRole('button', { name: 'Criar encontro' }))
+
+    expect(await screen.findByText('Encontro criado.')).toBeInTheDocument()
+    expect(
+      screen.getAllByRole('alert').some((alerta) => alerta.textContent?.includes('Líder doente')),
+    ).toBe(true)
+    const criacao = fetchMock.mock.calls.find(([url, init]) => String(url).endsWith('/encontros') && init?.method === 'POST')
+    expect(JSON.parse(String(criacao?.[1]?.body))).toMatchObject({
+      discipuladoId: 1,
+      situacao: 'CANCELADO',
+      justificativa: 'Líder doente',
+    })
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/encontros/10/frequencias'))).toBe(false)
   })
 })

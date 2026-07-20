@@ -192,8 +192,8 @@ paths:
       responses: { '200': { description: Encontros, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Encontro' } } } } } }
     post:
       tags: [Encontros]
-      summary: Registra encontro realizado ou cancelado
-      description: ADMIN, DISCIPULADOR ou CO_LIDER do discipulado.
+      summary: Registra encontro realizado ou não realizado
+      description: ADMIN registra qualquer situação; DISCIPULADOR ou CO_LIDER do discipulado registram somente encontros realizados. Não realizados exigem justificativa.
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/EncontroRequest' } } } }
       responses: { '201': { description: Encontro criado, content: { application/json: { schema: { $ref: '#/components/schemas/Encontro' } } } } }
   /encontros/{encontroId}:
@@ -332,7 +332,7 @@ components:
     AdolescenteRequest: { type: object, required: [nome, dataNascimento, discipuladoId], properties: { nome: { type: string, minLength: 1, maxLength: 120 }, dataNascimento: { type: string, format: date }, telefone: { type: string }, instagram: { type: string }, discipuladoId: { type: integer, format: int64 }, ativo: { type: boolean } } }
     Adolescente: { allOf: [ { $ref: '#/components/schemas/AdolescenteRequest' }, { type: object, required: [id], properties: { id: { type: integer, format: int64 } } } ] }
     Vinculo: { type: object, required: [id, adolescenteId, discipuladoId, dataInicio, ativo], properties: { id: { type: integer, format: int64 }, adolescenteId: { type: integer, format: int64 }, discipuladoId: { type: integer, format: int64 }, dataInicio: { type: string, format: date }, dataFim: { type: string, format: date }, ativo: { type: boolean } } }
-    EncontroRequest: { type: object, required: [discipuladoId, data, situacao], properties: { discipuladoId: { type: integer, format: int64 }, data: { type: string, format: date }, situacao: { type: string, enum: [REALIZADO, CANCELADO] } } }
+    EncontroRequest: { type: object, required: [discipuladoId, data, situacao], properties: { discipuladoId: { type: integer, format: int64 }, data: { type: string, format: date }, situacao: { type: string, enum: [REALIZADO, CANCELADO] }, justificativa: { type: [string, 'null'], maxLength: 500, description: Obrigatória quando a situação for CANCELADO e nula quando for REALIZADO. } } }
     Encontro: { allOf: [ { $ref: '#/components/schemas/EncontroRequest' }, { type: object, required: [id], properties: { id: { type: integer, format: int64 } } } ] }
     FrequenciaRequest: { type: object, required: [adolescenteId, situacao], properties: { adolescenteId: { type: integer, format: int64 }, situacao: { type: string, enum: [PRESENTE, AUSENTE] } } }
     Frequencia: { allOf: [ { $ref: '#/components/schemas/FrequenciaRequest' }, { type: object, required: [id, encontroId], properties: { id: { type: integer, format: int64 }, encontroId: { type: integer, format: int64 }, registradaEm: { type: string, format: date-time } } } ] }

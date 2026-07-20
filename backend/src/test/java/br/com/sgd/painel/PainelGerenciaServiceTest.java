@@ -45,6 +45,12 @@ class PainelGerenciaServiceTest {
         var mensal = mock(PainelGerenciaRepository.ContagemMensal.class); when(mensal.getReferencia()).thenReturn("2026-03"); when(mensal.getPresentes()).thenReturn(3L); when(mensal.getAusentes()).thenReturn(1L);
         var visitantes = mock(PainelGerenciaRepository.VisitantesMensais.class); when(visitantes.getReferencia()).thenReturn("2026-03"); when(visitantes.getVisitantes()).thenReturn(12L);
         when(painel.frequenciasMensais(10L, inicio, fim)).thenReturn(List.of(mensal)); when(painel.visitantesMensais(10L, inicio, fim)).thenReturn(List.of(visitantes)); when(painel.encontrosRealizados(10L, inicio, fim)).thenReturn(2L);
+        var naoRealizado = mock(PainelGerenciaRepository.EncontroNaoRealizado.class);
+        when(naoRealizado.getEncontroId()).thenReturn(20L); when(naoRealizado.getDiscipuladoId()).thenReturn(1L);
+        when(naoRealizado.getDiscipuladoNome()).thenReturn("Ativo"); when(naoRealizado.getData()).thenReturn(LocalDate.of(2026, 3, 10));
+        when(naoRealizado.getJustificativa()).thenReturn("Líder doente");
+        when(painel.encontrosNaoRealizados(10L, inicio, fim)).thenReturn(List.of(naoRealizado));
+
 
         Discipulado ativo = discipulado(1L, "Ativo", true); Discipulado inativo = discipulado(2L, "Antigo", false); Discipulado oculto = discipulado(3L, "Sem histórico", false);
         when(discipulados.findAllByGerenciaIdOrderByNomeAsc(10L)).thenReturn(List.of(ativo, inativo, oculto));
@@ -55,6 +61,8 @@ class PainelGerenciaServiceTest {
         assertThat(resposta.resumo().visitantes()).isEqualTo(12); assertThat(resposta.resumo().percentualPresenca()).isEqualByComparingTo("75.00");
         assertThat(resposta.discipulados()).extracting(PainelGerenciaService.DiscipuladoIndicador::nome).containsExactly("Antigo", "Ativo");
         assertThat(resposta.discipulados().getFirst().ativo()).isFalse();
+        assertThat(resposta.encontrosNaoRealizados()).singleElement().satisfies(item ->
+            assertThat(item.justificativa()).isEqualTo("Líder doente"));
     }
 
     @Test void rejeitaPeriodoInvalido() {

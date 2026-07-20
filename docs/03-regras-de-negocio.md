@@ -106,3 +106,13 @@ RN034 - O relatório diário inclui somente encontros realizados e frequências 
 RN035 - Cada encontro gera uma página independente, ordenada por gerência, discipulado e encontro, e pode ser impressa ou salva como PDF pelo diálogo nativo do navegador.
 
 RN036 - Cada linha do relatório diário deve apresentar o nome e o telefone do adolescente, a data do encontro e a situação presente ou ausente.
+
+---
+
+## Encontros não realizados
+
+RN037 - Somente administradores podem marcar um encontro como não realizado ou desfazer essa marcação.
+
+RN038 - Todo encontro não realizado deve possuir uma justificativa de até 500 caracteres, preservada no histórico e na auditoria.
+
+RN039 - Gerentes consultam os encontros não realizados e suas justificativas somente nos discipulados da própria gerência; essas ocorrências não compõem indicadores nem o relatório diário de frequência.
