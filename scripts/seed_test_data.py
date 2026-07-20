@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Cria dados de teste do SGD exclusivamente por meio de uma API local."""
+"""Cria dados de teste do SGD em ambientes locais ou remotos de homologação."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 
 USERS = (
@@ -88,13 +88,22 @@ class ApiClient:
         return session["usuario"]
 
 
-def local_api_url(value: str) -> str:
+def api_url(value: str) -> str:
     parsed = urlparse(value)
-    if parsed.scheme not in {"http", "https"} or parsed.hostname not in LOCAL_HOSTS:
-        raise argparse.ArgumentTypeError("o seed aceita somente URLs locais (localhost, 127.0.0.1 ou ::1)")
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise argparse.ArgumentTypeError("informe uma URL HTTP(S) válida")
     if parsed.username or parsed.password:
         raise argparse.ArgumentTypeError("não informe credenciais na URL")
     return value.rstrip("/")
+
+
+def validate_environment(base_url: str, allow_remote: bool) -> None:
+    parsed = urlparse(base_url)
+    is_local = parsed.hostname in LOCAL_HOSTS
+    if not is_local and not allow_remote:
+        raise SeedError("URLs remotas exigem a opção --allow-remote")
+    if not is_local and parsed.scheme != "https":
+        raise SeedError("ambientes remotos exigem HTTPS para proteger credenciais e tokens")
 
 
 def page(client: ApiClient, path: str) -> list[dict[str, Any]]:
@@ -168,10 +177,16 @@ def verify_logins(base_url: str) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Cria usuários e estrutura de teste em uma instância local do SGD.")
-    parser.add_argument("--api-url", type=local_api_url, default="http://localhost:5173/api/v1")
+    parser = argparse.ArgumentParser(description="Cria usuários e estrutura de teste do SGD.")
+    parser.add_argument("--api-url", type=api_url, default="http://localhost:5173/api/v1")
+    parser.add_argument(
+        "--allow-remote",
+        action="store_true",
+        help="confirma que a API remota informada é um ambiente autorizado de homologação",
+    )
     parser.add_argument("--env-file", type=Path, default=ROOT / ".env")
     args = parser.parse_args()
+    validate_environment(args.api_url, args.allow_remote)
 
     dotenv = read_dotenv(args.env_file)
     admin_email = os.getenv("SGD_ADMIN_EMAIL") or dotenv.get("ADMIN_INITIAL_EMAIL")
@@ -191,7 +206,7 @@ def main() -> int:
     gerencia = upsert_gerencia(client, users)
     upsert_discipulados(client, users, gerencia)
     verify_logins(args.api_url)
-    print("Seed local concluído com sucesso.")
+    print("Seed de dados de teste concluído com sucesso.")
     return 0
 
 
