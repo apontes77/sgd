@@ -44,8 +44,8 @@ Fluxo:
 
 Fluxo alternativo:
 
-- Somente o administrador pode selecionar “Não realizado”, sendo obrigatório informar uma justificativa.
-- O administrador pode corrigir a justificativa ou voltar o encontro para “Realizado”, desde que não haja chamada ou visitantes registrados.
+- O administrador ou o discipulador do próprio grupo pode selecionar “Não realizado”, sendo obrigatório informar uma justificativa.
+- O administrador ou o discipulador responsável pode corrigir a justificativa ou voltar o encontro para “Realizado”, desde que não haja chamada ou visitantes registrados.
 - Gerentes consultam as não realizações da própria gerência no painel, sem permissão de alteração.
 
 ---

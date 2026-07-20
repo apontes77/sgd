@@ -53,3 +53,25 @@ Defina `ADMIN_INITIAL_EMAIL`, `ADMIN_INITIAL_PASSWORD` e `JWT_SECRET` no `.env` 
 - `/api/users/**`: gestão de usuários, restrita ao perfil `ADMIN`.
 
 Os tokens de redefinição não são expostos pela API. A entrega por e-mail deve ser conectada a um provedor transacional antes da publicação em produção.
+
+### Dados de teste para desenvolvimento e homologação
+
+Com a aplicação em execução, o script abaixo cria ou atualiza os usuários e a estrutura organizacional usados nos testes manuais:
+
+```bash
+python3 scripts/seed_test_data.py
+```
+
+O script lê as credenciais do administrador inicial em `ADMIN_INITIAL_EMAIL` e `ADMIN_INITIAL_PASSWORD` no `.env`. Como alternativa, aceita `SGD_ADMIN_EMAIL` e `SGD_ADMIN_PASSWORD` no ambiente.
+
+Para executar contra o ambiente remoto de homologação, informe as credenciais por variáveis de ambiente e confirme explicitamente o destino remoto:
+
+```bash
+SGD_ADMIN_EMAIL='admin@exemplo.com' \
+SGD_ADMIN_PASSWORD='senha-do-admin' \
+python3 scripts/seed_test_data.py \
+  --api-url 'https://api-homologacao.exemplo.com/api/v1' \
+  --allow-remote
+```
+
+Destinos remotos exigem HTTPS. O script não é executado automaticamente no deploy: ele deve ser acionado de forma consciente depois que a API estiver disponível.

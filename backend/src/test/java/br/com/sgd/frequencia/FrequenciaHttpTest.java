@@ -91,21 +91,17 @@ class FrequenciaHttpTest {
     }
 
     @Test
-    void somenteAdminRegistraNaoRealizadoComJustificativa() throws Exception {
+    void adminEDiscipuladorRegistramNaoRealizadoComJustificativaNoProprioEscopo() throws Exception {
         String tokenAdmin = token(admin);
         String tokenDiscipulador = token(discipulador);
+        String tokenCoLider = token(coLider);
 
-        mvc.perform(post("/api/v1/encontros").header(HttpHeaders.AUTHORIZATION, bearer(tokenAdmin))
+        mvc.perform(post("/api/v1/encontros").header(HttpHeaders.AUTHORIZATION, bearer(tokenDiscipulador))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"discipuladoId\":" + proprio.getId() + ",\"data\":\"2026-07-18\",\"situacao\":\"CANCELADO\"}"))
             .andExpect(status().isBadRequest());
 
-        mvc.perform(post("/api/v1/encontros").header(HttpHeaders.AUTHORIZATION, bearer(tokenDiscipulador))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"discipuladoId\":" + proprio.getId() + ",\"data\":\"2026-07-18\",\"situacao\":\"CANCELADO\",\"justificativa\":\"Imprevisto\"}"))
-            .andExpect(status().isForbidden());
-
-        String response = mvc.perform(post("/api/v1/encontros").header(HttpHeaders.AUTHORIZATION, bearer(tokenAdmin))
+        String response = mvc.perform(post("/api/v1/encontros").header(HttpHeaders.AUTHORIZATION, bearer(tokenDiscipulador))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"discipuladoId\":" + proprio.getId() + ",\"data\":\"2026-07-18\",\"situacao\":\"CANCELADO\",\"justificativa\":\"  Líder doente  \"}"))
             .andExpect(status().isCreated())
@@ -114,16 +110,39 @@ class FrequenciaHttpTest {
             .andReturn().getResponse().getContentAsString();
         long encontroId = json.readTree(response).get("id").asLong();
 
+        mvc.perform(post("/api/v1/encontros").header(HttpHeaders.AUTHORIZATION, bearer(tokenCoLider))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"discipuladoId\":" + proprio.getId() + ",\"data\":\"2026-07-19\",\"situacao\":\"CANCELADO\",\"justificativa\":\"Imprevisto\"}"))
+            .andExpect(status().isForbidden());
+
+        mvc.perform(post("/api/v1/encontros").header(HttpHeaders.AUTHORIZATION, bearer(tokenDiscipulador))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"discipuladoId\":" + alheio.getId() + ",\"data\":\"2026-07-19\",\"situacao\":\"CANCELADO\",\"justificativa\":\"Imprevisto\"}"))
+            .andExpect(status().isForbidden());
+
         mvc.perform(patch("/api/v1/encontros/{id}", encontroId)
                 .header(HttpHeaders.AUTHORIZATION, bearer(tokenDiscipulador))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"situacao\":\"REALIZADO\"}"))
-            .andExpect(status().isForbidden());
+                .content("{\"situacao\":\"CANCELADO\",\"justificativa\":\"Imprevisto resolvido\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.justificativa").value("Imprevisto resolvido"));
 
         mvc.perform(get("/api/v1/encontros").param("discipuladoId", proprio.getId().toString())
                 .header(HttpHeaders.AUTHORIZATION, bearer(tokenAdmin)))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].justificativa").value("Líder doente"));
+            .andExpect(jsonPath("$[0].justificativa").value("Imprevisto resolvido"));
+
+        mvc.perform(patch("/api/v1/encontros/{id}", encontroId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(tokenDiscipulador))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"situacao\":\"REALIZADO\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.justificativa").doesNotExist());
+
+        mvc.perform(post("/api/v1/encontros").header(HttpHeaders.AUTHORIZATION, bearer(tokenAdmin))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"discipuladoId\":" + alheio.getId() + ",\"data\":\"2026-07-20\",\"situacao\":\"CANCELADO\",\"justificativa\":\"Ausência justificada\"}"))
+            .andExpect(status().isCreated());
     }
 
     @Test

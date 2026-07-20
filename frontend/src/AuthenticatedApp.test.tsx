@@ -25,7 +25,7 @@ describe('navegação autenticada', () => {
     expect(screen.getByRole('tab', { name: 'Estrutura' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Usuários' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Adolescentes' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Registrar frequência' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Encontros e frequência' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Relatórios' })).toBeInTheDocument()
   })
 
@@ -99,6 +99,7 @@ describe('navegação autenticada', () => {
     await userEvent.click(screen.getByRole('tab', { name: 'Registrar frequência' }))
 
     expect(await screen.findByText('Meu grupo')).toBeInTheDocument()
+    expect(screen.getByText('Registrar encontro não realizado')).toBeInTheDocument()
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/discipulados?'))).toBe(false)
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/discipulados/liderados?ativo=true'))).toBe(true)
   })

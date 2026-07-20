@@ -24,6 +24,7 @@ describe('registro de frequência', () => {
 
     render(<FrequencyManagement discipuladoId={1} />)
     await screen.findByRole('button', { name: 'Criar encontro' })
+    expect(screen.queryByText('Registrar encontro não realizado')).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Criar encontro' }))
 
     expect(await screen.findByText('Encontro criado.')).toBeInTheDocument()
@@ -40,7 +41,7 @@ describe('registro de frequência', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalled())
   })
 
-  it('permite apenas ao administrador registrar encontro não realizado com justificativa', async () => {
+  it('permite ao administrador ou discipulador registrar encontro não realizado com justificativa', async () => {
     const cancelado = { ...encontro, situacao: 'CANCELADO', justificativa: 'Líder doente' }
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const url = String(input)
@@ -51,14 +52,12 @@ describe('registro de frequência', () => {
       throw new Error(`Requisição inesperada: ${method} ${url}`)
     })
 
-    render(<FrequencyManagement discipuladoId={1} podeAdministrar />)
-    await screen.findByRole('button', { name: 'Criar encontro' })
-    await userEvent.click(screen.getByLabelText('Situação'))
-    await userEvent.click(screen.getByRole('option', { name: 'Não realizado' }))
-    await userEvent.type(await screen.findByLabelText(/Justificativa/), 'Líder doente')
-    await userEvent.click(screen.getByRole('button', { name: 'Criar encontro' }))
+    render(<FrequencyManagement discipuladoId={1} podeRegistrarNaoRealizacao />)
+    expect(await screen.findByText('Registrar encontro não realizado')).toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText(/Justificativa da não realização/), 'Líder doente')
+    await userEvent.click(screen.getByRole('button', { name: 'Registrar não realização' }))
 
-    expect(await screen.findByText('Encontro criado.')).toBeInTheDocument()
+    expect(await screen.findByText('Encontro não realizado registrado.')).toBeInTheDocument()
     expect(
       screen.getAllByRole('alert').some((alerta) => alerta.textContent?.includes('Líder doente')),
     ).toBe(true)

@@ -193,7 +193,7 @@ paths:
     post:
       tags: [Encontros]
       summary: Registra encontro realizado ou não realizado
-      description: ADMIN registra qualquer situação; DISCIPULADOR ou CO_LIDER do discipulado registram somente encontros realizados. Não realizados exigem justificativa.
+      description: ADMIN registra qualquer situação em qualquer discipulado ativo; DISCIPULADOR registra encontros realizados ou não realizados no próprio discipulado; CO_LIDER registra somente encontros realizados. Não realizados exigem justificativa.
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/EncontroRequest' } } } }
       responses: { '201': { description: Encontro criado, content: { application/json: { schema: { $ref: '#/components/schemas/Encontro' } } } } }
   /encontros/{encontroId}:

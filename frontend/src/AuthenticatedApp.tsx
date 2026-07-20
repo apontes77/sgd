@@ -34,7 +34,7 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
     if (currentUser.perfis.some((role) => role === 'DISCIPULADOR' || role === 'CO_LIDER')) values.push({ value: 'meu-discipulado', label: 'Meu discipulado', group: 'Visão geral', icon: <DashboardRounded /> })
     if (currentUser.perfis.includes('ADMIN')) values.push({ value: 'estrutura', label: 'Estrutura', group: 'Gestão', icon: <AccountTreeRounded /> }, { value: 'usuarios', label: 'Usuários', group: 'Gestão', icon: <PeopleAltRounded /> })
     values.push({ value: 'adolescentes', label: 'Adolescentes', group: 'Gestão', icon: <GroupsRounded /> })
-    if (currentUser.perfis.some((role) => role === 'ADMIN' || role === 'DISCIPULADOR' || role === 'CO_LIDER')) values.push({ value: 'frequencia', label: 'Registrar frequência', group: 'Operação', icon: <FactCheckRounded /> })
+    if (currentUser.perfis.some((role) => role === 'ADMIN' || role === 'DISCIPULADOR' || role === 'CO_LIDER')) values.push({ value: 'frequencia', label: currentUser.perfis.includes('ADMIN') ? 'Encontros e frequência' : 'Registrar frequência', group: 'Operação', icon: <FactCheckRounded /> })
     values.push({ value: 'relatorios', label: 'Relatórios', group: 'Análises', icon: <AssessmentRounded /> })
     return values
   }, [currentUser.perfis])
@@ -104,7 +104,9 @@ function FrequencyPage({ currentUser }: { currentUser: Usuario }) {
       setDiscipuladoId((current) => items.some((item) => item.id === current) ? current : items[0]?.id ?? 0)
     }).catch(() => { setDiscipulados([]); setDiscipuladoId(0) })
   }, [currentUser.perfis])
-  return <Stack spacing={3}><PageHeader title="Registrar frequência" description="Crie encontros e registre a presença do discipulado." action={<FormControl sx={{ minWidth: { xs: 240, sm: 320 } }}><InputLabel>Discipulado</InputLabel><Select label="Discipulado" value={discipuladoId || ''} onChange={(event) => setDiscipuladoId(Number(event.target.value))}>{discipulados.map((item) => <MenuItem key={item.id} value={item.id}>{item.nome}</MenuItem>)}</Select></FormControl>} />{discipuladoId ? <FrequencyManagement discipuladoId={discipuladoId} podeAdministrar={currentUser.perfis.includes('ADMIN')} /> : <EmptyState title="Nenhum discipulado disponível" description="Não há discipulados ativos no seu escopo." />}</Stack>
+  const podeAdministrar = currentUser.perfis.includes('ADMIN')
+  const podeRegistrarNaoRealizacao = podeAdministrar || currentUser.perfis.includes('DISCIPULADOR')
+  return <Stack spacing={3}><PageHeader title={podeAdministrar?'Encontros e frequência':'Registrar frequência'} description={podeRegistrarNaoRealizacao?'Informe se o encontro ocorreu; caso não, registre a justificativa.':'Crie encontros e registre a presença do discipulado.'} action={<FormControl sx={{ minWidth: { xs: 240, sm: 320 } }}><InputLabel>Discipulado</InputLabel><Select label="Discipulado" value={discipuladoId || ''} onChange={(event) => setDiscipuladoId(Number(event.target.value))}>{discipulados.map((item) => <MenuItem key={item.id} value={item.id}>{item.nome}</MenuItem>)}</Select></FormControl>} />{discipuladoId ? <FrequencyManagement discipuladoId={discipuladoId} podeAdministrar={podeAdministrar} podeRegistrarNaoRealizacao={podeRegistrarNaoRealizacao} /> : <EmptyState title="Nenhum discipulado disponível" description="Não há discipulados ativos no seu escopo." />}</Stack>
 }
 
 function initials(name: string) { return name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() }
