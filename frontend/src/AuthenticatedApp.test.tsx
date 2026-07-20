@@ -25,7 +25,7 @@ describe('navegação autenticada', () => {
     expect(screen.getByRole('tab', { name: 'Estrutura' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Usuários' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Adolescentes' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Registrar frequência' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Encontros e frequência' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Relatórios' })).toBeInTheDocument()
   })
 

@@ -24,6 +24,7 @@ describe('registro de frequência', () => {
 
     render(<FrequencyManagement discipuladoId={1} />)
     await screen.findByRole('button', { name: 'Criar encontro' })
+    expect(screen.queryByText('Registrar encontro não realizado')).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Criar encontro' }))
 
     expect(await screen.findByText('Encontro criado.')).toBeInTheDocument()
@@ -52,13 +53,11 @@ describe('registro de frequência', () => {
     })
 
     render(<FrequencyManagement discipuladoId={1} podeAdministrar />)
-    await screen.findByRole('button', { name: 'Criar encontro' })
-    await userEvent.click(screen.getByLabelText('Situação'))
-    await userEvent.click(screen.getByRole('option', { name: 'Não realizado' }))
-    await userEvent.type(await screen.findByLabelText(/Justificativa/), 'Líder doente')
-    await userEvent.click(screen.getByRole('button', { name: 'Criar encontro' }))
+    expect(await screen.findByText('Registrar encontro não realizado')).toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText(/Justificativa da não realização/), 'Líder doente')
+    await userEvent.click(screen.getByRole('button', { name: 'Registrar não realização' }))
 
-    expect(await screen.findByText('Encontro criado.')).toBeInTheDocument()
+    expect(await screen.findByText('Encontro não realizado registrado.')).toBeInTheDocument()
     expect(
       screen.getAllByRole('alert').some((alerta) => alerta.textContent?.includes('Líder doente')),
     ).toBe(true)
