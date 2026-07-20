@@ -34,13 +34,19 @@ Fluxo alternativo:
 ## UC003 - Registrar Encontro
 
 Ator:
-Discipulador
+Administrador, Discipulador ou Co-líder
 
 Fluxo:
 
 1. Selecionar data.
 2. Informar situação.
 3. Salvar.
+
+Fluxo alternativo:
+
+- Somente o administrador pode selecionar “Não realizado”, sendo obrigatório informar uma justificativa.
+- O administrador pode corrigir a justificativa ou voltar o encontro para “Realizado”, desde que não haja chamada ou visitantes registrados.
+- Gerentes consultam as não realizações da própria gerência no painel, sem permissão de alteração.
 
 ---
 
