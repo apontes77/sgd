@@ -5,7 +5,7 @@ import ManagerDashboard from './ManagerDashboard'
 
 vi.mock('echarts-for-react', () => ({ default: () => <div data-testid="grafico" /> }))
 const resumo = { encontrosRealizados: 2, presentes: 3, ausentes: 1, visitantes: 5, percentualPresenca: 75 }
-const resposta = { dataInicio: '2026-01-01', dataFim: '2026-07-01', gerencia: { id: 1, nome: 'Gerência Centro' }, resumo, evolucao: [{ referencia: '2026-06', presentes: 3, ausentes: 1, visitantes: 5, percentualPresenca: 75 }], discipulados: [{ id: 1, nome: 'Discipulado A', sexo: 'MASCULINO', ativo: true, resumo, evolucao: [{ referencia: '2026-06', presentes: 3, ausentes: 1, visitantes: 5, percentualPresenca: 75 }] }, { id: 2, nome: 'Discipulado Antigo', sexo: 'FEMININO', ativo: false, resumo: { ...resumo, percentualPresenca: 50 }, evolucao: [] }] }
+const resposta = { dataInicio: '2026-01-01', dataFim: '2026-07-01', gerencia: { id: 1, nome: 'Gerência Centro' }, resumo, evolucao: [{ referencia: '2026-06', presentes: 3, ausentes: 1, visitantes: 5, percentualPresenca: 75 }], discipulados: [{ id: 1, nome: 'Discipulado A', sexo: 'MASCULINO', ativo: true, resumo, evolucao: [{ referencia: '2026-06', presentes: 3, ausentes: 1, visitantes: 5, percentualPresenca: 75 }] }, { id: 2, nome: 'Discipulado Antigo', sexo: 'FEMININO', ativo: false, resumo: { ...resumo, percentualPresenca: 50 }, evolucao: [] }], encontrosNaoRealizados: [{ encontroId: 20, discipuladoId: 1, discipuladoNome: 'Discipulado A', data: '2026-06-15', justificativa: 'Líder doente' }] }
 
 describe('painel da gerência', () => {
   afterEach(() => { cleanup(); vi.restoreAllMocks() })
@@ -17,6 +17,8 @@ describe('painel da gerência', () => {
     await userEvent.click(screen.getAllByRole('button', { name: 'Dados' })[1])
     expect(screen.getByRole('table', { name: 'Resumo por discipulado' })).toBeInTheDocument()
     expect(screen.getAllByText('Discipulado A').length).toBeGreaterThan(0)
+    expect(screen.getByRole('table', { name: 'Encontros não realizados' })).toBeInTheDocument()
+    expect(screen.getByText('Líder doente')).toBeInTheDocument()
   })
   it('permite selecionar um discipulado inativo', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(resposta), { status: 200, headers: { 'Content-Type': 'application/json' } }))

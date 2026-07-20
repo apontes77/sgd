@@ -13,6 +13,8 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +40,9 @@ public class PainelGerenciaService {
         if (encontradas.size() > 1) throw new ResponseStatusException(HttpStatus.CONFLICT, "O gerente possui mais de uma gerência ativa.");
         Gerencia gerencia = encontradas.getFirst();
         long gerenciaId = gerencia.getId();
+        List<EncontroNaoRealizado> naoRealizados = painel.encontrosNaoRealizados(gerenciaId, inicio, fim).stream()
+            .map(item -> new EncontroNaoRealizado(item.getEncontroId(), item.getDiscipuladoId(), item.getDiscipuladoNome(), item.getData(), item.getJustificativa())).toList();
+        Set<Long> discipuladosComNaoRealizado = naoRealizados.stream().map(EncontroNaoRealizado::discipuladoId).collect(Collectors.toSet());
 
         List<EvolucaoMensal> evolucao = evolucaoGerencia(gerenciaId, inicio, fim);
         Resumo resumo = new Resumo(painel.encontrosRealizados(gerenciaId, inicio, fim),
@@ -62,13 +67,13 @@ public class PainelGerenciaService {
         List<DiscipuladoIndicador> indicadores = new ArrayList<>();
         for (Discipulado d : discipulados.findAllByGerenciaIdOrderByNomeAsc(gerenciaId)) {
             Resumo itemResumo = resumos.getOrDefault(d.getId(), Resumo.vazio());
-            if (!d.isAtivo() && itemResumo.presentes() + itemResumo.ausentes() + itemResumo.visitantes() == 0) continue;
+            if (!d.isAtivo() && itemResumo.presentes() + itemResumo.ausentes() + itemResumo.visitantes() == 0 && !discipuladosComNaoRealizado.contains(d.getId())) continue;
             List<EvolucaoMensal> serie = evolucoes.getOrDefault(d.getId(), Map.of()).values().stream()
                 .sorted(Comparator.comparing(EvolucaoMensal::referencia)).toList();
             indicadores.add(new DiscipuladoIndicador(d.getId(), d.getNome(), d.getSexo().name(), d.isAtivo(), itemResumo, serie));
         }
         indicadores.sort(Comparator.comparing((DiscipuladoIndicador d) -> d.resumo().percentualPresenca()).reversed().thenComparing(DiscipuladoIndicador::nome));
-        return new PainelGerenciaResponse(inicio, fim, new GerenciaInfo(gerenciaId, gerencia.getNome()), resumo, evolucao, indicadores);
+        return new PainelGerenciaResponse(inicio, fim, new GerenciaInfo(gerenciaId, gerencia.getNome()), resumo, evolucao, indicadores, naoRealizados);
     }
 
     private List<EvolucaoMensal> evolucaoGerencia(long id, LocalDate inicio, LocalDate fim) {
@@ -90,7 +95,7 @@ public class PainelGerenciaService {
     private static BigDecimal percentual(Number p, Number a) { return percentual(valor(p), valor(a)); }
     private static BigDecimal percentual(long p, long a) { long total = p + a; return total == 0 ? BigDecimal.ZERO : BigDecimal.valueOf(p).multiply(BigDecimal.valueOf(100)).divide(BigDecimal.valueOf(total), 2, RoundingMode.HALF_UP); }
 
-    public record PainelGerenciaResponse(LocalDate dataInicio, LocalDate dataFim, GerenciaInfo gerencia, Resumo resumo, List<EvolucaoMensal> evolucao, List<DiscipuladoIndicador> discipulados) { }
+    public record PainelGerenciaResponse(LocalDate dataInicio, LocalDate dataFim, GerenciaInfo gerencia, Resumo resumo, List<EvolucaoMensal> evolucao, List<DiscipuladoIndicador> discipulados, List<EncontroNaoRealizado> encontrosNaoRealizados) { }
     public record GerenciaInfo(long id, String nome) { }
     public record Resumo(long encontrosRealizados, long presentes, long ausentes, long visitantes, BigDecimal percentualPresenca) {
         static Resumo vazio() { return new Resumo(0, 0, 0, 0, BigDecimal.ZERO); }
@@ -99,4 +104,5 @@ public class PainelGerenciaService {
     }
     public record EvolucaoMensal(String referencia, long presentes, long ausentes, long visitantes, BigDecimal percentualPresenca) { }
     public record DiscipuladoIndicador(long id, String nome, String sexo, boolean ativo, Resumo resumo, List<EvolucaoMensal> evolucao) { }
+    public record EncontroNaoRealizado(long encontroId, long discipuladoId, String discipuladoNome, LocalDate data, String justificativa) { }
 }

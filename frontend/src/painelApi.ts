@@ -9,7 +9,8 @@ export interface IndicadorGerencia extends IndicadorFrequencia { id: number; nom
 export interface IndicadorSexo extends IndicadorFrequencia { sexo: 'MASCULINO' | 'FEMININO' }
 export interface PainelAdminResponse { dataInicio: string; dataFim: string; resumo: ResumoPainel; evolucao: EvolucaoMensal[]; gerencias: IndicadorGerencia[]; sexos: IndicadorSexo[] }
 export interface DiscipuladoPainel { id: number; nome: string; sexo: 'MASCULINO' | 'FEMININO'; ativo: boolean; resumo: ResumoPainel; evolucao: EvolucaoMensal[] }
-export interface PainelGerenciaResponse { dataInicio: string; dataFim: string; gerencia: { id: number; nome: string }; resumo: ResumoPainel; evolucao: EvolucaoMensal[]; discipulados: DiscipuladoPainel[] }
+export interface EncontroNaoRealizado { encontroId: number; discipuladoId: number; discipuladoNome: string; data: string; justificativa: string }
+export interface PainelGerenciaResponse { dataInicio: string; dataFim: string; gerencia: { id: number; nome: string }; resumo: ResumoPainel; evolucao: EvolucaoMensal[]; discipulados: DiscipuladoPainel[]; encontrosNaoRealizados: EncontroNaoRealizado[] }
 export interface PainelLiderResponse { dataInicio: string; dataFim: string; discipulado: { id: number; nome: string; sexo: 'MASCULINO' | 'FEMININO'; ativo: boolean }; resumo: ResumoPainel; evolucao: EvolucaoMensal[]; discipulos: DiscipuloPainel[] }
 
 export const painelApi = {
