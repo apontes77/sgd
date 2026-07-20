@@ -53,3 +53,13 @@ Defina `ADMIN_INITIAL_EMAIL`, `ADMIN_INITIAL_PASSWORD` e `JWT_SECRET` no `.env` 
 - `/api/users/**`: gestão de usuários, restrita ao perfil `ADMIN`.
 
 Os tokens de redefinição não são expostos pela API. A entrega por e-mail deve ser conectada a um provedor transacional antes da publicação em produção.
+
+### Dados locais de teste
+
+Com a aplicação local em execução, o script abaixo cria ou atualiza os usuários e a estrutura organizacional usados nos testes manuais:
+
+```bash
+python3 scripts/local/seed_test_data.py
+```
+
+O script lê as credenciais do administrador inicial em `ADMIN_INITIAL_EMAIL` e `ADMIN_INITIAL_PASSWORD` no `.env`. Como alternativa, aceita `SGD_ADMIN_EMAIL` e `SGD_ADMIN_PASSWORD` no ambiente. Por segurança, ele recusa qualquer URL de API que não aponte para `localhost`, `127.0.0.1` ou `::1`, e não faz parte das imagens de produção.
