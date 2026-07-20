@@ -98,11 +98,15 @@ class EncontroServiceTest {
         verify(auditoria).save(any());
     }
 
-    @Test void somenteAdministradorPodeMarcarNaoRealizadoEJustificativaEhObrigatoria() {
+    @Test void administradorEDiscipuladorPodemMarcarNaoRealizadoEJustificativaEhObrigatoria() {
         Encontro encontro = encontro(AGORA.minusSeconds(60));
         when(encontros.findById(1L)).thenReturn(Optional.of(encontro));
 
-        assertThatThrownBy(() -> service.atualizar(usuario(Role.DISCIPULADOR), 1L, null,
+        service.atualizar(usuario(Role.DISCIPULADOR), 1L, null, SituacaoEncontro.CANCELADO, "Imprevisto");
+        assertThat(encontro.getSituacao()).isEqualTo(SituacaoEncontro.CANCELADO);
+        assertThat(encontro.getJustificativa()).isEqualTo("Imprevisto");
+
+        assertThatThrownBy(() -> service.atualizar(usuario(Role.CO_LIDER), 1L, null,
                 SituacaoEncontro.CANCELADO, "Imprevisto"))
             .isInstanceOf(ResponseStatusException.class)
             .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode().value()).isEqualTo(403));

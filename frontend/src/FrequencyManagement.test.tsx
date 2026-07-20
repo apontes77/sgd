@@ -41,7 +41,7 @@ describe('registro de frequência', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalled())
   })
 
-  it('permite apenas ao administrador registrar encontro não realizado com justificativa', async () => {
+  it('permite ao administrador ou discipulador registrar encontro não realizado com justificativa', async () => {
     const cancelado = { ...encontro, situacao: 'CANCELADO', justificativa: 'Líder doente' }
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const url = String(input)
@@ -52,7 +52,7 @@ describe('registro de frequência', () => {
       throw new Error(`Requisição inesperada: ${method} ${url}`)
     })
 
-    render(<FrequencyManagement discipuladoId={1} podeAdministrar />)
+    render(<FrequencyManagement discipuladoId={1} podeRegistrarNaoRealizacao />)
     expect(await screen.findByText('Registrar encontro não realizado')).toBeInTheDocument()
     await userEvent.type(screen.getByLabelText(/Justificativa da não realização/), 'Líder doente')
     await userEvent.click(screen.getByRole('button', { name: 'Registrar não realização' }))

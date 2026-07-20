@@ -111,7 +111,7 @@ RN036 - Cada linha do relatório diário deve apresentar o nome e o telefone do 
 
 ## Encontros não realizados
 
-RN037 - Somente administradores podem marcar um encontro como não realizado ou desfazer essa marcação.
+RN037 - Administradores podem marcar um encontro como não realizado em qualquer discipulado ativo; o discipulador pode marcar ou desfazer essa situação somente no próprio discipulado. Gerentes e co-líderes não podem executar essa ação.
 
 RN038 - Todo encontro não realizado deve possuir uma justificativa de até 500 caracteres, preservada no histórico e na auditoria.
 

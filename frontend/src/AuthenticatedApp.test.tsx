@@ -99,6 +99,7 @@ describe('navegação autenticada', () => {
     await userEvent.click(screen.getByRole('tab', { name: 'Registrar frequência' }))
 
     expect(await screen.findByText('Meu grupo')).toBeInTheDocument()
+    expect(screen.getByText('Registrar encontro não realizado')).toBeInTheDocument()
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/discipulados?'))).toBe(false)
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/discipulados/liderados?ativo=true'))).toBe(true)
   })
