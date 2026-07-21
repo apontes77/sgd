@@ -1,6 +1,7 @@
 import { request } from './api'
 
 export type SituacaoRelatorio = 'PRESENTE' | 'AUSENTE'
+export type SituacaoEncontroRelatorio = 'REALIZADO' | 'NAO_REALIZADO'
 export interface IdentificacaoRelatorio { id:number; nome:string }
 export interface DiscipuladoRelatorio extends IdentificacaoRelatorio { sexo:'MASCULINO' | 'FEMININO' }
 export interface ParticipanteRelatorio { adolescenteId:number; nome:string; telefone:string|null; situacao:SituacaoRelatorio }
@@ -8,6 +9,8 @@ export interface ResumoRelatorio { presentes:number; ausentes:number; participan
 export interface RelatorioEncontro {
   encontroId:number
   data:string
+  situacao:SituacaoEncontroRelatorio
+  justificativa:string|null
   gerencia:IdentificacaoRelatorio
   discipulado:DiscipuladoRelatorio
   discipulador:IdentificacaoRelatorio

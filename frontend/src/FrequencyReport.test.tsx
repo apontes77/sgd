@@ -12,6 +12,8 @@ const relatorio: RelatorioPeriodoResponse = {
     {
       encontroId: 10,
       data: '2026-07-21',
+      situacao: 'REALIZADO',
+      justificativa: null,
       gerencia: { id: 1, nome: 'Centro' },
       discipulado: { id: 2, nome: 'Alpha', sexo: 'MASCULINO' },
       discipulador: { id: 3, nome: 'Líder Alpha' },
@@ -26,9 +28,24 @@ const relatorio: RelatorioPeriodoResponse = {
     {
       encontroId: 11,
       data: '2026-07-21',
+      situacao: 'REALIZADO',
+      justificativa: null,
       gerencia: { id: 1, nome: 'Centro' },
       discipulado: { id: 7, nome: 'Beta', sexo: 'FEMININO' },
       discipulador: { id: 8, nome: 'Líder Beta' },
+      coLideres: [],
+      participantes: [],
+      visitantes: 0,
+      resumo: { presentes: 0, ausentes: 0, participantes: 0, visitantes: 0, percentualPresenca: 0 },
+    },
+    {
+      encontroId: 12,
+      data: '2026-07-19',
+      situacao: 'NAO_REALIZADO',
+      justificativa: 'Problema de saúde',
+      gerencia: { id: 1, nome: 'Centro' },
+      discipulado: { id: 2, nome: 'Alpha', sexo: 'MASCULINO' },
+      discipulador: { id: 3, nome: 'Líder Alpha' },
       coLideres: [],
       participantes: [],
       visitantes: 0,
@@ -72,6 +89,9 @@ describe('relatório diário de frequência', () => {
     expect(screen.getByText('Bia')).toBeInTheDocument()
     expect(screen.getByText('(11) 97777-1111')).toBeInTheDocument()
     expect(screen.getByText('Não informado')).toBeInTheDocument()
+    expect(screen.getByText('Registro de ausência do discipulado')).toBeInTheDocument()
+    expect(screen.getByText(/Problema de saúde/)).toBeInTheDocument()
+    expect(screen.getByText('Não houve discipulado')).toBeInTheDocument()
     expect(screen.getAllByText('21/07/2026')).toHaveLength(4)
     expect(screen.queryByText(/Encontro:/)).not.toBeInTheDocument()
     expect(screen.queryByText('#10')).not.toBeInTheDocument()
@@ -93,7 +113,7 @@ describe('relatório diário de frequência', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Consultar' }))
 
-    expect(await screen.findByText(/Não há encontros realizados no seu escopo/)).toBeInTheDocument()
+    expect(await screen.findByText(/Não há registros de frequência no seu escopo/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Imprimir / salvar como PDF' })).toBeDisabled()
   })
 })
