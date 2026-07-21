@@ -32,6 +32,7 @@ export const appTheme = createTheme({
   components: {
     MuiCssBaseline: {
       styleOverrides: {
+        html: { WebkitTextSizeAdjust: '100%' },
         body: { minWidth: 320 },
         '::selection': { backgroundColor: alpha(primary, 0.2) },
       },
@@ -39,9 +40,12 @@ export const appTheme = createTheme({
     MuiPaper: { styleOverrides: { root: { backgroundImage: 'none' } } },
     MuiButton: {
       defaultProps: { disableElevation: true },
-      styleOverrides: { root: { minHeight: 40, borderRadius: 9, paddingInline: 16 } },
+      styleOverrides: {
+        root: { minHeight: 44, borderRadius: 9, paddingInline: 16 },
+        sizeSmall: { minHeight: 44 },
+      },
     },
-    MuiIconButton: { styleOverrides: { root: { borderRadius: 9 } } },
+    MuiIconButton: { styleOverrides: { root: { borderRadius: 9, minWidth: 44, minHeight: 44 } } },
     MuiCard: { styleOverrides: { root: { border: '1px solid #E2E8F0', boxShadow: '0 1px 3px rgba(23, 32, 51, 0.06)' } } },
     MuiDialog: { styleOverrides: { paper: { borderRadius: 16 } } },
     MuiTextField: { defaultProps: { size: 'small' } },

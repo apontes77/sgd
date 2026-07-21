@@ -1,12 +1,12 @@
-import { AddRounded, CloseRounded, PersonAddRounded } from '@mui/icons-material'
+import { AddRounded, PersonAddRounded } from '@mui/icons-material'
 import {
   Alert, Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
-  Divider, Drawer, FormControlLabel, IconButton, LinearProgress, MenuItem, Stack, Table,
+  FormControlLabel, LinearProgress, MenuItem, Stack, Table,
   TableBody, TableCell, TableHead, TableRow, TextField, Typography,
 } from '@mui/material'
 import { FormEvent, useEffect, useState } from 'react'
 import type { Pagina, Perfil, Usuario } from './api'
-import { DataTableCard, EmptyState, FilterToolbar, PageHeader, StatusChip } from './ui'
+import { DataTableCard, EmptyState, FilterToolbar, FormSheet, PageHeader, StatusChip } from './ui'
 
 export interface UserManagementClient {
   list(page: number, size: number, active?: boolean): Promise<Pagina<Usuario>>
@@ -58,12 +58,28 @@ export default function UserManagement({ client }: { client: UserManagementClien
       <TableBody>{result.content.map((user) => <TableRow key={user.id} hover><TableCell><Typography variant="body2" fontWeight={650}>{user.nome}</Typography></TableCell><TableCell>{user.email}</TableCell><TableCell>{user.perfis.map((role) => <Chip key={role} label={roleLabel[role]} size="small" variant="outlined" sx={{ mr: 0.5, my: 0.25 }} />)}</TableCell><TableCell><StatusChip active={Boolean(user.ativo)} /></TableCell><TableCell align="right"><Button color={user.ativo ? 'warning' : 'primary'} onClick={() => setPendingUser(user)}>{user.ativo ? 'Inativar' : 'Reativar'}</Button></TableCell></TableRow>)}</TableBody>
     </Table>{!loading && result.content.length === 0 && <EmptyState title="Nenhum usuário encontrado" description="Ajuste o filtro ou cadastre um novo usuário." />}</DataTableCard>
     <Stack direction="row" justifyContent="space-between" alignItems="center"><Button disabled={result.page === 0 || loading} onClick={() => void load(result.page - 1)}>Anterior</Button><Typography variant="body2" color="text.secondary">Página {result.page + 1} de {Math.max(1, result.totalPages)}</Typography><Button disabled={result.page + 1 >= result.totalPages || loading} onClick={() => void load(result.page + 1)}>Próxima</Button></Stack>
-    <Drawer anchor="right" open={drawerOpen} onClose={closeDrawer} PaperProps={{ component: 'form', onSubmit: submit, sx: { width: { xs: '100%', sm: 480 }, maxWidth: '100%' } }}>
-      <Stack sx={{ height: '100%' }}><Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 3, py: 2.25 }}><Stack direction="row" spacing={1.25} alignItems="center"><PersonAddRounded color="primary" /><Typography variant="h5">Novo usuário</Typography></Stack><IconButton onClick={closeDrawer} aria-label="Fechar"><CloseRounded /></IconButton></Stack><Divider />
-        <Stack spacing={2.25} sx={{ p: 3, flexGrow: 1, overflowY: 'auto' }}>{error && <Alert severity="error">{error}</Alert>}<TextField required autoFocus label="Nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /><TextField required type="email" label="E-mail" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /><TextField required type="password" inputProps={{ minLength: 12 }} label="Senha inicial" helperText="Mínimo de 12 caracteres" value={form.senha} onChange={(e) => setForm({ ...form, senha: e.target.value })} /><Box><Typography variant="subtitle2" gutterBottom>Perfis de acesso</Typography><Stack>{roles.map((role) => <FormControlLabel key={role} control={<Checkbox checked={form.perfis.includes(role)} onChange={(_, checked) => setForm({ ...form, perfis: checked ? [...form.perfis, role] : form.perfis.filter((value) => value !== role) })} />} label={roleLabel[role]} />)}</Stack></Box></Stack>
-        <Divider /><Stack direction="row" justifyContent="flex-end" spacing={1} sx={{ p: 2.5 }}><Button onClick={closeDrawer}>Cancelar</Button><Button type="submit" variant="contained" disabled={loading || form.perfis.length === 0}>Cadastrar usuário</Button></Stack>
-      </Stack>
-    </Drawer>
+    <FormSheet
+      open={drawerOpen}
+      onClose={closeDrawer}
+      title="Novo usuário"
+      width={480}
+      icon={<PersonAddRounded color="primary" />}
+      component="form"
+      onSubmit={submit}
+      actions={<>
+        <Button onClick={closeDrawer}>Cancelar</Button>
+        <Button type="submit" variant="contained" disabled={loading || form.perfis.length === 0}>Cadastrar usuário</Button>
+      </>}
+    >
+      {error && <Alert severity="error">{error}</Alert>}
+      <TextField required autoFocus label="Nome" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
+      <TextField required type="email" label="E-mail" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+      <TextField required type="password" inputProps={{ minLength: 12 }} label="Senha inicial" helperText="Mínimo de 12 caracteres" value={form.senha} onChange={(e) => setForm({ ...form, senha: e.target.value })} />
+      <Box>
+        <Typography variant="subtitle2" gutterBottom>Perfis de acesso</Typography>
+        <Stack>{roles.map((role) => <FormControlLabel key={role} control={<Checkbox checked={form.perfis.includes(role)} onChange={(_, checked) => setForm({ ...form, perfis: checked ? [...form.perfis, role] : form.perfis.filter((value) => value !== role) })} />} label={roleLabel[role]} />)}</Stack>
+      </Box>
+    </FormSheet>
     <Dialog open={Boolean(pendingUser)} onClose={() => setPendingUser(undefined)} maxWidth="xs" fullWidth><DialogTitle>{pendingUser?.ativo ? 'Inativar usuário?' : 'Reativar usuário?'}</DialogTitle><DialogContent><Typography color="text.secondary">{pendingUser?.ativo ? `O acesso de ${pendingUser.nome} será bloqueado e as sessões ativas serão revogadas.` : `O acesso de ${pendingUser?.nome} será restaurado.`}</Typography></DialogContent><DialogActions><Button onClick={() => setPendingUser(undefined)}>Cancelar</Button><Button variant="contained" color={pendingUser?.ativo ? 'warning' : 'primary'} onClick={() => pendingUser && void toggleActive(pendingUser)}>Confirmar</Button></DialogActions></Dialog>
   </Stack>
 }

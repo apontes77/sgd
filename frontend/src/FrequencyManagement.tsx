@@ -5,13 +5,13 @@ import {
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert, Avatar, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle,
-  Paper, Stack, TextField, Typography,
+  Paper, Stack, TextField, Typography, useMediaQuery,
 } from '@mui/material'
 import { ApiError } from './api'
 import { adolescentesApi } from './adolescentesApi'
 import { AdolescenteFormFields, type DadosPessoaisAdolescente } from './AdolescenteFormFields'
 import { frequenciaApi, type AdolescenteResumo, type Encontro, type SituacaoFrequencia } from './frequenciaApi'
-import { EmptyState, SectionCard } from './ui'
+import { BOTTOM_NAV_OFFSET, EmptyState, SectionCard } from './ui'
 
 interface Props { discipuladoId:number; podeAdministrar?:boolean; podeRegistrarNaoRealizacao?:boolean }
 interface ParticipanteChamada extends AdolescenteResumo { registroAnterior:boolean }
@@ -24,6 +24,7 @@ const hoje = () => {
 const visitanteVazio: DadosPessoaisAdolescente = { nome: '', dataNascimento: '', telefone: '', instagram: '' }
 
 export default function FrequencyManagement({ discipuladoId, podeAdministrar = false, podeRegistrarNaoRealizacao = false }: Props) {
+  const mobile = useMediaQuery('(max-width:599.95px)')
   const [data, setData] = useState(hoje)
   const [selecionado, setSelecionado] = useState<Encontro>()
   const [adolescentesAtuais, setAdolescentesAtuais] = useState<AdolescenteResumo[]>([])
@@ -227,23 +228,64 @@ export default function FrequencyManagement({ discipuladoId, podeAdministrar = f
 
         <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} justifyContent="space-between" gap={1.5}>
           <Typography variant="body2" color="text.secondary">{presentes} presentes · {ausentes} ausentes · {participantes.length} no total</Typography>
-          {editavel && participantes.length > 0 && <Stack direction="row" spacing={1}>
-            <Button size="small" variant="outlined" color="success" startIcon={<CheckRounded />} onClick={() => definirTodos('PRESENTE')}>Todos presentes</Button>
-            <Button size="small" variant="outlined" color="error" startIcon={<CloseRounded />} onClick={() => definirTodos('AUSENTE')}>Todos ausentes</Button>
+          {editavel && participantes.length > 0 && <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+            <Button size="small" variant="outlined" color="success" startIcon={<CheckRounded />} onClick={() => definirTodos('PRESENTE')} sx={{ width: { xs: '100%', sm: 'auto' } }}>Todos presentes</Button>
+            <Button size="small" variant="outlined" color="error" startIcon={<CloseRounded />} onClick={() => definirTodos('AUSENTE')} sx={{ width: { xs: '100%', sm: 'auto' } }}>Todos ausentes</Button>
           </Stack>}
         </Stack>
 
-        {participantes.length ? <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2,minmax(0,1fr))' }, gap: 1 }}>
-          {participantes.map(a => { const presente = chamada[a.id] === 'PRESENTE'; return <Paper key={a.id} variant="outlined" sx={{ display: 'flex', alignItems: 'center', gap: 1.25, p: 1.25, borderColor: presente ? 'success.light' : 'divider', bgcolor: presente ? '#F1F8F2' : 'background.paper' }}>
-            <Avatar sx={{ width: 38, height: 38, fontSize: 14, fontWeight: 700, bgcolor: presente ? 'success.main' : 'grey.500' }}>{iniciais(a.nome)}</Avatar>
-            <Box minWidth={0} flexGrow={1}><Typography variant="body2" fontWeight={700} noWrap>{a.nome}</Typography>{a.registroAnterior && <Typography variant="caption" color="text.secondary">Registro anterior</Typography>}</Box>
-            <Button size="small" variant={presente ? 'contained' : 'outlined'} color={presente ? 'success' : 'error'} startIcon={presente ? <CheckRounded /> : <CloseRounded />} disabled={!editavel} aria-pressed={presente} aria-label={`${a.nome}: ${presente ? 'presente' : 'ausente'}. Clique para alterar.`} onClick={() => definirSituacao(a.id, presente ? 'AUSENTE' : 'PRESENTE')} sx={{ minWidth: { xs: 112, sm: 118 } }}>{presente ? 'Presente' : 'Ausente'}</Button>
-          </Paper> })}
-        </Box> : <EmptyState title="Nenhum adolescente vinculado" description="Adicione um visitante para registrar a primeira presença." />}
-
         {editavel && <Button variant="text" startIcon={<PersonAddAltRounded />} onClick={() => { setVisitante(visitanteVazio); setErro('') }} sx={{ alignSelf: 'flex-start' }}>Adicionar visitante</Button>}
 
-        {editavel && <Paper variant="outlined" sx={{ p: 1.5, position: { xs: 'sticky', sm: 'static' }, bottom: { xs: 8, sm: 'auto' }, zIndex: 2, boxShadow: { xs: '0 8px 24px rgba(23,32,51,.16)', sm: 'none' } }}>
+        {participantes.length ? <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2,minmax(0,1fr))' }, gap: 1, overflowX: 'hidden', pb: { xs: editavel ? 14 : 0, sm: 0 } }}>
+          {participantes.map(a => {
+            const presente = chamada[a.id] === 'PRESENTE'
+            const alternar = () => { if (editavel) definirSituacao(a.id, presente ? 'AUSENTE' : 'PRESENTE') }
+            return (
+              <Paper
+                key={a.id}
+                variant="outlined"
+                onClick={alternar}
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1.25,
+                  p: 1.5,
+                  minHeight: 56,
+                  overflow: 'hidden',
+                  cursor: editavel ? 'pointer' : 'default',
+                  borderColor: presente ? 'success.light' : 'divider',
+                  bgcolor: presente ? '#F1F8F2' : 'background.paper',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                <Avatar sx={{ width: 40, height: 40, fontSize: 14, fontWeight: 700, bgcolor: presente ? 'success.main' : 'grey.500', flexShrink: 0 }}>{iniciais(a.nome)}</Avatar>
+                <Box minWidth={0} flexGrow={1}><Typography variant="body2" fontWeight={700} noWrap>{a.nome}</Typography>{a.registroAnterior && <Typography variant="caption" color="text.secondary">Registro anterior</Typography>}</Box>
+                <Button
+                  size="small"
+                  variant={presente ? 'contained' : 'outlined'}
+                  color={presente ? 'success' : 'error'}
+                  startIcon={presente ? <CheckRounded /> : <CloseRounded />}
+                  disabled={!editavel}
+                  aria-pressed={presente}
+                  aria-label={`${a.nome}: ${presente ? 'presente' : 'ausente'}. Clique para alterar.`}
+                  onClick={(event) => { event.stopPropagation(); alternar() }}
+                  sx={{ minWidth: { xs: 112, sm: 118 }, flexShrink: 0, pointerEvents: editavel ? 'auto' : 'none' }}
+                >
+                  {presente ? 'Presente' : 'Ausente'}
+                </Button>
+              </Paper>
+            )
+          })}
+        </Box> : <EmptyState title="Nenhum adolescente vinculado" description="Adicione um visitante para registrar a primeira presença." />}
+
+        {editavel && <Paper variant="outlined" sx={{
+          p: 1.5,
+          position: { xs: 'sticky', sm: 'static' },
+          bottom: { xs: BOTTOM_NAV_OFFSET, sm: 'auto' },
+          zIndex: 3,
+          bgcolor: 'background.paper',
+          boxShadow: { xs: '0 8px 24px rgba(23,32,51,.16)', sm: 'none' },
+        }}>
           <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} justifyContent="space-between" gap={1.5}>
             <Typography variant="body2" color={alterado ? 'warning.dark' : 'text.secondary'}>{salvando ? 'Salvando...' : alterado ? 'Há alterações ainda não salvas.' : 'Frequência atualizada.'}</Typography>
             <Button variant="contained" startIcon={<SaveRounded />} disabled={salvando || !alterado} onClick={() => void salvarFrequencia()} sx={{ width: { xs: '100%', sm: 'auto' } }}>Salvar frequência</Button>
@@ -252,8 +294,14 @@ export default function FrequencyManagement({ discipuladoId, podeAdministrar = f
       </Stack>
     </SectionCard>}
 
-    <Dialog open={Boolean(visitante)} onClose={() => { if (!salvando) setVisitante(undefined) }} fullWidth maxWidth="sm"
-      PaperProps={{ component: 'form', onSubmit: (e: FormEvent) => { e.preventDefault(); void adicionarVisitante() } }}>
+    <Dialog
+      open={Boolean(visitante)}
+      onClose={() => { if (!salvando) setVisitante(undefined) }}
+      fullWidth
+      maxWidth="sm"
+      fullScreen={mobile}
+      PaperProps={{ component: 'form', onSubmit: (e: FormEvent) => { e.preventDefault(); void adicionarVisitante() } }}
+    >
       <DialogTitle>Adicionar visitante</DialogTitle>
       <DialogContent>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>O visitante será cadastrado como adolescente do discipulado e marcado como presente nesta data.</Typography>

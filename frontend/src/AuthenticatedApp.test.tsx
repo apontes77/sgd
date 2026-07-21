@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AuthenticatedApp from './AuthenticatedApp'
 import type { Usuario } from './api'
@@ -11,8 +11,30 @@ const emptyLeaderDashboard = { dataInicio: '2026-01-01', dataFim: '2026-07-01', 
 
 vi.mock('echarts-for-react', () => ({ default: () => <div data-testid="grafico" /> }))
 
+function mockViewport(width: number) {
+  Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: width })
+  window.matchMedia = vi.fn().mockImplementation((query: string) => {
+    const min = /min-width:\s*(\d+)/.exec(query)
+    const max = /max-width:\s*([\d.]+)/.exec(query)
+    let matches = false
+    if (min) matches = width >= Number(min[1])
+    if (max) matches = width <= Number(max[1])
+    return {
+      matches,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }
+  })
+}
+
 describe('navegação autenticada', () => {
   beforeEach(() => {
+    mockViewport(1200)
     sessionStorage.setItem('sgd.access-token', 'token')
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => { const url = String(input); return new Response(JSON.stringify(url.includes('/painel/admin') ? emptyDashboard : url.includes('/painel/gerencia') ? emptyManagerDashboard : url.includes('/painel/lider') ? emptyLeaderDashboard : emptyPage), { status: 200, headers: { 'Content-Type': 'application/json' } }) })
   })
@@ -52,18 +74,19 @@ describe('navegação autenticada', () => {
     expect(screen.getByRole('tab', { name: 'Painel' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Minha gerência' })).toBeInTheDocument()
   })
-  it('mant\u00e9m Sair na navega\u00e7\u00e3o lateral e remove o menu superior', async () => {
+
+  it('mantém Sair na navegação lateral e remove o menu superior', async () => {
     const onLogout = vi.fn()
     render(<AuthenticatedApp currentUser={user(['ADMIN'])} onLogout={onLogout} />)
 
-    expect(screen.queryByRole('button', { name: 'Menu do usu\u00e1rio' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Menu do usuário' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Abrir menu' })).not.toBeInTheDocument()
     const sair = screen.getByRole('button', { name: 'Sair' })
     expect(sair).toBeInTheDocument()
     await userEvent.click(sair)
 
     expect(onLogout).toHaveBeenCalledOnce()
   })
-
 
   it('oferece Meu discipulado para discipulador e co-líder', async () => {
     const { rerender } = render(<AuthenticatedApp currentUser={user(['DISCIPULADOR'])} onLogout={() => undefined} />)
@@ -115,6 +138,41 @@ describe('navegação autenticada', () => {
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/encontros?discipuladoId=7'))).toBe(true)
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/discipulados?'))).toBe(false)
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/discipulados/liderados?ativo=true'))).toBe(true)
+  })
+
+  it('co-líder também pode registrar que não houve discipulado', async () => {
+    vi.mocked(globalThis.fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      const body = url.includes('/painel/lider') ? emptyLeaderDashboard
+        : url.endsWith('/discipulados/liderados?ativo=true') ? [{ id: 7, nome: 'Meu grupo', sexo: 'MASCULINO', gerenciaId: 1, discipuladorId: 1, ativo: true, coLideres: [] }]
+        : url.includes('/encontros?discipuladoId=7') ? []
+        : url.includes('/adolescentes?discipuladoId=7') ? emptyPage
+        : emptyPage
+      return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    })
+    render(<AuthenticatedApp currentUser={user(['CO_LIDER'])} onLogout={() => undefined} />)
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Registrar frequência' }))
+
+    expect(await screen.findByRole('button', { name: /^Houve discipulado/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Não houve discipulado/ })).toBeInTheDocument()
+  })
+
+  it('no mobile, usa bottom navigation sem hamburger e abre Mais', async () => {
+    mockViewport(390)
+    const onLogout = vi.fn()
+    render(<AuthenticatedApp currentUser={user(['ADMIN'])} onLogout={onLogout} />)
+
+    expect(screen.queryByRole('button', { name: 'Abrir menu' })).not.toBeInTheDocument()
+    const mobileNav = screen.getByRole('navigation', { name: 'Navegação móvel' })
+    expect(within(mobileNav).getByRole('button', { name: 'Encontros e frequência' })).toBeInTheDocument()
+    expect(within(mobileNav).getByRole('button', { name: 'Mais opções' })).toBeInTheDocument()
+
+    await userEvent.click(within(mobileNav).getByRole('button', { name: 'Mais opções' }))
+    const moreSheet = await screen.findByRole('presentation')
+    expect(within(moreSheet).getByRole('button', { name: 'Estrutura' })).toBeInTheDocument()
+    await userEvent.click(within(moreSheet).getByRole('button', { name: 'Sair' }))
+    expect(onLogout).toHaveBeenCalledOnce()
   })
 })
 

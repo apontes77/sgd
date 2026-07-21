@@ -1,10 +1,10 @@
 import {
   AccountTreeRounded, AssessmentRounded, DashboardRounded, Diversity3Rounded, FactCheckRounded,
-  GroupsRounded, LogoutRounded, MenuRounded, PeopleAltRounded,
+  GroupsRounded, LogoutRounded, MoreHorizRounded, PeopleAltRounded,
 } from '@mui/icons-material'
 import {
-  AppBar, Avatar, Box, Drawer, FormControl, IconButton, InputLabel,
-  List, ListItemButton, ListItemIcon, ListItemText, MenuItem, Select, Stack,
+  AppBar, Avatar, BottomNavigation, BottomNavigationAction, Box, Divider, Drawer, FormControl,
+  InputLabel, List, ListItemButton, ListItemIcon, ListItemText, MenuItem, Select, Stack,
   Toolbar, Typography,
 } from '@mui/material'
 import { lazy, ReactNode, Suspense, useEffect, useMemo, useState } from 'react'
@@ -13,7 +13,7 @@ import FrequencyManagement from './FrequencyManagement'
 import OrganizationManagement from './OrganizationManagement'
 import UserManagement from './UserManagement'
 import { organizationApi, userManagementClient, type Discipulado, type Perfil, type Usuario } from './api'
-import { EmptyState, LoadingState, PageHeader } from './ui'
+import { BOTTOM_NAV_OFFSET, EmptyState, LoadingState, PageHeader } from './ui'
 
 const AdminDashboard = lazy(() => import('./AdminDashboard'))
 const ManagerDashboard = lazy(() => import('./ManagerDashboard'))
@@ -22,40 +22,54 @@ const FrequencyReport = lazy(() => import('./FrequencyReport'))
 
 type Section = 'painel' | 'minha-gerencia' | 'meu-discipulado' | 'estrutura' | 'usuarios' | 'adolescentes' | 'frequencia' | 'relatorios'
 type NavGroup = 'Visão geral' | 'Gestão' | 'Operação' | 'Análises'
-type NavItem = { value: Section; label: string; group: NavGroup; icon: ReactNode }
+type NavItem = { value: Section; label: string; shortLabel?: string; group: NavGroup; icon: ReactNode }
 const drawerWidth = 264
 const roleLabel: Record<Perfil, string> = { ADMIN: 'Administrador', GERENTE: 'Gerente', DISCIPULADOR: 'Discipulador', CO_LIDER: 'Co-líder' }
+
+function primaryBottomItems(items: NavItem[]): NavItem[] {
+  const overview = items.find((item) => item.group === 'Visão geral')
+  const adolescentes = items.find((item) => item.value === 'adolescentes')
+  const frequencia = items.find((item) => item.value === 'frequencia')
+  const relatorios = items.find((item) => item.value === 'relatorios')
+  return [overview, adolescentes, frequencia, relatorios].filter((item): item is NavItem => Boolean(item))
+}
 
 export default function AuthenticatedApp({ currentUser, onLogout }: { currentUser: Usuario; onLogout: () => void }) {
   const sections = useMemo(() => {
     const values: NavItem[] = []
-    if (currentUser.perfis.includes('ADMIN')) values.push({ value: 'painel', label: 'Painel', group: 'Visão geral', icon: <DashboardRounded /> })
-    if (currentUser.perfis.includes('GERENTE')) values.push({ value: 'minha-gerencia', label: 'Minha gerência', group: 'Visão geral', icon: <DashboardRounded /> })
-    if (currentUser.perfis.some((role) => role === 'DISCIPULADOR' || role === 'CO_LIDER')) values.push({ value: 'meu-discipulado', label: 'Meu discipulado', group: 'Visão geral', icon: <DashboardRounded /> })
+    if (currentUser.perfis.includes('ADMIN')) values.push({ value: 'painel', label: 'Painel', shortLabel: 'Painel', group: 'Visão geral', icon: <DashboardRounded /> })
+    if (currentUser.perfis.includes('GERENTE')) values.push({ value: 'minha-gerencia', label: 'Minha gerência', shortLabel: 'Gerência', group: 'Visão geral', icon: <DashboardRounded /> })
+    if (currentUser.perfis.some((role) => role === 'DISCIPULADOR' || role === 'CO_LIDER')) values.push({ value: 'meu-discipulado', label: 'Meu discipulado', shortLabel: 'Discipulado', group: 'Visão geral', icon: <DashboardRounded /> })
     if (currentUser.perfis.includes('ADMIN')) values.push({ value: 'estrutura', label: 'Estrutura', group: 'Gestão', icon: <AccountTreeRounded /> }, { value: 'usuarios', label: 'Usuários', group: 'Gestão', icon: <PeopleAltRounded /> })
-    values.push({ value: 'adolescentes', label: 'Adolescentes', group: 'Gestão', icon: <GroupsRounded /> })
-    if (currentUser.perfis.some((role) => role === 'ADMIN' || role === 'DISCIPULADOR' || role === 'CO_LIDER')) values.push({ value: 'frequencia', label: currentUser.perfis.includes('ADMIN') ? 'Encontros e frequência' : 'Registrar frequência', group: 'Operação', icon: <FactCheckRounded /> })
-    values.push({ value: 'relatorios', label: 'Relatórios', group: 'Análises', icon: <AssessmentRounded /> })
+    values.push({ value: 'adolescentes', label: 'Adolescentes', shortLabel: 'Adolescentes', group: 'Gestão', icon: <GroupsRounded /> })
+    if (currentUser.perfis.some((role) => role === 'ADMIN' || role === 'DISCIPULADOR' || role === 'CO_LIDER')) values.push({ value: 'frequencia', label: currentUser.perfis.includes('ADMIN') ? 'Encontros e frequência' : 'Registrar frequência', shortLabel: 'Frequência', group: 'Operação', icon: <FactCheckRounded /> })
+    values.push({ value: 'relatorios', label: 'Relatórios', shortLabel: 'Relatórios', group: 'Análises', icon: <AssessmentRounded /> })
     return values
   }, [currentUser.perfis])
   const [section, setSection] = useState<Section>(sections[0].value)
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
   const currentSection = sections.find((item) => item.value === section) ?? sections[0]
-  function navigate(value: Section) { setSection(value); setMobileOpen(false) }
+  const bottomPrimary = useMemo(() => primaryBottomItems(sections), [sections])
+  const bottomPrimaryIds = useMemo(() => new Set(bottomPrimary.map((item) => item.value)), [bottomPrimary])
+  const moreItems = useMemo(() => sections.filter((item) => !bottomPrimaryIds.has(item.value)), [sections, bottomPrimaryIds])
+  const bottomValue = bottomPrimaryIds.has(section) ? section : 'mais'
 
-  const navigation = <Navigation items={sections} current={section} currentUser={currentUser} onNavigate={navigate} onLogout={() => { setMobileOpen(false); onLogout() }} />
+  function navigate(value: Section) {
+    setSection(value)
+    setMoreOpen(false)
+  }
+
+  const navigation = <Navigation items={sections} current={section} currentUser={currentUser} onNavigate={navigate} onLogout={onLogout} />
   return <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
     <AppBar position="fixed" color="inherit" elevation={0} sx={{ width: { md: `calc(100% - ${drawerWidth}px)` }, ml: { md: `${drawerWidth}px` }, borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'rgba(255,255,255,.94)', backdropFilter: 'blur(12px)', zIndex: (theme) => theme.zIndex.drawer - 1 }}>
       <Toolbar sx={{ minHeight: { xs: 64, md: 68 }, px: { xs: 2, md: 3 } }}>
-        <IconButton edge="start" onClick={() => setMobileOpen(true)} sx={{ mr: 1.5, display: { md: 'none' } }} aria-label="Abrir menu"><MenuRounded /></IconButton>
         <Box sx={{ flexGrow: 1 }}><Typography variant="body2" color="text.secondary">SGD</Typography><Typography variant="h6">{currentSection.label}</Typography></Box>
       </Toolbar>
     </AppBar>
-    <Box component="nav" aria-label="Navegação principal">
-      <Drawer variant="permanent" sx={{ display: { xs: 'none', md: 'block' }, '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box', borderRightColor: 'divider' } }} open>{navigation}</Drawer>
-      <Drawer variant="temporary" open={mobileOpen} onClose={() => setMobileOpen(false)} ModalProps={{ keepMounted: false }} sx={{ display: { xs: 'block', md: 'none' }, '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' } }}>{navigation}</Drawer>
+    <Box component="nav" aria-label="Navegação principal" sx={{ display: { xs: 'none', md: 'block' } }}>
+      <Drawer variant="permanent" sx={{ '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box', borderRightColor: 'divider' } }} open>{navigation}</Drawer>
     </Box>
-    <Box component="main" sx={{ ml: { md: `${drawerWidth}px` }, pt: { xs: '64px', md: '68px' }, minHeight: '100vh' }}>
+    <Box component="main" sx={{ ml: { md: `${drawerWidth}px` }, pt: { xs: '64px', md: '68px' }, pb: { xs: BOTTOM_NAV_OFFSET, md: 0 }, minHeight: '100vh' }}>
       <Box sx={{ width: '100%', maxWidth: 1600, mx: 'auto', p: { xs: 2, sm: 3, lg: 4 } }}>
         <Suspense fallback={<LoadingState label="Carregando módulo..." />}>
           {section === 'painel' && <AdminDashboard />}
@@ -69,6 +83,75 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
         </Suspense>
       </Box>
     </Box>
+    <Box
+      component="nav"
+      aria-label="Navegação móvel"
+      sx={{
+        display: { xs: 'block', md: 'none' },
+        position: 'fixed',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: (theme) => theme.zIndex.appBar,
+        borderTop: '1px solid',
+        borderColor: 'divider',
+        bgcolor: 'background.paper',
+        pb: 'env(safe-area-inset-bottom, 0px)',
+      }}
+    >
+      <BottomNavigation
+        showLabels
+        value={bottomValue}
+        onChange={(_, value: Section | 'mais') => {
+          if (value === 'mais') setMoreOpen(true)
+          else navigate(value)
+        }}
+        sx={{ height: 56, '& .MuiBottomNavigationAction-root': { minWidth: 0, px: 0.5 } }}
+      >
+        {bottomPrimary.map((item) => (
+          <BottomNavigationAction
+            key={item.value}
+            value={item.value}
+            label={item.shortLabel ?? item.label}
+            icon={item.icon}
+            aria-label={item.label}
+          />
+        ))}
+        <BottomNavigationAction value="mais" label="Mais" icon={<MoreHorizRounded />} aria-label="Mais opções" />
+      </BottomNavigation>
+    </Box>
+    <Drawer
+      anchor="bottom"
+      open={moreOpen}
+      onClose={() => setMoreOpen(false)}
+      ModalProps={{ keepMounted: false }}
+      PaperProps={{ sx: { borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '85vh', pb: 'env(safe-area-inset-bottom, 0px)' } }}
+      sx={{ display: { xs: 'block', md: 'none' } }}
+    >
+      <Stack sx={{ pt: 1.5, pb: 1 }}>
+        <Typography variant="subtitle2" color="text.secondary" sx={{ px: 2.5, pb: 1 }}>Mais</Typography>
+        <List disablePadding>
+          {moreItems.map((item) => (
+            <ListItemButton key={item.value} selected={section === item.value} onClick={() => navigate(item.value)} sx={{ minHeight: 48, px: 2.5 }}>
+              <ListItemIcon sx={{ minWidth: 40, color: section === item.value ? 'primary.main' : 'text.secondary' }}>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.label} />
+            </ListItemButton>
+          ))}
+        </List>
+        <Divider sx={{ my: 1 }} />
+        <ListItemButton onClick={() => { setMoreOpen(false); onLogout() }} sx={{ minHeight: 48, px: 2.5 }}>
+          <ListItemIcon sx={{ minWidth: 40, color: 'text.secondary' }}><LogoutRounded /></ListItemIcon>
+          <ListItemText primary="Sair" />
+        </ListItemButton>
+        <Stack direction="row" alignItems="center" spacing={1.25} sx={{ px: 2.5, py: 2 }}>
+          <Avatar sx={{ width: 38, height: 38, bgcolor: '#EEF1FF', color: 'primary.main', fontSize: '.9rem', fontWeight: 700 }}>{initials(currentUser.nome)}</Avatar>
+          <Box minWidth={0}>
+            <Typography variant="body2" fontWeight={650} noWrap>{currentUser.nome}</Typography>
+            <Typography variant="caption" color="text.secondary" noWrap display="block">{currentUser.perfis.map((role) => roleLabel[role]).join(', ')}</Typography>
+          </Box>
+        </Stack>
+      </Stack>
+    </Drawer>
   </Box>
 }
 
@@ -100,7 +183,7 @@ function FrequencyPage({ currentUser }: { currentUser: Usuario }) {
     }).catch(() => { setDiscipulados([]); setDiscipuladoId(0) })
   }, [currentUser.perfis])
   const podeAdministrar = currentUser.perfis.includes('ADMIN')
-  const podeRegistrarNaoRealizacao = podeAdministrar || currentUser.perfis.includes('DISCIPULADOR')
+  const podeRegistrarNaoRealizacao = podeAdministrar || currentUser.perfis.some((role) => role === 'DISCIPULADOR' || role === 'CO_LIDER')
   const mostrarSeletor = discipulados.length > 1
   return <Stack spacing={3}><PageHeader title="Registrar frequência" description="Escolha a data e informe se houve discipulado." action={mostrarSeletor ? <FormControl sx={{ minWidth: { xs: 240, sm: 320 } }}><InputLabel>Discipulado</InputLabel><Select label="Discipulado" value={discipuladoId || ''} onChange={(event) => setDiscipuladoId(Number(event.target.value))}>{discipulados.map((item) => <MenuItem key={item.id} value={item.id}>{item.nome}</MenuItem>)}</Select></FormControl> : undefined} />{discipuladoId ? <FrequencyManagement discipuladoId={discipuladoId} podeAdministrar={podeAdministrar} podeRegistrarNaoRealizacao={podeRegistrarNaoRealizacao} /> : <EmptyState title="Nenhum discipulado disponível" description="Não há discipulados ativos no seu escopo." />}</Stack>
 }

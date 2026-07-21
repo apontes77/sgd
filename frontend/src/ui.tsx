@@ -1,7 +1,7 @@
-import { BarChartRounded, TableRowsRounded } from '@mui/icons-material'
+import { CloseRounded, BarChartRounded, TableRowsRounded } from '@mui/icons-material'
 import {
-  Box, Chip, ChipProps, Paper, Skeleton, Stack, SxProps, Theme, ToggleButton,
-  ToggleButtonGroup, Typography,
+  Box, Chip, ChipProps, Divider, Drawer, IconButton, Paper, Skeleton, Stack, SxProps, Theme,
+  ToggleButton, ToggleButtonGroup, Typography, useMediaQuery,
 } from '@mui/material'
 import { FormEventHandler, ReactNode, useState } from 'react'
 
@@ -57,3 +57,55 @@ export function EmptyState({ title, description = 'Não há dados para exibir.' 
 export function LoadingState({ label = 'Carregando...' }: { label?: string }) { return <Stack role="status" aria-label={label} spacing={1.25} sx={{ py: 3 }}><Skeleton variant="rounded" height={72} /><Skeleton variant="rounded" height={72} /><Typography variant="caption" color="text.secondary">{label}</Typography></Stack> }
 
 export function StatusChip({ active, activeLabel = 'Ativo', inactiveLabel = 'Inativo', ...props }: { active: boolean; activeLabel?: string; inactiveLabel?: string } & Omit<ChipProps, 'label' | 'color'>) { return <Chip size="small" color={active ? 'success' : 'default'} variant={active ? 'filled' : 'outlined'} label={active ? activeLabel : inactiveLabel} {...props} /> }
+
+/** Formulário em sheet full-screen no mobile; painel lateral à direita a partir de sm. */
+export function FormSheet({
+  open, onClose, title, children, actions, width = 520, icon, component, onSubmit,
+}: {
+  open: boolean
+  onClose: () => void
+  title: ReactNode
+  children: ReactNode
+  actions: ReactNode
+  width?: number
+  icon?: ReactNode
+  component?: 'div' | 'form'
+  onSubmit?: FormEventHandler<HTMLFormElement>
+}) {
+  const mobile = useMediaQuery('(max-width:599.95px)')
+  return (
+    <Drawer
+      anchor={mobile ? 'bottom' : 'right'}
+      open={open}
+      onClose={onClose}
+      PaperProps={{
+        component,
+        onSubmit,
+        sx: {
+          width: mobile ? '100%' : width,
+          maxWidth: '100%',
+          height: mobile ? '100%' : '100%',
+          borderTopLeftRadius: mobile ? 16 : 0,
+          borderTopRightRadius: mobile ? 16 : 0,
+        },
+      }}
+    >
+      <Stack sx={{ height: '100%' }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 3, py: 2.25 }}>
+          <Stack direction="row" spacing={1.25} alignItems="center" minWidth={0}>
+            {icon}
+            <Typography variant="h5" component="h2" noWrap>{title}</Typography>
+          </Stack>
+          <IconButton onClick={onClose} aria-label="Fechar"><CloseRounded /></IconButton>
+        </Stack>
+        <Divider />
+        <Stack spacing={2.25} sx={{ p: 3, flexGrow: 1, overflowY: 'auto' }}>{children}</Stack>
+        <Divider />
+        <Stack direction="row" justifyContent="flex-end" spacing={1} sx={{ p: 2.5, flexShrink: 0 }}>{actions}</Stack>
+      </Stack>
+    </Drawer>
+  )
+}
+
+/** Altura da bottom navigation + safe-area (padding inferior do shell autenticado). */
+export const BOTTOM_NAV_OFFSET = 'calc(56px + env(safe-area-inset-bottom, 0px))'
