@@ -272,12 +272,12 @@ paths:
     get:
       tags: [Indicadores e relatórios]
       summary: Consulta o relatório de frequência por período
-      description: Aplica o escopo cumulativo do usuário e retorna somente encontros REALIZADO. Cada encontro corresponde a uma página na impressão.
+      description: Aplica o escopo cumulativo do usuário e retorna encontros REALIZADO e NAO_REALIZADO do período. Cada registro corresponde a uma página na impressão; não realizados incluem a justificativa.
       parameters:
         - { name: dataInicio, in: query, required: true, schema: { type: string, format: date } }
         - { name: dataFim, in: query, required: true, schema: { type: string, format: date } }
       responses:
-        '200': { description: Relatórios dos encontros realizados no período, content: { application/json: { schema: { $ref: '#/components/schemas/RelatorioFrequenciaPeriodoResponse' } } } }
+        '200': { description: Relatórios dos encontros do período (realizados e não realizados), content: { application/json: { schema: { $ref: '#/components/schemas/RelatorioFrequenciaPeriodoResponse' } } } }
         '400': { description: Período ausente, invertido ou superior a 12 meses, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
         '401': { $ref: '#/components/responses/NaoAutorizado' }
         '403': { $ref: '#/components/responses/Proibido' }
@@ -290,7 +290,7 @@ paths:
       parameters:
         - { name: data, in: query, required: true, schema: { type: string, format: date } }
       responses:
-        '200': { description: Relatórios dos encontros realizados na data; a lista pode ser vazia, content: { application/json: { schema: { $ref: '#/components/schemas/RelatorioFrequenciaDiariaResponse' } } } }
+        '200': { description: Relatórios dos encontros da data (realizados e não realizados); a lista pode ser vazia, content: { application/json: { schema: { $ref: '#/components/schemas/RelatorioFrequenciaDiariaResponse' } } } }
         '400': { description: Data ausente ou inválida, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
         '401': { $ref: '#/components/responses/NaoAutorizado' }
         '403': { $ref: '#/components/responses/Proibido' }
@@ -356,7 +356,7 @@ components:
     DiscipuladoRelatorio: { type: object, required: [id, nome, sexo], properties: { id: { type: integer, format: int64 }, nome: { type: string }, sexo: { type: string, enum: [MASCULINO, FEMININO] } } }
     ParticipanteRelatorio: { type: object, required: [adolescenteId, nome, telefone, situacao], properties: { adolescenteId: { type: integer, format: int64 }, nome: { type: string }, telefone: { type: [string, 'null'] }, situacao: { type: string, enum: [PRESENTE, AUSENTE] } } }
     ResumoRelatorio: { type: object, required: [presentes, ausentes, participantes, visitantes, percentualPresenca], properties: { presentes: { type: integer, format: int64 }, ausentes: { type: integer, format: int64 }, participantes: { type: integer, format: int64 }, visitantes: { type: integer }, percentualPresenca: { type: number, format: double } } }
-    RelatorioEncontro: { type: object, required: [encontroId, data, gerencia, discipulado, discipulador, coLideres, participantes, visitantes, resumo], properties: { encontroId: { type: integer, format: int64 }, data: { type: string, format: date }, gerencia: { $ref: '#/components/schemas/IdentificacaoRelatorio' }, discipulado: { $ref: '#/components/schemas/DiscipuladoRelatorio' }, discipulador: { $ref: '#/components/schemas/IdentificacaoRelatorio' }, coLideres: { type: array, items: { $ref: '#/components/schemas/IdentificacaoRelatorio' } }, participantes: { type: array, items: { $ref: '#/components/schemas/ParticipanteRelatorio' } }, visitantes: { type: integer }, resumo: { $ref: '#/components/schemas/ResumoRelatorio' } } }
+    RelatorioEncontro: { type: object, required: [encontroId, data, situacao, gerencia, discipulado, discipulador, coLideres, participantes, visitantes, resumo], properties: { encontroId: { type: integer, format: int64 }, data: { type: string, format: date }, situacao: { type: string, enum: [REALIZADO, NAO_REALIZADO] }, justificativa: { type: [string, 'null'], description: Preenchida quando situacao for NAO_REALIZADO. }, gerencia: { $ref: '#/components/schemas/IdentificacaoRelatorio' }, discipulado: { $ref: '#/components/schemas/DiscipuladoRelatorio' }, discipulador: { $ref: '#/components/schemas/IdentificacaoRelatorio' }, coLideres: { type: array, items: { $ref: '#/components/schemas/IdentificacaoRelatorio' } }, participantes: { type: array, items: { $ref: '#/components/schemas/ParticipanteRelatorio' } }, visitantes: { type: integer }, resumo: { $ref: '#/components/schemas/ResumoRelatorio' } } }
     RelatorioFrequenciaPeriodoResponse: { type: object, required: [dataInicio, dataFim, emitidoEm, relatorios], properties: { dataInicio: { type: string, format: date }, dataFim: { type: string, format: date }, emitidoEm: { type: string, format: date-time }, relatorios: { type: array, items: { $ref: '#/components/schemas/RelatorioEncontro' } } } }
     RelatorioFrequenciaDiariaResponse: { type: object, required: [data, emitidoEm, relatorios], properties: { data: { type: string, format: date }, emitidoEm: { type: string, format: date-time }, relatorios: { type: array, items: { $ref: '#/components/schemas/RelatorioEncontro' } } } }
     Indicadores: { type: object, properties: { presentes: { type: integer }, ausentes: { type: integer }, visitantes: { type: integer }, percentualPresenca: { type: number, format: double } } }

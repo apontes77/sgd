@@ -87,14 +87,14 @@ Fluxo:
 1. Acessar “Relatórios”.
 2. Selecionar uma data inicial e uma data final, iguais para um único dia ou separadas por no máximo 12 meses.
 3. Consultar os encontros realizados dentro do escopo dos perfis acumulados do usuário.
-4. Visualizar uma página por encontro, com nome e telefone de cada adolescente, data do encontro, situação presente/ausente, visitantes e totais.
+4. Visualizar uma página por registro, com frequência dos adolescentes quando houve discipulado, ou a justificativa quando não houve.
 5. Acionar “Imprimir / salvar como PDF” e usar o diálogo nativo do navegador.
 
 Fluxos alternativos:
 
 - Usuário com perfil permitido, mas sem associação organizacional aplicável: retornar `404`.
-- Escopo válido sem encontro realizado no período: retornar lista vazia e informar o estado na tela.
-- Encontros não realizados não são exibidos.
+- Escopo válido sem registro no período: retornar lista vazia e informar o estado na tela.
+- Registros de não ocorrência do discipulado são exibidos com a justificativa, sem lista de frequência.
 
 ---
 

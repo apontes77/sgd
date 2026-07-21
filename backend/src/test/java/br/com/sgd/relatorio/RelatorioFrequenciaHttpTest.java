@@ -133,6 +133,7 @@ class RelatorioFrequenciaHttpTest {
 
         consultar(tokenLider).andExpect(status().isOk()).andExpect(jsonPath("$.relatorios.length()").value(1))
             .andExpect(jsonPath("$.relatorios[0].discipulado.nome").value("Alpha"))
+            .andExpect(jsonPath("$.relatorios[0].situacao").value("REALIZADO"))
             .andExpect(jsonPath("$.relatorios[0].participantes[0].nome").value("Ana"))
             .andExpect(jsonPath("$.relatorios[0].participantes[0].telefone").value("(11) 97777-1111"))
             .andExpect(jsonPath("$.relatorios[0].data").value(DATA.toString()))
@@ -154,6 +155,22 @@ class RelatorioFrequenciaHttpTest {
     }
 
     @Test
+    void incluiNaoRealizadoComJustificativaNoHistoricoDoPeriodo() throws Exception {
+        String token = token(liderAlpha);
+        mvc.perform(get("/api/v1/relatorios/frequencia").param("dataInicio", DATA.minusDays(2).toString())
+                .param("dataFim", DATA.toString()).header(HttpHeaders.AUTHORIZATION, bearer(token)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.relatorios.length()").value(3))
+            .andExpect(jsonPath("$.relatorios[0].data").value(DATA.minusDays(2).toString()))
+            .andExpect(jsonPath("$.relatorios[0].situacao").value("NAO_REALIZADO"))
+            .andExpect(jsonPath("$.relatorios[0].justificativa").value("Imprevisto no discipulado"))
+            .andExpect(jsonPath("$.relatorios[0].participantes.length()").value(0))
+            .andExpect(jsonPath("$.relatorios[0].visitantes").value(0))
+            .andExpect(jsonPath("$.relatorios[1].situacao").value("REALIZADO"))
+            .andExpect(jsonPath("$.relatorios[2].situacao").value("REALIZADO"));
+    }
+
+    @Test
     void distingueAusenciaDeEscopoDeDataSemEncontros() throws Exception {
         consultar(token(gerenteSemEscopo)).andExpect(status().isNotFound())
             .andExpect(jsonPath("$.detail").value("O usuário não possui escopo organizacional para relatórios de frequência."));
@@ -169,9 +186,10 @@ class RelatorioFrequenciaHttpTest {
                 .param("dataFim", DATA.toString()).header(HttpHeaders.AUTHORIZATION, bearer(token)))
             .andExpect(status().isOk()).andExpect(jsonPath("$.dataInicio").value(DATA.minusDays(2).toString()))
             .andExpect(jsonPath("$.dataFim").value(DATA.toString()))
-            .andExpect(jsonPath("$.relatorios.length()").value(2))
-            .andExpect(jsonPath("$.relatorios[0].data").value(DATA.minusDays(1).toString()))
-            .andExpect(jsonPath("$.relatorios[1].data").value(DATA.toString()));
+            .andExpect(jsonPath("$.relatorios.length()").value(3))
+            .andExpect(jsonPath("$.relatorios[0].data").value(DATA.minusDays(2).toString()))
+            .andExpect(jsonPath("$.relatorios[1].data").value(DATA.minusDays(1).toString()))
+            .andExpect(jsonPath("$.relatorios[2].data").value(DATA.toString()));
         mvc.perform(get("/api/v1/relatorios/frequencia").param("dataInicio", DATA.toString())
                 .param("dataFim", DATA.minusDays(1).toString()).header(HttpHeaders.AUTHORIZATION, bearer(token)))
             .andExpect(status().isBadRequest());
@@ -193,7 +211,8 @@ class RelatorioFrequenciaHttpTest {
     }
 
     private Encontro encontro(Discipulado discipulado, LocalDate data, SituacaoEncontro situacao) {
-        return encontros.saveAndFlush(new Encontro(discipulado, data, situacao, AGORA));
+        String justificativa = situacao == SituacaoEncontro.NAO_REALIZADO ? "Imprevisto no discipulado" : null;
+        return encontros.saveAndFlush(new Encontro(discipulado, data, situacao, justificativa, AGORA));
     }
 
     private User usuario(String nome, String prefixo, Role... perfis) {

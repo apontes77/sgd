@@ -57,9 +57,9 @@ public class RelatorioFrequenciaService {
         boolean administrador = usuario.getPerfis().contains(Role.ADMIN);
         Escopo escopo = administrador ? new Escopo(Set.of()) : escopoRestrito(usuario);
         List<Encontro> encontrados = administrador
-                ? encontros.realizadosNoPeriodo(inicio, fim, SituacaoEncontro.REALIZADO)
+                ? encontros.noPeriodo(inicio, fim)
                 : escopo.discipuladoIds().isEmpty() ? List.of()
-                : encontros.realizadosNoPeriodoDoEscopo(inicio, fim, SituacaoEncontro.REALIZADO, escopo.discipuladoIds());
+                : encontros.noPeriodoDoEscopo(inicio, fim, escopo.discipuladoIds());
         return new RelatorioPeriodoResponse(inicio, fim, clock.instant(), montarRelatorios(encontrados));
     }
 
@@ -93,6 +93,17 @@ public class RelatorioFrequenciaService {
         List<RelatorioEncontro> resultado = new ArrayList<>();
         for (Encontro encontro : encontrados) {
             var discipulado = encontro.getDiscipulado();
+            List<LiderInfo> coLideres = discipulado.getCoLideres().stream().map(u -> new LiderInfo(u.getId(), u.getNome()))
+                    .sorted(Comparator.comparing(LiderInfo::nome, String.CASE_INSENSITIVE_ORDER)).toList();
+            if (encontro.getSituacao() == SituacaoEncontro.NAO_REALIZADO) {
+                resultado.add(new RelatorioEncontro(encontro.getId(), encontro.getData(), encontro.getSituacao(),
+                        encontro.getJustificativa(),
+                        new GerenciaInfo(discipulado.getGerencia().getId(), discipulado.getGerencia().getNome()),
+                        new DiscipuladoInfo(discipulado.getId(), discipulado.getNome(), discipulado.getSexo().name()),
+                        new LiderInfo(discipulado.getDiscipulador().getId(), discipulado.getDiscipulador().getNome()), coLideres,
+                        List.of(), 0, new ResumoFrequencia(0, 0, 0, 0, BigDecimal.ZERO)));
+                continue;
+            }
             List<ParticipanteInfo> participantes = frequenciasPorEncontro.getOrDefault(encontro.getId(), List.of()).stream()
                     .map(f -> new ParticipanteInfo(f.getAdolescente().getId(), f.getAdolescente().getNome(),
                             f.getAdolescente().getTelefone(), f.getSituacao()))
@@ -100,9 +111,7 @@ public class RelatorioFrequenciaService {
             long presentes = participantes.stream().filter(p -> p.situacao() == SituacaoFrequencia.PRESENTE).count();
             long ausentes = participantes.stream().filter(p -> p.situacao() == SituacaoFrequencia.AUSENTE).count();
             int quantidadeVisitantes = visitantesPorEncontro.getOrDefault(encontro.getId(), 0);
-            List<LiderInfo> coLideres = discipulado.getCoLideres().stream().map(u -> new LiderInfo(u.getId(), u.getNome()))
-                    .sorted(Comparator.comparing(LiderInfo::nome, String.CASE_INSENSITIVE_ORDER)).toList();
-            resultado.add(new RelatorioEncontro(encontro.getId(), encontro.getData(),
+            resultado.add(new RelatorioEncontro(encontro.getId(), encontro.getData(), encontro.getSituacao(), null,
                     new GerenciaInfo(discipulado.getGerencia().getId(), discipulado.getGerencia().getNome()),
                     new DiscipuladoInfo(discipulado.getId(), discipulado.getNome(), discipulado.getSexo().name()),
                     new LiderInfo(discipulado.getDiscipulador().getId(), discipulado.getDiscipulador().getNome()), coLideres,
@@ -121,7 +130,8 @@ public class RelatorioFrequenciaService {
     private record Escopo(Set<Long> discipuladoIds) { }
     public record RelatorioDiarioResponse(LocalDate data, Instant emitidoEm, List<RelatorioEncontro> relatorios) { }
     public record RelatorioPeriodoResponse(LocalDate dataInicio, LocalDate dataFim, Instant emitidoEm, List<RelatorioEncontro> relatorios) { }
-    public record RelatorioEncontro(long encontroId, LocalDate data, GerenciaInfo gerencia, DiscipuladoInfo discipulado,
+    public record RelatorioEncontro(long encontroId, LocalDate data, SituacaoEncontro situacao, String justificativa,
+            GerenciaInfo gerencia, DiscipuladoInfo discipulado,
             LiderInfo discipulador, List<LiderInfo> coLideres, List<ParticipanteInfo> participantes, int visitantes,
             ResumoFrequencia resumo) { }
     public record GerenciaInfo(long id, String nome) { }
