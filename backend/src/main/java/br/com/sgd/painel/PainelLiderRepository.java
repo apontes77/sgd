@@ -18,8 +18,11 @@ public interface PainelLiderRepository extends Repository<Encontro, Long> {
     List<ContagemMensal> frequenciasMensais(long discipuladoId, LocalDate inicio, LocalDate fim);
 
     @Query(value = """
-        select substring(cast(e.data as varchar), 1, 7) as referencia, coalesce(sum(v.quantidade), 0) as visitantes
-          from encontros e left join visitantes v on v.encontro_id = e.id
+        select substring(cast(e.data as varchar), 1, 7) as referencia, count(distinct f.adolescente_id) as visitantes
+          from encontros e
+          join frequencias f on f.encontro_id = e.id and f.situacao = 'PRESENTE'
+          join vinculos_adolescente_discipulado vin on vin.adolescente_id = f.adolescente_id
+           and vin.discipulado_id = e.discipulado_id and vin.data_inicio = e.data
          where e.discipulado_id = :discipuladoId and e.situacao = 'REALIZADO' and e.data between :inicio and :fim
          group by substring(cast(e.data as varchar), 1, 7) order by referencia
         """, nativeQuery = true)

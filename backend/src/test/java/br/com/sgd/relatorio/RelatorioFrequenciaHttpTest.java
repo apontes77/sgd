@@ -7,6 +7,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import br.com.sgd.adolescente.Adolescente;
 import br.com.sgd.adolescente.AdolescenteRepository;
+import br.com.sgd.adolescente.VinculoAdolescenteDiscipulado;
+import br.com.sgd.adolescente.VinculoAdolescenteRepository;
 import br.com.sgd.frequencia.Encontro;
 import br.com.sgd.frequencia.EncontroRepository;
 import br.com.sgd.frequencia.Frequencia;
@@ -57,6 +59,7 @@ class RelatorioFrequenciaHttpTest {
     @Autowired EncontroRepository encontros;
     @Autowired FrequenciaRepository frequencias;
     @Autowired VisitanteRepository visitantes;
+    @Autowired VinculoAdolescenteRepository vinculos;
     @Autowired PasswordEncoder passwords;
 
     private User admin;
@@ -95,6 +98,7 @@ class RelatorioFrequenciaHttpTest {
         Adolescente ana = adolescentes.saveAndFlush(new Adolescente("Ana", LocalDate.of(2010, 1, 1), "(11) 97777-1111", null));
         frequencias.saveAndFlush(new Frequencia(alphaPrincipal, bia, SituacaoFrequencia.PRESENTE, AGORA));
         frequencias.saveAndFlush(new Frequencia(alphaPrincipal, ana, SituacaoFrequencia.AUSENTE, AGORA));
+        vinculos.saveAndFlush(new VinculoAdolescenteDiscipulado(bia, alpha, DATA));
         visitantes.saveAndFlush(new Visitante(alphaPrincipal, 3, AGORA));
         ana.atualizar("Ana", LocalDate.of(2010, 1, 1), "(11) 97777-1111", null, false);
         adolescentes.saveAndFlush(ana);
@@ -134,7 +138,7 @@ class RelatorioFrequenciaHttpTest {
             .andExpect(jsonPath("$.relatorios[0].data").value(DATA.toString()))
             .andExpect(jsonPath("$.relatorios[0].participantes[0].situacao").value("AUSENTE"))
             .andExpect(jsonPath("$.relatorios[0].participantes[1].nome").value("Bia"))
-            .andExpect(jsonPath("$.relatorios[0].visitantes").value(3))
+            .andExpect(jsonPath("$.relatorios[0].visitantes").value(1))
             .andExpect(jsonPath("$.relatorios[0].resumo.presentes").value(1))
             .andExpect(jsonPath("$.relatorios[0].resumo.ausentes").value(1))
             .andExpect(jsonPath("$.relatorios[0].resumo.percentualPresenca").value(50.00))

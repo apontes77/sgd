@@ -19,9 +19,11 @@ public interface PainelGerenciaRepository extends Repository<Encontro, Long> {
     List<ContagemMensal> frequenciasMensais(long gerenciaId, LocalDate inicio, LocalDate fim);
 
     @Query(value = """
-        select substring(cast(e.data as varchar), 1, 7) as referencia, coalesce(sum(v.quantidade), 0) as visitantes
+        select substring(cast(e.data as varchar), 1, 7) as referencia, count(distinct f.adolescente_id) as visitantes
           from encontros e join discipulados d on d.id = e.discipulado_id
-          left join visitantes v on v.encontro_id = e.id
+          join frequencias f on f.encontro_id = e.id and f.situacao = 'PRESENTE'
+          join vinculos_adolescente_discipulado vin on vin.adolescente_id = f.adolescente_id
+           and vin.discipulado_id = e.discipulado_id and vin.data_inicio = e.data
          where d.gerencia_id = :gerenciaId and e.situacao = 'REALIZADO' and e.data between :inicio and :fim
          group by substring(cast(e.data as varchar), 1, 7) order by referencia
         """, nativeQuery = true)
@@ -43,9 +45,11 @@ public interface PainelGerenciaRepository extends Repository<Encontro, Long> {
     List<ContagemDiscipulado> frequenciasPorDiscipulado(long gerenciaId, LocalDate inicio, LocalDate fim);
 
     @Query(value = """
-        select d.id as discipuladoId, coalesce(sum(v.quantidade), 0) as visitantes
+        select d.id as discipuladoId, count(distinct f.adolescente_id) as visitantes
           from encontros e join discipulados d on d.id=e.discipulado_id
-          left join visitantes v on v.encontro_id=e.id
+          join frequencias f on f.encontro_id=e.id and f.situacao='PRESENTE'
+          join vinculos_adolescente_discipulado vin on vin.adolescente_id=f.adolescente_id
+           and vin.discipulado_id=e.discipulado_id and vin.data_inicio=e.data
          where d.gerencia_id=:gerenciaId and e.situacao='REALIZADO' and e.data between :inicio and :fim
          group by d.id
         """, nativeQuery = true)
@@ -64,9 +68,11 @@ public interface PainelGerenciaRepository extends Repository<Encontro, Long> {
     List<ContagemMensalDiscipulado> frequenciasMensaisPorDiscipulado(long gerenciaId, LocalDate inicio, LocalDate fim);
 
     @Query(value = """
-        select d.id as discipuladoId, substring(cast(e.data as varchar), 1, 7) as referencia, coalesce(sum(v.quantidade), 0) as visitantes
+        select d.id as discipuladoId, substring(cast(e.data as varchar), 1, 7) as referencia, count(distinct f.adolescente_id) as visitantes
           from encontros e join discipulados d on d.id=e.discipulado_id
-          left join visitantes v on v.encontro_id=e.id
+          join frequencias f on f.encontro_id=e.id and f.situacao='PRESENTE'
+          join vinculos_adolescente_discipulado vin on vin.adolescente_id=f.adolescente_id
+           and vin.discipulado_id=e.discipulado_id and vin.data_inicio=e.data
          where d.gerencia_id=:gerenciaId and e.situacao='REALIZADO' and e.data between :inicio and :fim
          group by d.id, substring(cast(e.data as varchar), 1, 7)
          order by d.id, referencia

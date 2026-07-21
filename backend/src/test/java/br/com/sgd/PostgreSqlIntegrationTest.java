@@ -91,10 +91,10 @@ class PostgreSqlIntegrationTest {
             PainelAdminRepository.ContagemMensal::getReferencia,
             PainelAdminRepository.ContagemMensal::getPresentes,
             PainelAdminRepository.ContagemMensal::getAusentes
-        ).containsExactly(tuple("2025-01", 1L, 1L), tuple("2025-02", 1L, 0L));
+        ).containsExactly(tuple("2025-01", 2L, 1L), tuple("2025-02", 1L, 0L));
         assertThat(painelAdmin.visitantesMensais(inicio, fim))
             .extracting(PainelAdminRepository.VisitantesMensais::getVisitantes)
-            .containsExactly(3L, 2L);
+            .containsExactly(1L, 1L);
         assertThat(painelAdmin.encontrosRealizados(inicio, fim)).isEqualTo(2);
         assertThat(painelAdmin.porGerencia(inicio, fim)).hasSize(2);
         assertThat(painelAdmin.porSexo(inicio, fim)).hasSize(2);
@@ -102,23 +102,23 @@ class PostgreSqlIntegrationTest {
         assertThat(painelGerencia.frequenciasMensais(c.gerencia(), inicio, fim))
             .singleElement().satisfies(item -> {
                 assertThat(item.getReferencia()).isEqualTo("2025-01");
-                assertThat(item.getPresentes()).isEqualTo(1);
+                assertThat(item.getPresentes()).isEqualTo(2);
                 assertThat(item.getAusentes()).isEqualTo(1);
             });
         assertThat(painelGerencia.visitantesPorDiscipulado(c.gerencia(), inicio, fim))
             .singleElement().satisfies(item -> {
                 assertThat(item.getDiscipuladoId()).isEqualTo(c.discipulado());
-                assertThat(item.getVisitantes()).isEqualTo(3);
+                assertThat(item.getVisitantes()).isEqualTo(1);
             });
         assertThat(painelGerencia.encontrosRealizados(c.gerencia(), inicio, fim)).isEqualTo(1);
 
         assertThat(painelLider.frequenciasMensais(c.discipulado(), inicio, fim))
             .singleElement().satisfies(item -> {
-                assertThat(item.getPresentes()).isEqualTo(1);
+                assertThat(item.getPresentes()).isEqualTo(2);
                 assertThat(item.getAusentes()).isEqualTo(1);
             });
         assertThat(painelLider.visitantesMensais(c.discipulado(), inicio, fim))
-            .singleElement().satisfies(item -> assertThat(item.getVisitantes()).isEqualTo(3));
+            .singleElement().satisfies(item -> assertThat(item.getVisitantes()).isEqualTo(1));
         assertThat(painelLider.encontrosRealizados(c.discipulado(), inicio, fim)).isEqualTo(1);
     }
 
@@ -176,16 +176,21 @@ class PostgreSqlIntegrationTest {
         long discipuladoDois = discipulado("Flores", "FEMININO", gerenciaDois, responsavel);
         long adolescenteUm = adolescente("Adolescente 1", "2008-01-01", "2024-01-01T00:00:00Z");
         long adolescenteDois = adolescente("Adolescente 2", "2008-02-01", "2024-01-01T00:00:00Z");
+        long visitanteJaneiro = adolescente("Visitante Janeiro", "2009-03-01", "2025-01-12T00:00:00Z");
+        long visitanteFevereiro = adolescente("Visitante Fevereiro", "2009-04-01", "2025-02-09T00:00:00Z");
+        vinculo(adolescenteUm, discipuladoUm, "2024-01-01");
+        vinculo(adolescenteDois, discipuladoUm, "2024-01-01");
+        vinculo(visitanteJaneiro, discipuladoUm, "2025-01-12");
+        vinculo(visitanteFevereiro, discipuladoDois, "2025-02-09");
+
         long janeiro = encontro(discipuladoUm, "2025-01-12", "REALIZADO");
         frequencia(janeiro, adolescenteUm, "PRESENTE");
         frequencia(janeiro, adolescenteDois, "AUSENTE");
-        visitantes(janeiro, 3);
+        frequencia(janeiro, visitanteJaneiro, "PRESENTE");
         long fevereiro = encontro(discipuladoDois, "2025-02-09", "REALIZADO");
-        frequencia(fevereiro, adolescenteUm, "PRESENTE");
-        visitantes(fevereiro, 2);
+        frequencia(fevereiro, visitanteFevereiro, "PRESENTE");
         long cancelado = encontro(discipuladoUm, "2025-01-19", "NAO_REALIZADO");
         frequencia(cancelado, adolescenteUm, "PRESENTE");
-        visitantes(cancelado, 9);
         return new Cenario(gerenciaUm, discipuladoUm);
     }
 
@@ -227,9 +232,10 @@ class PostgreSqlIntegrationTest {
             encontro, adolescente, situacao);
     }
 
-    private void visitantes(long encontro, int quantidade) {
-        jdbc.update("insert into visitantes(encontro_id,quantidade) values (?,?)",
-            encontro, quantidade);
+    private void vinculo(long adolescente, long discipulado, String dataInicio) {
+        jdbc.update("insert into vinculos_adolescente_discipulado(adolescente_id,discipulado_id,data_inicio,ativo) "
+                + "values (?,?,cast(? as date),true)",
+            adolescente, discipulado, dataInicio);
     }
 
     private void auditoria(long usuario, String entidade, String acao, String detalhes, String instante) {

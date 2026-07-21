@@ -5,7 +5,6 @@ import br.com.sgd.frequencia.Frequencia;
 import br.com.sgd.frequencia.FrequenciaRepository;
 import br.com.sgd.frequencia.SituacaoEncontro;
 import br.com.sgd.frequencia.SituacaoFrequencia;
-import br.com.sgd.frequencia.VisitanteRepository;
 import br.com.sgd.organizacao.DiscipuladoRepository;
 import br.com.sgd.organizacao.GerenciaRepository;
 import br.com.sgd.user.Role;
@@ -32,16 +31,14 @@ import org.springframework.web.server.ResponseStatusException;
 public class RelatorioFrequenciaService {
     private final RelatorioFrequenciaRepository encontros;
     private final FrequenciaRepository frequencias;
-    private final VisitanteRepository visitantes;
     private final GerenciaRepository gerencias;
     private final DiscipuladoRepository discipulados;
     private final Clock clock;
 
     public RelatorioFrequenciaService(RelatorioFrequenciaRepository encontros, FrequenciaRepository frequencias,
-            VisitanteRepository visitantes, GerenciaRepository gerencias, DiscipuladoRepository discipulados, Clock clock) {
+            GerenciaRepository gerencias, DiscipuladoRepository discipulados, Clock clock) {
         this.encontros = encontros;
         this.frequencias = frequencias;
-        this.visitantes = visitantes;
         this.gerencias = gerencias;
         this.discipulados = discipulados;
         this.clock = clock;
@@ -90,8 +87,8 @@ public class RelatorioFrequenciaService {
         Map<Long, List<Frequencia>> frequenciasPorEncontro = frequencias
                 .findAllByEncontroIdInOrderByEncontroIdAscAdolescenteNomeAsc(encontroIds).stream()
                 .collect(Collectors.groupingBy(f -> f.getEncontro().getId()));
-        Map<Long, Integer> visitantesPorEncontro = visitantes.findAllByEncontroIdIn(encontroIds).stream()
-                .collect(Collectors.toMap(v -> v.getEncontro().getId(), v -> v.getQuantidade()));
+        Map<Long, Integer> visitantesPorEncontro = encontros.contarVisitantesPorEncontro(encontroIds).stream()
+                .collect(Collectors.toMap(v -> v.getEncontroId(), v -> v.getVisitantes() == null ? 0 : v.getVisitantes()));
 
         List<RelatorioEncontro> resultado = new ArrayList<>();
         for (Encontro encontro : encontrados) {
