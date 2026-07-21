@@ -163,7 +163,7 @@ Segredos de e-mail pertencem ao gerenciador de segredos da plataforma e nunca ao
 
 **Status:** Implementada.
 
-Encontros podem ser realizados ou cancelados. Discipulador e co-líder registram presença no próprio grupo. A frequência pode ser alterada durante uma janela de três horas; após esse prazo, somente administradores podem alterá-la. Alterações relevantes geram auditoria.
+Encontros podem ser realizados ou não realizados. Discipulador e co-líder registram presença no próprio grupo. A frequência pode ser alterada durante uma janela de três horas; após esse prazo, somente administradores podem alterá-la. Alterações relevantes geram auditoria.
 
 ### DEC-019 — O progresso individual usa taxa mensal de presença
 

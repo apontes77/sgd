@@ -98,32 +98,32 @@ class FrequenciaHttpTest {
 
         mvc.perform(post("/api/v1/encontros").header(HttpHeaders.AUTHORIZATION, bearer(tokenDiscipulador))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"discipuladoId\":" + proprio.getId() + ",\"data\":\"2026-07-18\",\"situacao\":\"CANCELADO\"}"))
+                .content("{\"discipuladoId\":" + proprio.getId() + ",\"data\":\"2026-07-18\",\"situacao\":\"NAO_REALIZADO\"}"))
             .andExpect(status().isBadRequest());
 
         String response = mvc.perform(post("/api/v1/encontros").header(HttpHeaders.AUTHORIZATION, bearer(tokenDiscipulador))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"discipuladoId\":" + proprio.getId() + ",\"data\":\"2026-07-18\",\"situacao\":\"CANCELADO\",\"justificativa\":\"  Líder doente  \"}"))
+                .content("{\"discipuladoId\":" + proprio.getId() + ",\"data\":\"2026-07-18\",\"situacao\":\"NAO_REALIZADO\",\"justificativa\":\"  Líder doente  \"}"))
             .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.situacao").value("CANCELADO"))
+            .andExpect(jsonPath("$.situacao").value("NAO_REALIZADO"))
             .andExpect(jsonPath("$.justificativa").value("Líder doente"))
             .andReturn().getResponse().getContentAsString();
         long encontroId = json.readTree(response).get("id").asLong();
 
         mvc.perform(post("/api/v1/encontros").header(HttpHeaders.AUTHORIZATION, bearer(tokenCoLider))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"discipuladoId\":" + proprio.getId() + ",\"data\":\"2026-07-19\",\"situacao\":\"CANCELADO\",\"justificativa\":\"Imprevisto\"}"))
+                .content("{\"discipuladoId\":" + proprio.getId() + ",\"data\":\"2026-07-19\",\"situacao\":\"NAO_REALIZADO\",\"justificativa\":\"Imprevisto\"}"))
             .andExpect(status().isForbidden());
 
         mvc.perform(post("/api/v1/encontros").header(HttpHeaders.AUTHORIZATION, bearer(tokenDiscipulador))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"discipuladoId\":" + alheio.getId() + ",\"data\":\"2026-07-19\",\"situacao\":\"CANCELADO\",\"justificativa\":\"Imprevisto\"}"))
+                .content("{\"discipuladoId\":" + alheio.getId() + ",\"data\":\"2026-07-19\",\"situacao\":\"NAO_REALIZADO\",\"justificativa\":\"Imprevisto\"}"))
             .andExpect(status().isForbidden());
 
         mvc.perform(patch("/api/v1/encontros/{id}", encontroId)
                 .header(HttpHeaders.AUTHORIZATION, bearer(tokenDiscipulador))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"situacao\":\"CANCELADO\",\"justificativa\":\"Imprevisto resolvido\"}"))
+                .content("{\"situacao\":\"NAO_REALIZADO\",\"justificativa\":\"Imprevisto resolvido\"}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.justificativa").value("Imprevisto resolvido"));
 
@@ -147,7 +147,7 @@ class FrequenciaHttpTest {
 
         mvc.perform(post("/api/v1/encontros").header(HttpHeaders.AUTHORIZATION, bearer(tokenAdmin))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"discipuladoId\":" + alheio.getId() + ",\"data\":\"2026-07-20\",\"situacao\":\"CANCELADO\",\"justificativa\":\"Ausência justificada\"}"))
+                .content("{\"discipuladoId\":" + alheio.getId() + ",\"data\":\"2026-07-20\",\"situacao\":\"NAO_REALIZADO\",\"justificativa\":\"Ausência justificada\"}"))
             .andExpect(status().isCreated());
     }
 

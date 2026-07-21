@@ -72,8 +72,8 @@ class PostgreSqlIntegrationTest {
             .map(info -> info.getVersion().getVersion())
             .toList();
 
-        assertThat(versoes).containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9");
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("9");
+        assertThat(versoes).containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("10");
         assertThat(jdbc.queryForList(
             "select table_name from information_schema.tables where table_schema='public'",
             String.class
@@ -183,7 +183,7 @@ class PostgreSqlIntegrationTest {
         long fevereiro = encontro(discipuladoDois, "2025-02-09", "REALIZADO");
         frequencia(fevereiro, adolescenteUm, "PRESENTE");
         visitantes(fevereiro, 2);
-        long cancelado = encontro(discipuladoUm, "2025-01-19", "CANCELADO");
+        long cancelado = encontro(discipuladoUm, "2025-01-19", "NAO_REALIZADO");
         frequencia(cancelado, adolescenteUm, "PRESENTE");
         visitantes(cancelado, 9);
         return new Cenario(gerenciaUm, discipuladoUm);
@@ -215,7 +215,7 @@ class PostgreSqlIntegrationTest {
     }
 
     private long encontro(long discipulado, String data, String situacao) {
-        String justificativa = "CANCELADO".equals(situacao) ? "Encontro nao realizado" : null;
+        String justificativa = "NAO_REALIZADO".equals(situacao) ? "Encontro nao realizado" : null;
         return jdbc.queryForObject(
             "insert into encontros(discipulado_id,data,situacao,justificativa) "
                 + "values (?,cast(? as date),?,?) returning id",

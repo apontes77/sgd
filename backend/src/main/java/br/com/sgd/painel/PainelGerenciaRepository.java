@@ -77,7 +77,7 @@ public interface PainelGerenciaRepository extends Repository<Encontro, Long> {
         select e.id as encontroId, d.id as discipuladoId, d.nome as discipuladoNome,
                e.data as data, e.justificativa as justificativa
           from encontros e join discipulados d on d.id=e.discipulado_id
-         where d.gerencia_id=:gerenciaId and e.situacao='CANCELADO' and e.data between :inicio and :fim
+         where d.gerencia_id=:gerenciaId and e.situacao='NAO_REALIZADO' and e.data between :inicio and :fim
          order by e.data desc, d.nome, e.id desc
         """, nativeQuery = true)
     List<EncontroNaoRealizado> encontrosNaoRealizados(long gerenciaId, LocalDate inicio, LocalDate fim);

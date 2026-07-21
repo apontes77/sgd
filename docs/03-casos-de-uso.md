@@ -94,7 +94,7 @@ Fluxos alternativos:
 
 - Usuário com perfil permitido, mas sem associação organizacional aplicável: retornar `404`.
 - Escopo válido sem encontro realizado no período: retornar lista vazia e informar o estado na tela.
-- Encontros cancelados não são exibidos.
+- Encontros não realizados não são exibidos.
 
 ---
 

@@ -10,7 +10,7 @@ public class Encontro {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "discipulado_id") private Discipulado discipulado;
     @Column(nullable = false) private LocalDate data;
-    @Enumerated(EnumType.STRING) @Column(nullable = false, length = 12) private SituacaoEncontro situacao;
+    @Enumerated(EnumType.STRING) @Column(nullable = false, length = 20) private SituacaoEncontro situacao;
     @Column(length = 500) private String justificativa;
     @Column(name = "criado_em", nullable = false) private Instant criadoEm = Instant.now();
     @Column(name = "atualizado_em", nullable = false) private Instant atualizadoEm = Instant.now();

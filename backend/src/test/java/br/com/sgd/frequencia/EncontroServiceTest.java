@@ -76,12 +76,12 @@ class EncontroServiceTest {
         when(encontros.findById(1L)).thenReturn(Optional.of(encontro));
         when(frequencias.existsByEncontroId(1L)).thenReturn(true);
 
-        assertThatThrownBy(() -> service.atualizar(usuario(Role.ADMIN), 1L, null, SituacaoEncontro.CANCELADO, "Líder indisponível"))
+        assertThatThrownBy(() -> service.atualizar(usuario(Role.ADMIN), 1L, null, SituacaoEncontro.NAO_REALIZADO, "Líder indisponível"))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("situação alterada");
 
         when(frequencias.existsByEncontroId(1L)).thenReturn(false);
         when(visitantes.findByEncontroId(1L)).thenReturn(Optional.of(new Visitante(encontro, 2, AGORA)));
-        assertThatThrownBy(() -> service.atualizar(usuario(Role.ADMIN), 1L, null, SituacaoEncontro.CANCELADO, "Líder indisponível"))
+        assertThatThrownBy(() -> service.atualizar(usuario(Role.ADMIN), 1L, null, SituacaoEncontro.NAO_REALIZADO, "Líder indisponível"))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("situação alterada");
     }
 
@@ -91,9 +91,9 @@ class EncontroServiceTest {
         when(visitantes.findByEncontroId(1L)).thenReturn(Optional.of(new Visitante(encontro, 0, AGORA)));
         when(json.writeValueAsString(any())).thenReturn("{}");
 
-        service.atualizar(usuario(Role.ADMIN), 1L, null, SituacaoEncontro.CANCELADO, "  Líder indisponível  ");
+        service.atualizar(usuario(Role.ADMIN), 1L, null, SituacaoEncontro.NAO_REALIZADO, "  Líder indisponível  ");
 
-        assertThat(encontro.getSituacao()).isEqualTo(SituacaoEncontro.CANCELADO);
+        assertThat(encontro.getSituacao()).isEqualTo(SituacaoEncontro.NAO_REALIZADO);
         assertThat(encontro.getJustificativa()).isEqualTo("Líder indisponível");
         verify(auditoria).save(any());
     }
@@ -102,17 +102,17 @@ class EncontroServiceTest {
         Encontro encontro = encontro(AGORA.minusSeconds(60));
         when(encontros.findById(1L)).thenReturn(Optional.of(encontro));
 
-        service.atualizar(usuario(Role.DISCIPULADOR), 1L, null, SituacaoEncontro.CANCELADO, "Imprevisto");
-        assertThat(encontro.getSituacao()).isEqualTo(SituacaoEncontro.CANCELADO);
+        service.atualizar(usuario(Role.DISCIPULADOR), 1L, null, SituacaoEncontro.NAO_REALIZADO, "Imprevisto");
+        assertThat(encontro.getSituacao()).isEqualTo(SituacaoEncontro.NAO_REALIZADO);
         assertThat(encontro.getJustificativa()).isEqualTo("Imprevisto");
 
         assertThatThrownBy(() -> service.atualizar(usuario(Role.CO_LIDER), 1L, null,
-                SituacaoEncontro.CANCELADO, "Imprevisto"))
+                SituacaoEncontro.NAO_REALIZADO, "Imprevisto"))
             .isInstanceOf(ResponseStatusException.class)
             .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode().value()).isEqualTo(403));
 
         assertThatThrownBy(() -> service.atualizar(usuario(Role.ADMIN), 1L, null,
-                SituacaoEncontro.CANCELADO, "   "))
+                SituacaoEncontro.NAO_REALIZADO, "   "))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("justificativa");
         verify(encontros, never()).save(any());
@@ -131,7 +131,7 @@ class EncontroServiceTest {
 
     @Test void somenteAdministradorPodeReverterNaoRealizacao() throws Exception {
         Encontro cancelado = new Encontro(discipulado, LocalDate.of(2026, 7, 17),
-                SituacaoEncontro.CANCELADO, "Imprevisto", AGORA);
+                SituacaoEncontro.NAO_REALIZADO, "Imprevisto", AGORA);
         when(encontros.findById(1L)).thenReturn(Optional.of(cancelado));
 
         assertThatThrownBy(() -> service.atualizar(usuario(Role.DISCIPULADOR), 1L, null,
@@ -163,9 +163,9 @@ class EncontroServiceTest {
     }
 
     @Test void rejeitaEdicaoDeEncontroCanceladoAntesDeAvaliarJanela() {
-        Encontro cancelado = new Encontro(discipulado, LocalDate.now(), SituacaoEncontro.CANCELADO, AGORA);
+        Encontro cancelado = new Encontro(discipulado, LocalDate.now(), SituacaoEncontro.NAO_REALIZADO, AGORA);
         assertThatThrownBy(() -> service.exigirEditavel(usuario(Role.ADMIN), cancelado))
-                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("cancelado");
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("não realizado");
     }
 
     @Test void listarUsaLimitesPadraoEExigeLeitura() {

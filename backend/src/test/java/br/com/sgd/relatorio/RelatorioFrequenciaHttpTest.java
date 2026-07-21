@@ -88,7 +88,7 @@ class RelatorioFrequenciaHttpTest {
 
         Encontro alphaPrincipal = encontro(alpha, SituacaoEncontro.REALIZADO);
         encontro(alpha, DATA.minusDays(1), SituacaoEncontro.REALIZADO);
-        encontro(alpha, DATA.minusDays(2), SituacaoEncontro.CANCELADO);
+        encontro(alpha, DATA.minusDays(2), SituacaoEncontro.NAO_REALIZADO);
         encontro(beta, SituacaoEncontro.REALIZADO);
         encontro(gamma, SituacaoEncontro.REALIZADO);
         Adolescente bia = adolescentes.saveAndFlush(new Adolescente("Bia", LocalDate.of(2010, 2, 1), "(11) 98888-2222", null));

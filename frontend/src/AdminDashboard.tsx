@@ -32,7 +32,7 @@ function Conteudo({ dados }: { dados: PainelAdminResponse }) {
   const meses = normalizarMeses(dados.dataInicio, dados.dataFim, dados.evolucao)
   return <Stack spacing={3}>
     <KpisPresenca resumo={dados.resumo} />
-    <Typography color="text.secondary" variant="body2">A presença considera somente participantes presentes e ausentes; visitantes e encontros cancelados não entram no percentual.</Typography>
+    <Typography color="text.secondary" variant="body2">A presença considera somente participantes presentes e ausentes; visitantes e encontros não realizados não entram no percentual.</Typography>
     {dados.resumo.encontrosRealizados === 0 && <Alert severity="info">Não há encontros realizados no período selecionado.</Alert>}
     <PainelEvolucao titulo="Evolução mensal" tabelaTitulo="Resumo mensal" dados={meses} />
     <Box><Typography variant="overline" color="primary.main" fontWeight={700}>Organização</Typography><Typography variant="h5" component="h2">Recortes organizacionais</Typography></Box>

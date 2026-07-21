@@ -18,7 +18,7 @@ RN005 - Um discipulado possui apenas um gerente.
 
 RN006 - A frequência é registrada por encontro.
 
-RN007 - Um encontro pode ser realizado ou cancelado.
+RN007 - Um encontro pode ser realizado ou não realizado.
 
 RN008 - O líder pode registrar presença.
 
