@@ -43,7 +43,21 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Map<String, Object>> handleUnreadable(HttpMessageNotReadableException exception) {
-        return response(HttpStatus.BAD_REQUEST, "O corpo da requisição é inválido.");
+        return response(HttpStatus.BAD_REQUEST, detalheCorpoInvalido(exception));
+    }
+
+    private static String detalheCorpoInvalido(HttpMessageNotReadableException exception) {
+        Throwable causa = exception.getMostSpecificCause();
+        if (causa instanceof com.fasterxml.jackson.databind.exc.InvalidFormatException invalid
+                && invalid.getTargetType() != null && invalid.getTargetType().isEnum()) {
+            return "Valor inválido para " + invalid.getTargetType().getSimpleName() + ": '"
+                    + invalid.getValue() + "'.";
+        }
+        if (causa instanceof IllegalArgumentException illegal && illegal.getMessage() != null
+                && !illegal.getMessage().isBlank()) {
+            return illegal.getMessage();
+        }
+        return "O corpo da requisição é inválido.";
     }
 
     @ExceptionHandler(ConstraintViolationException.class)

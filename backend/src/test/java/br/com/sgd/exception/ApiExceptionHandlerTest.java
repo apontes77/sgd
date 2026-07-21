@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.sgd.auth.AuthService;
 import br.com.sgd.auth.OAuthIdentityService;
+import br.com.sgd.frequencia.SituacaoEncontro;
 import br.com.sgd.user.UserService;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,13 @@ class ApiExceptionHandlerTest {
         assertProblem(handler.handleUnreadable(new HttpMessageNotReadableException("invalid body")), 400, "corpo");
         assertProblem(handler.handleIllegalArgument(new IllegalArgumentException("specific detail")), 400, "specific detail");
         assertProblem(handler.handleIllegalArgument(new IllegalArgumentException()), 400, "Dados de entrada");
+    }
+
+    @Test
+    void mapsUnreadableBodyWithEnumCause() {
+        var cause = com.fasterxml.jackson.databind.exc.InvalidFormatException.from(
+                (com.fasterxml.jackson.core.JsonParser) null, "bad", "CANCELADO", SituacaoEncontro.class);
+        assertProblem(handler.handleUnreadable(new HttpMessageNotReadableException("wrap", cause)), 400, "SituacaoEncontro");
     }
 
     @Test
