@@ -1,6 +1,6 @@
 import { request, type Pagina } from './api'
 
-export type SituacaoEncontro = 'REALIZADO' | 'CANCELADO'
+export type SituacaoEncontro = 'REALIZADO' | 'NAO_REALIZADO'
 export type SituacaoFrequencia = 'PRESENTE' | 'AUSENTE'
 export interface Encontro { id:number; discipuladoId:number; data:string; situacao:SituacaoEncontro; justificativa:string|null; criadoEm:string }
 export interface Frequencia { id:number; encontroId:number; adolescenteId:number; adolescenteNome:string; situacao:SituacaoFrequencia; registradaEm:string }

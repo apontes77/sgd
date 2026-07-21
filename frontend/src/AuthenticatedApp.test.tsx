@@ -110,8 +110,9 @@ describe('navegação autenticada', () => {
 
     await userEvent.click(screen.getByRole('tab', { name: 'Registrar frequência' }))
 
-    expect(await screen.findByText('Meu grupo')).toBeInTheDocument()
-    expect(screen.getByText('Registrar encontro não realizado')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /^Houve discipulado/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Não houve discipulado/ })).toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/encontros?discipuladoId=7'))).toBe(true)
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/discipulados?'))).toBe(false)
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/discipulados/liderados?ativo=true'))).toBe(true)
   })
