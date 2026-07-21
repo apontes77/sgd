@@ -7,9 +7,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import java.util.Optional;
 
-public interface DiscipuladoRepository extends JpaRepository<Discipulado, Long> {
+public interface DiscipuladoRepository extends JpaRepository<Discipulado, Long>, JpaSpecificationExecutor<Discipulado> {
     @Override
     @EntityGraph(attributePaths = {"gerencia", "discipulador"})
     Page<Discipulado> findAll(Pageable pageable);

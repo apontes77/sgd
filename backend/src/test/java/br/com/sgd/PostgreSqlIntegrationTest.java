@@ -72,8 +72,8 @@ class PostgreSqlIntegrationTest {
             .map(info -> info.getVersion().getVersion())
             .toList();
 
-        assertThat(versoes).containsExactly("1", "2", "3", "4", "5", "6");
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("6");
+        assertThat(versoes).containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("9");
         assertThat(jdbc.queryForList(
             "select table_name from information_schema.tables where table_schema='public'",
             String.class
@@ -215,9 +215,11 @@ class PostgreSqlIntegrationTest {
     }
 
     private long encontro(long discipulado, String data, String situacao) {
+        String justificativa = "CANCELADO".equals(situacao) ? "Encontro nao realizado" : null;
         return jdbc.queryForObject(
-            "insert into encontros(discipulado_id,data,situacao) values (?,cast(? as date),?) returning id",
-            Long.class, discipulado, data, situacao);
+            "insert into encontros(discipulado_id,data,situacao,justificativa) "
+                + "values (?,cast(? as date),?,?) returning id",
+            Long.class, discipulado, data, situacao, justificativa);
     }
 
     private void frequencia(long encontro, long adolescente, String situacao) {

@@ -1,11 +1,11 @@
 import {
   AccountTreeRounded, AssessmentRounded, DashboardRounded, Diversity3Rounded, FactCheckRounded,
-  GroupsRounded, LogoutRounded, MenuRounded, MoreVertRounded, PeopleAltRounded,
+  GroupsRounded, LogoutRounded, MenuRounded, PeopleAltRounded,
 } from '@mui/icons-material'
 import {
-  AppBar, Avatar, Box, Divider, Drawer, FormControl, IconButton, InputLabel,
-  List, ListItemButton, ListItemIcon, ListItemText, Menu, MenuItem, Select, Stack,
-  Toolbar, Tooltip, Typography,
+  AppBar, Avatar, Box, Drawer, FormControl, IconButton, InputLabel,
+  List, ListItemButton, ListItemIcon, ListItemText, MenuItem, Select, Stack,
+  Toolbar, Typography,
 } from '@mui/material'
 import { lazy, ReactNode, Suspense, useEffect, useMemo, useState } from 'react'
 import AdolescentManagement from './AdolescentManagement'
@@ -40,21 +40,15 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
   }, [currentUser.perfis])
   const [section, setSection] = useState<Section>(sections[0].value)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null)
   const currentSection = sections.find((item) => item.value === section) ?? sections[0]
   function navigate(value: Section) { setSection(value); setMobileOpen(false) }
 
-  const navigation = <Navigation items={sections} current={section} currentUser={currentUser} onNavigate={navigate} />
+  const navigation = <Navigation items={sections} current={section} currentUser={currentUser} onNavigate={navigate} onLogout={() => { setMobileOpen(false); onLogout() }} />
   return <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
     <AppBar position="fixed" color="inherit" elevation={0} sx={{ width: { md: `calc(100% - ${drawerWidth}px)` }, ml: { md: `${drawerWidth}px` }, borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'rgba(255,255,255,.94)', backdropFilter: 'blur(12px)', zIndex: (theme) => theme.zIndex.drawer - 1 }}>
       <Toolbar sx={{ minHeight: { xs: 64, md: 68 }, px: { xs: 2, md: 3 } }}>
         <IconButton edge="start" onClick={() => setMobileOpen(true)} sx={{ mr: 1.5, display: { md: 'none' } }} aria-label="Abrir menu"><MenuRounded /></IconButton>
         <Box sx={{ flexGrow: 1 }}><Typography variant="body2" color="text.secondary">SGD</Typography><Typography variant="h6">{currentSection.label}</Typography></Box>
-        <Tooltip title="Menu do usuário"><IconButton onClick={(event) => setMenuAnchor(event.currentTarget)} aria-label="Menu do usuário"><MoreVertRounded /></IconButton></Tooltip>
-        <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => setMenuAnchor(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} transformOrigin={{ vertical: 'top', horizontal: 'right' }}>
-          <Box sx={{ px: 2, py: 1, minWidth: 220 }}><Typography variant="subtitle2">{currentUser.nome}</Typography><Typography variant="caption" color="text.secondary">{currentUser.perfis.map((role) => roleLabel[role]).join(', ')}</Typography></Box>
-          <Divider /><MenuItem onClick={() => { setMenuAnchor(null); onLogout() }}><ListItemIcon><LogoutRounded fontSize="small" /></ListItemIcon>Sair</MenuItem>
-        </Menu>
       </Toolbar>
     </AppBar>
     <Box component="nav" aria-label="Navegação principal">
@@ -78,7 +72,7 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
   </Box>
 }
 
-function Navigation({ items, current, currentUser, onNavigate }: { items: NavItem[]; current: Section; currentUser: Usuario; onNavigate: (value: Section) => void }) {
+function Navigation({ items, current, currentUser, onNavigate, onLogout }: { items: NavItem[]; current: Section; currentUser: Usuario; onNavigate: (value: Section) => void; onLogout: () => void }) {
   const groups: NavGroup[] = ['Visão geral', 'Gestão', 'Operação', 'Análises']
   return <Stack sx={{ height: '100%', bgcolor: 'background.paper' }}>
     <Stack direction="row" alignItems="center" spacing={1.4} sx={{ height: 76, px: 2.5, borderBottom: '1px solid', borderColor: 'divider' }}><Box sx={{ width: 42, height: 42, borderRadius: 2.5, display: 'grid', placeItems: 'center', color: '#fff', bgcolor: 'primary.main' }}><Diversity3Rounded /></Box><Box><Typography variant="h6" color="primary.dark">SGD</Typography><Typography variant="caption" color="text.secondary">Gestão de discipulados</Typography></Box></Stack>
@@ -88,6 +82,7 @@ function Navigation({ items, current, currentUser, onNavigate }: { items: NavIte
         return groupItems.length ? <Box component="li" key={group} sx={{ listStyle: 'none', mb: 1.5 }}><Typography variant="overline" color="text.secondary" sx={{ px: 1.5, fontSize: '.66rem', fontWeight: 700 }}>{group}</Typography>{groupItems.map((item) => <ListItemButton component="button" role="tab" aria-selected={current === item.value} key={item.value} selected={current === item.value} onClick={() => onNavigate(item.value)} sx={{ width: '100%', borderRadius: 2, mt: 0.4, minHeight: 44, '&.Mui-selected': { bgcolor: '#EEF1FF', color: 'primary.dark', '&:hover': { bgcolor: '#E5E9FF' } } }}><ListItemIcon sx={{ minWidth: 38, color: current === item.value ? 'primary.main' : 'text.secondary', '& svg': { fontSize: 21 } }}>{item.icon}</ListItemIcon><ListItemText primary={item.label} primaryTypographyProps={{ fontSize: '.875rem', fontWeight: current === item.value ? 650 : 500 }} /></ListItemButton>)}</Box> : null
       })}
     </List>
+      <ListItemButton component="button" onClick={onLogout} sx={{ width: '100%', borderRadius: 2, mt: 0.5, minHeight: 44 }}><ListItemIcon sx={{ minWidth: 38, color: 'text.secondary', '& svg': { fontSize: 21 } }}><LogoutRounded /></ListItemIcon><ListItemText primary="Sair" primaryTypographyProps={{ fontSize: '.875rem', fontWeight: 500 }} /></ListItemButton>
     <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}><Stack direction="row" alignItems="center" spacing={1.25}><Avatar sx={{ width: 38, height: 38, bgcolor: '#EEF1FF', color: 'primary.main', fontSize: '.9rem', fontWeight: 700 }}>{initials(currentUser.nome)}</Avatar><Box minWidth={0}><Typography variant="body2" fontWeight={650} noWrap>{currentUser.nome}</Typography><Typography variant="caption" color="text.secondary" noWrap display="block">{currentUser.perfis.map((role) => roleLabel[role]).join(', ')}</Typography></Box></Stack></Box>
   </Stack>
 }

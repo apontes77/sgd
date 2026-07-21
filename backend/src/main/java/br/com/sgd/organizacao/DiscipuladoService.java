@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,14 +61,26 @@ public class DiscipuladoService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Discipulado> list(Long gerenciaId, Boolean ativo, Pageable pageable) {
-        Page<Discipulado> result;
-        if (gerenciaId != null && ativo != null) result = discipulados.findAllByGerenciaIdAndAtivo(gerenciaId, ativo, pageable);
-        else if (gerenciaId != null) result = discipulados.findAllByGerenciaId(gerenciaId, pageable);
-        else if (ativo != null) result = discipulados.findAllByAtivo(ativo, pageable);
-        else result = discipulados.findAll(pageable);
+    public Page<Discipulado> list(User usuario, Long gerenciaId, Boolean ativo, Pageable pageable) {
+        Specification<Discipulado> filtro = Specification.where(gerenciaId == null ? null
+                : (root, query, cb) -> cb.equal(root.get("gerencia").get("id"), gerenciaId));
+        if (ativo != null) filtro = filtro.and((root, query, cb) -> cb.equal(root.get("ativo"), ativo));
+        filtro = filtro.and(noEscopo(usuario));
+        Page<Discipulado> result = discipulados.findAll(filtro, pageable);
         result.forEach(discipulado -> discipulado.getCoLideres().forEach(User::getPerfis));
         return result;
+    }
+
+    private Specification<Discipulado> noEscopo(User usuario) {
+        if (usuario.getPerfis().contains(Role.ADMIN)) return null;
+        return (root, query, cb) -> {
+            query.distinct(true);
+            var acessos = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
+            if (usuario.getPerfis().contains(Role.GERENTE)) acessos.add(cb.equal(root.get("gerencia").get("gerente").get("id"), usuario.getId()));
+            if (usuario.getPerfis().contains(Role.DISCIPULADOR)) acessos.add(cb.equal(root.get("discipulador").get("id"), usuario.getId()));
+            if (usuario.getPerfis().contains(Role.CO_LIDER)) acessos.add(cb.equal(root.join("coLideres", jakarta.persistence.criteria.JoinType.LEFT).get("id"), usuario.getId()));
+            return acessos.isEmpty() ? cb.disjunction() : cb.or(acessos.toArray(jakarta.persistence.criteria.Predicate[]::new));
+        };
     }
 
     @Transactional(readOnly = true)

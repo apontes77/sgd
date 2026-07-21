@@ -95,24 +95,26 @@ RN031 - O painel do discipulado considera somente o grupo no qual o usuário exe
 
 ---
 
-## Relatório diário de frequência
+## Relatório de frequência por período
 
 RN032 - Administradores consultam todos os discipulados; gerentes consultam os discipulados das suas gerências ativas; discipuladores e co-líderes consultam somente os grupos em que exercem liderança.
 
 RN033 - Usuários com perfis acumulados recebem a união dos escopos de relatório, e o perfil de administrador equivale ao acesso total.
 
-RN034 - O relatório diário inclui somente encontros realizados e frequências efetivamente persistidas, preservando adolescentes transferidos ou inativados que constem na chamada histórica.
+RN034 - O relatório inclui somente encontros realizados e frequências efetivamente persistidas no período informado, preservando adolescentes transferidos ou inativados que constem na chamada histórica. O período pode representar um único dia e não pode exceder 12 meses.
 
-RN035 - Cada encontro gera uma página independente, ordenada por gerência, discipulado e encontro, e pode ser impressa ou salva como PDF pelo diálogo nativo do navegador.
+RN035 - Cada encontro gera uma página independente, ordenada por data, gerência, discipulado e encontro, e pode ser impressa ou salva como PDF pelo diálogo nativo do navegador.
 
-RN036 - Cada linha do relatório diário deve apresentar o nome e o telefone do adolescente, a data do encontro e a situação presente ou ausente.
+RN036 - Cada linha do relatório deve apresentar o nome e o telefone do adolescente, a data do encontro e a situação presente ou ausente.
 
 ---
 
 ## Encontros não realizados
 
-RN037 - Administradores podem marcar um encontro como não realizado em qualquer discipulado ativo; o discipulador pode marcar ou desfazer essa situação somente no próprio discipulado. Gerentes e co-líderes não podem executar essa ação.
+RN037 - Administradores podem marcar um encontro como não realizado em qualquer discipulado ativo; o discipulador pode marcar essa situação e editar a justificativa somente no próprio discipulado. Apenas administradores podem reverter uma não realização para realizado. Gerentes e co-líderes não podem executar essas ações.
 
 RN038 - Todo encontro não realizado deve possuir uma justificativa de até 500 caracteres, preservada no histórico e na auditoria.
 
 RN039 - Gerentes consultam os encontros não realizados e suas justificativas somente nos discipulados da própria gerência; essas ocorrências não compõem indicadores nem o relatório diário de frequência.
+
+RN040 - Um discipulado possui no máximo um encontro por data, independentemente da situação. Não é possível registrar chamada ou visitantes em encontro não realizado.

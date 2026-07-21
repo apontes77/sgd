@@ -52,6 +52,18 @@ describe('navegação autenticada', () => {
     expect(screen.getByRole('tab', { name: 'Painel' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Minha gerência' })).toBeInTheDocument()
   })
+  it('mant\u00e9m Sair na navega\u00e7\u00e3o lateral e remove o menu superior', async () => {
+    const onLogout = vi.fn()
+    render(<AuthenticatedApp currentUser={user(['ADMIN'])} onLogout={onLogout} />)
+
+    expect(screen.queryByRole('button', { name: 'Menu do usu\u00e1rio' })).not.toBeInTheDocument()
+    const sair = screen.getByRole('button', { name: 'Sair' })
+    expect(sair).toBeInTheDocument()
+    await userEvent.click(sair)
+
+    expect(onLogout).toHaveBeenCalledOnce()
+  })
+
 
   it('oferece Meu discipulado para discipulador e co-líder', async () => {
     const { rerender } = render(<AuthenticatedApp currentUser={user(['DISCIPULADOR'])} onLogout={() => undefined} />)

@@ -122,6 +122,7 @@ paths:
       tags: [Discipulados]
       summary: Lista discipulados visíveis ao solicitante
       parameters: [ { $ref: '#/components/parameters/Pagina' }, { $ref: '#/components/parameters/TamanhoPagina' }, { name: gerenciaId, in: query, schema: { type: integer, format: int64 } }, { name: ativo, in: query, schema: { type: boolean } } ]
+      description: ADMIN consulta todos; GERENTE consulta suas gerências; DISCIPULADOR e CO_LIDER consultam o próprio discipulado. Perfis acumulados recebem a união dos escopos.
       responses: { '200': { $ref: '#/components/responses/PaginaDiscipulados' } }
     post:
       tags: [Discipulados]
@@ -267,10 +268,25 @@ paths:
         '401': { $ref: '#/components/responses/NaoAutorizado' }
         '403': { $ref: '#/components/responses/Proibido' }
   /relatorios/frequencia-diaria:
+  /relatorios/frequencia:
+    get:
+      tags: [Indicadores e relatórios]
+      summary: Consulta o relatório de frequência por período
+      description: Aplica o escopo cumulativo do usuário e retorna somente encontros REALIZADO. Cada encontro corresponde a uma página na impressão.
+      parameters:
+        - { name: dataInicio, in: query, required: true, schema: { type: string, format: date } }
+        - { name: dataFim, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200': { description: Relatórios dos encontros realizados no período, content: { application/json: { schema: { $ref: '#/components/schemas/RelatorioFrequenciaPeriodoResponse' } } } }
+        '400': { description: Período ausente, invertido ou superior a 12 meses, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Proibido' }
+        '404': { description: Usuário sem associação organizacional aplicável, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
+
     get:
       tags: [Indicadores e relatórios]
       summary: Consulta o relatório diário de frequência do escopo autenticado
-      description: ADMIN consulta todos os discipulados; GERENTE consulta suas gerências ativas; DISCIPULADOR e CO_LIDER consultam os grupos que lideram. Perfis acumulados recebem a união dos escopos. Retorna somente encontros REALIZADO e frequências efetivamente persistidas, preservando participantes históricos. Cada encontro corresponde a uma página na impressão pelo navegador (RN032 a RN035).
+      description: Endpoint compatível para consulta de um único dia; delega ao mesmo serviço de período com início e fim iguais.
       parameters:
         - { name: data, in: query, required: true, schema: { type: string, format: date } }
       responses:
@@ -332,7 +348,7 @@ components:
     AdolescenteRequest: { type: object, required: [nome, dataNascimento, discipuladoId], properties: { nome: { type: string, minLength: 1, maxLength: 120 }, dataNascimento: { type: string, format: date }, telefone: { type: string }, instagram: { type: string }, discipuladoId: { type: integer, format: int64 }, ativo: { type: boolean } } }
     Adolescente: { allOf: [ { $ref: '#/components/schemas/AdolescenteRequest' }, { type: object, required: [id], properties: { id: { type: integer, format: int64 } } } ] }
     Vinculo: { type: object, required: [id, adolescenteId, discipuladoId, dataInicio, ativo], properties: { id: { type: integer, format: int64 }, adolescenteId: { type: integer, format: int64 }, discipuladoId: { type: integer, format: int64 }, dataInicio: { type: string, format: date }, dataFim: { type: string, format: date }, ativo: { type: boolean } } }
-    EncontroRequest: { type: object, required: [discipuladoId, data, situacao], properties: { discipuladoId: { type: integer, format: int64 }, data: { type: string, format: date }, situacao: { type: string, enum: [REALIZADO, CANCELADO] }, justificativa: { type: [string, 'null'], maxLength: 500, description: Obrigatória quando a situação for CANCELADO e nula quando for REALIZADO. } } }
+    EncontroRequest: { type: object, required: [discipuladoId, data, situacao], description: Existe no máximo um encontro por discipulado e data., properties: { discipuladoId: { type: integer, format: int64 }, data: { type: string, format: date }, situacao: { type: string, enum: [REALIZADO, CANCELADO] }, justificativa: { type: [string, 'null'], maxLength: 500, description: Obrigatória quando a situação for CANCELADO e nula quando for REALIZADO. } } }
     Encontro: { allOf: [ { $ref: '#/components/schemas/EncontroRequest' }, { type: object, required: [id], properties: { id: { type: integer, format: int64 } } } ] }
     FrequenciaRequest: { type: object, required: [adolescenteId, situacao], properties: { adolescenteId: { type: integer, format: int64 }, situacao: { type: string, enum: [PRESENTE, AUSENTE] } } }
     Frequencia: { allOf: [ { $ref: '#/components/schemas/FrequenciaRequest' }, { type: object, required: [id, encontroId], properties: { id: { type: integer, format: int64 }, encontroId: { type: integer, format: int64 }, registradaEm: { type: string, format: date-time } } } ] }
@@ -341,6 +357,7 @@ components:
     ParticipanteRelatorio: { type: object, required: [adolescenteId, nome, telefone, situacao], properties: { adolescenteId: { type: integer, format: int64 }, nome: { type: string }, telefone: { type: [string, 'null'] }, situacao: { type: string, enum: [PRESENTE, AUSENTE] } } }
     ResumoRelatorio: { type: object, required: [presentes, ausentes, participantes, visitantes, percentualPresenca], properties: { presentes: { type: integer, format: int64 }, ausentes: { type: integer, format: int64 }, participantes: { type: integer, format: int64 }, visitantes: { type: integer }, percentualPresenca: { type: number, format: double } } }
     RelatorioEncontro: { type: object, required: [encontroId, data, gerencia, discipulado, discipulador, coLideres, participantes, visitantes, resumo], properties: { encontroId: { type: integer, format: int64 }, data: { type: string, format: date }, gerencia: { $ref: '#/components/schemas/IdentificacaoRelatorio' }, discipulado: { $ref: '#/components/schemas/DiscipuladoRelatorio' }, discipulador: { $ref: '#/components/schemas/IdentificacaoRelatorio' }, coLideres: { type: array, items: { $ref: '#/components/schemas/IdentificacaoRelatorio' } }, participantes: { type: array, items: { $ref: '#/components/schemas/ParticipanteRelatorio' } }, visitantes: { type: integer }, resumo: { $ref: '#/components/schemas/ResumoRelatorio' } } }
+    RelatorioFrequenciaPeriodoResponse: { type: object, required: [dataInicio, dataFim, emitidoEm, relatorios], properties: { dataInicio: { type: string, format: date }, dataFim: { type: string, format: date }, emitidoEm: { type: string, format: date-time }, relatorios: { type: array, items: { $ref: '#/components/schemas/RelatorioEncontro' } } } }
     RelatorioFrequenciaDiariaResponse: { type: object, required: [data, emitidoEm, relatorios], properties: { data: { type: string, format: date }, emitidoEm: { type: string, format: date-time }, relatorios: { type: array, items: { $ref: '#/components/schemas/RelatorioEncontro' } } } }
     Indicadores: { type: object, properties: { presentes: { type: integer }, ausentes: { type: integer }, visitantes: { type: integer }, percentualPresenca: { type: number, format: double } } }
     ResumoPainelAdmin: { type: object, required: [encontrosRealizados, presentes, ausentes, visitantes, percentualPresenca], properties: { encontrosRealizados: { type: integer, format: int64 }, presentes: { type: integer, format: int64 }, ausentes: { type: integer, format: int64 }, visitantes: { type: integer, format: int64 }, percentualPresenca: { type: number, format: double } } }

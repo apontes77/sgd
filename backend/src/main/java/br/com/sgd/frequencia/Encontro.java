@@ -5,7 +5,7 @@ import jakarta.persistence.*;
 import java.time.Instant;
 import java.time.LocalDate;
 
-@Entity @Table(name = "encontros")
+@Entity @Table(name = "encontros", uniqueConstraints = @UniqueConstraint(name = "uk_encontro_discipulado_data", columnNames = {"discipulado_id", "data"}))
 public class Encontro {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "discipulado_id") private Discipulado discipulado;

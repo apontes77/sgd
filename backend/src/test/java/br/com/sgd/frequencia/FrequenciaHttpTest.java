@@ -136,6 +136,12 @@ class FrequenciaHttpTest {
                 .header(HttpHeaders.AUTHORIZATION, bearer(tokenDiscipulador))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"situacao\":\"REALIZADO\"}"))
+            .andExpect(status().isForbidden());
+
+        mvc.perform(patch("/api/v1/encontros/{id}", encontroId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(tokenAdmin))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"situacao\":\"REALIZADO\"}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.justificativa").doesNotExist());
 
