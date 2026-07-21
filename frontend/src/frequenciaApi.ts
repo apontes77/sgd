@@ -18,5 +18,6 @@ export const frequenciaApi = {
   listarChamada: (id:number) => request<Frequencia[]>(`/encontros/${id}/frequencias`),
   salvarChamada: (id:number, frequencias:Array<{adolescenteId:number;situacao:SituacaoFrequencia}>) => request<Frequencia[]>(`/encontros/${id}/frequencias`,{method:'PUT',body:JSON.stringify({frequencias})}),
   salvarVisitantes: (id:number, quantidade:number) => request<{quantidade:number}>(`/encontros/${id}/visitantes`,{method:'PUT',body:JSON.stringify({quantidade})}),
+  obterVisitantes: (id:number) => request<{quantidade:number}>(`/encontros/${id}/visitantes`),
   listarAdolescentes: (discipuladoId:number) => request<Pagina<AdolescenteResumo>>(`/adolescentes?discipuladoId=${discipuladoId}&ativo=true&page=0&size=100`),
 }

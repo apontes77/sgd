@@ -42,6 +42,8 @@ class FrequenciaHttpTest {
     @Autowired UserRepository usuarios;
     @Autowired GerenciaRepository gerencias;
     @Autowired DiscipuladoRepository discipulados;
+    @Autowired VisitanteRepository visitantes;
+    @Autowired EncontroRepository encontros;
     @Autowired PasswordEncoder passwords;
 
     private User admin;
@@ -168,6 +170,33 @@ class FrequenciaHttpTest {
         salvarChamada(token, encontroId, "{\"frequencias\":[{\"adolescenteId\":" + anaId + ",\"situacao\":\"PRESENTE\"},{\"adolescenteId\":999999,\"situacao\":\"AUSENTE\"}]}", 409);
         mvc.perform(get("/api/v1/encontros/{id}/frequencias", encontroId).header(HttpHeaders.AUTHORIZATION, bearer(token)))
             .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2));
+    }
+
+    @Test
+    void consultaVisitantesRespeitaEscopoERetornaZeroQuandoNaoHaRegistro() throws Exception {
+        String tokenDiscipulador = token(discipulador);
+        String tokenOutro = token(outroDiscipulador);
+        String tokenGerente = token(gerente);
+        long encontroId = criarEncontro(tokenDiscipulador, proprio.getId(), "2026-07-21", 201);
+
+        mvc.perform(get("/api/v1/encontros/{id}/visitantes", encontroId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(tokenDiscipulador)))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.quantidade").value(0));
+
+        visitantes.saveAndFlush(new Visitante(encontros.findById(encontroId).orElseThrow(), 5, java.time.Instant.now()));
+
+        mvc.perform(get("/api/v1/encontros/{id}/visitantes", encontroId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(tokenDiscipulador)))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.quantidade").value(5));
+        mvc.perform(get("/api/v1/encontros/{id}/visitantes", encontroId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(tokenGerente)))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.quantidade").value(5));
+        mvc.perform(get("/api/v1/encontros/{id}/visitantes", encontroId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(tokenOutro)))
+            .andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/encontros/{id}/visitantes", 999999L)
+                .header(HttpHeaders.AUTHORIZATION, bearer(tokenDiscipulador)))
+            .andExpect(status().isNotFound());
     }
 
     private User usuario(String nome, String prefixo, Role role) {

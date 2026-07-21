@@ -18,6 +18,7 @@ public class FrequenciaController {
  @PatchMapping("/{id}") public EncontroResponse atualizar(@AuthenticationPrincipal User u,@PathVariable long id,@Valid @RequestBody AtualizarEncontroRequest r){return EncontroResponse.of(encontros.atualizar(u,id,r.data(),r.situacao(),r.justificativa()));}
  @GetMapping("/{id}/frequencias") public List<FrequenciaResponse> chamada(@AuthenticationPrincipal User u,@PathVariable long id){return chamadas.listar(u,id).stream().map(FrequenciaResponse::of).toList();}
  @PutMapping("/{id}/frequencias") public List<FrequenciaResponse> salvar(@AuthenticationPrincipal User u,@PathVariable long id,@Valid @RequestBody ChamadaRequest r){return chamadas.salvar(u,id,r.frequencias().stream().map(i->new ChamadaService.ItemChamada(i.adolescenteId(),i.situacao())).toList()).stream().map(FrequenciaResponse::of).toList();}
+ @GetMapping("/{id}/visitantes") public VisitantesResponse consultarVisitantes(@AuthenticationPrincipal User u,@PathVariable long id){return new VisitantesResponse(chamadas.listarVisitantes(u,id));}
  @PutMapping("/{id}/visitantes") public VisitantesResponse visitantes(@AuthenticationPrincipal User u,@PathVariable long id,@Valid @RequestBody VisitantesRequest r){return new VisitantesResponse(chamadas.salvarVisitantes(u,id,r.quantidade()));}
  public record EncontroRequest(@NotNull Long discipuladoId,@NotNull LocalDate data,@NotNull SituacaoEncontro situacao,@Size(max=500) String justificativa){}
  public record AtualizarEncontroRequest(LocalDate data,SituacaoEncontro situacao,@Size(max=500) String justificativa){}

@@ -54,6 +54,18 @@ class ChamadaServiceTest {
         assertThat(service.listar(ator, 1L)).isEmpty();
         verify(escopo).exigirLeitura(ator, discipulado);
     }
+    @Test void listarVisitantesExigeLeituraERetornaQuantidadeOuZero() {
+        when(encontros.encontro(1L)).thenReturn(encontro);
+        when(encontro.getDiscipulado()).thenReturn(discipulado);
+        when(visitantes.findByEncontroId(1L))
+                .thenReturn(Optional.of(new Visitante(encontro, 4, AGORA)))
+                .thenReturn(Optional.empty());
+
+        assertThat(service.listarVisitantes(ator, 1L)).isEqualTo(4);
+        assertThat(service.listarVisitantes(ator, 1L)).isZero();
+        verify(escopo, org.mockito.Mockito.times(2)).exigirLeitura(ator, discipulado);
+    }
+
 
     @Test void rejeitaChamadaNulaDuplicadaIncompletaOuComIdNulo() {
         prepararEncontro();
