@@ -68,5 +68,6 @@ describe('registro de frequência', () => {
       justificativa: 'Líder doente',
     })
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/encontros/10/frequencias'))).toBe(false)
+    expect(screen.queryByRole('button', { name: 'Marcar como realizado' })).not.toBeInTheDocument()
   })
 })

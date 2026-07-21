@@ -2,10 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import FrequencyReport from './FrequencyReport'
-import type { RelatorioDiarioResponse } from './relatorioApi'
+import type { RelatorioPeriodoResponse } from './relatorioApi'
 
-const relatorio: RelatorioDiarioResponse = {
-  data: '2026-07-21',
+const relatorio: RelatorioPeriodoResponse = {
+  dataInicio: '2026-07-21',
+  dataFim: '2026-07-21',
   emitidoEm: '2026-07-21T22:00:00Z',
   relatorios: [
     {
@@ -57,9 +58,12 @@ describe('relatório diário de frequência', () => {
 
     const imprimir = screen.getByRole('button', { name: 'Imprimir / salvar como PDF' })
     expect(imprimir).toBeDisabled()
-    const data = screen.getByLabelText(/Data/)
-    await userEvent.clear(data)
-    await userEvent.type(data, '2026-07-21')
+    const dataInicial = screen.getByLabelText(/^Data inicial/)
+    const dataFinal = screen.getByLabelText(/^Data final/)
+    await userEvent.clear(dataInicial)
+    await userEvent.type(dataInicial, '2026-07-20')
+    await userEvent.clear(dataFinal)
+    await userEvent.type(dataFinal, '2026-07-21')
     await userEvent.click(screen.getByRole('button', { name: 'Consultar' }))
 
     expect(await screen.findByRole('table', { name: 'Frequência do Alpha em 21/07/2026' })).toBeInTheDocument()
@@ -74,7 +78,7 @@ describe('relatório diário de frequência', () => {
     expect(screen.getByText('Ausente')).toHaveClass('frequencia-ausente')
     expect(screen.getByText('Presente')).toHaveClass('frequencia-presente')
     expect(screen.getByText('Nenhuma frequência registrada neste encontro.')).toBeInTheDocument()
-    expect(fetchMock).toHaveBeenCalledWith('/api/v1/relatorios/frequencia-diaria?data=2026-07-21', expect.anything())
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/relatorios/frequencia?dataInicio=2026-07-20&dataFim=2026-07-21', expect.anything())
 
     await userEvent.click(imprimir)
     expect(printMock).toHaveBeenCalledOnce()

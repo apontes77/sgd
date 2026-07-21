@@ -49,13 +49,21 @@ public class RelatorioFrequenciaService {
 
     public RelatorioDiarioResponse consultar(User usuario, LocalDate data) {
         if (data == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A data do relatório é obrigatória.");
+        RelatorioPeriodoResponse periodo = consultarPeriodo(usuario, data, data);
+        return new RelatorioDiarioResponse(data, periodo.emitidoEm(), periodo.relatorios());
+    }
+
+    public RelatorioPeriodoResponse consultarPeriodo(User usuario, LocalDate inicio, LocalDate fim) {
+        if (inicio == null || fim == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "As datas inicial e final s\u00e3o obrigat\u00f3rias.");
+        if (inicio.isAfter(fim)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A data inicial n\u00e3o pode ser posterior \u00e0 data final.");
+        if (fim.isAfter(inicio.plusMonths(12))) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O per\u00edodo do relat\u00f3rio deve ser de no m\u00e1ximo 12 meses.");
         boolean administrador = usuario.getPerfis().contains(Role.ADMIN);
         Escopo escopo = administrador ? new Escopo(Set.of()) : escopoRestrito(usuario);
         List<Encontro> encontrados = administrador
-                ? encontros.realizadosNaData(data, SituacaoEncontro.REALIZADO)
+                ? encontros.realizadosNoPeriodo(inicio, fim, SituacaoEncontro.REALIZADO)
                 : escopo.discipuladoIds().isEmpty() ? List.of()
-                : encontros.realizadosNaDataDoEscopo(data, SituacaoEncontro.REALIZADO, escopo.discipuladoIds());
-        return new RelatorioDiarioResponse(data, clock.instant(), montarRelatorios(encontrados));
+                : encontros.realizadosNoPeriodoDoEscopo(inicio, fim, SituacaoEncontro.REALIZADO, escopo.discipuladoIds());
+        return new RelatorioPeriodoResponse(inicio, fim, clock.instant(), montarRelatorios(encontrados));
     }
 
     private Escopo escopoRestrito(User usuario) {
@@ -115,6 +123,7 @@ public class RelatorioFrequenciaService {
 
     private record Escopo(Set<Long> discipuladoIds) { }
     public record RelatorioDiarioResponse(LocalDate data, Instant emitidoEm, List<RelatorioEncontro> relatorios) { }
+    public record RelatorioPeriodoResponse(LocalDate dataInicio, LocalDate dataFim, Instant emitidoEm, List<RelatorioEncontro> relatorios) { }
     public record RelatorioEncontro(long encontroId, LocalDate data, GerenciaInfo gerencia, DiscipuladoInfo discipulado,
             LiderInfo discipulador, List<LiderInfo> coLideres, List<ParticipanteInfo> participantes, int visitantes,
             ResumoFrequencia resumo) { }

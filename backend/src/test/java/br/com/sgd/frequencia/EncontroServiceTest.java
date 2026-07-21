@@ -77,12 +77,12 @@ class EncontroServiceTest {
         when(frequencias.existsByEncontroId(1L)).thenReturn(true);
 
         assertThatThrownBy(() -> service.atualizar(usuario(Role.ADMIN), 1L, null, SituacaoEncontro.CANCELADO, "Líder indisponível"))
-                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("chamada registrada");
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("situação alterada");
 
         when(frequencias.existsByEncontroId(1L)).thenReturn(false);
         when(visitantes.findByEncontroId(1L)).thenReturn(Optional.of(new Visitante(encontro, 2, AGORA)));
         assertThatThrownBy(() -> service.atualizar(usuario(Role.ADMIN), 1L, null, SituacaoEncontro.CANCELADO, "Líder indisponível"))
-                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("chamada registrada");
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("situação alterada");
     }
 
     @Test void permiteCancelarQuandoVisitantesSaoZero() throws Exception {
@@ -118,6 +118,42 @@ class EncontroServiceTest {
         verify(encontros, never()).save(any());
     }
 
+    @Test void rejeitaSegundoEncontroDoMesmoDiscipuladoNaMesmaData() {
+        LocalDate data = LocalDate.of(2026, 7, 17);
+        when(discipulados.findById(10L)).thenReturn(Optional.of(discipulado));
+        when(discipulado.isAtivo()).thenReturn(true);
+        when(encontros.existsByDiscipuladoIdAndData(10L, data)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.criar(usuario(Role.ADMIN), 10L, data, SituacaoEncontro.REALIZADO))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("Já existe um encontro");
+        verify(encontros, never()).save(any());
+    }
+
+    @Test void somenteAdministradorPodeReverterNaoRealizacao() throws Exception {
+        Encontro cancelado = new Encontro(discipulado, LocalDate.of(2026, 7, 17),
+                SituacaoEncontro.CANCELADO, "Imprevisto", AGORA);
+        when(encontros.findById(1L)).thenReturn(Optional.of(cancelado));
+
+        assertThatThrownBy(() -> service.atualizar(usuario(Role.DISCIPULADOR), 1L, null,
+                SituacaoEncontro.REALIZADO, null))
+            .isInstanceOf(ResponseStatusException.class)
+            .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode().value()).isEqualTo(403));
+
+        when(json.writeValueAsString(any())).thenReturn("{}");
+        service.atualizar(usuario(Role.ADMIN), 1L, null, SituacaoEncontro.REALIZADO, null);
+
+        assertThat(cancelado.getSituacao()).isEqualTo(SituacaoEncontro.REALIZADO);
+        assertThat(cancelado.getJustificativa()).isNull();
+    }
+
+    @Test void rejeitaMoverEncontroParaDataJaOcupada() {
+        Encontro encontro = encontro(AGORA.minusSeconds(60));
+        when(encontros.findById(1L)).thenReturn(Optional.of(encontro));
+        when(encontros.existsByDiscipuladoIdAndDataAndIdNot(0L, LocalDate.of(2026, 7, 18), 1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.atualizar(usuario(Role.ADMIN), 1L, LocalDate.of(2026, 7, 18), null, null))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("Já existe um encontro");
+    }
     @Test void aplicaJanelaDeTresHorasSomenteParaNaoAdministrador() {
         Encontro antigo = encontro(AGORA.minusSeconds(3 * 3600 + 1));
         assertThatThrownBy(() -> service.exigirEditavel(usuario(Role.DISCIPULADOR), antigo))

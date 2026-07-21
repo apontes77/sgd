@@ -45,7 +45,7 @@ Fluxo:
 Fluxo alternativo:
 
 - O administrador ou o discipulador do próprio grupo pode selecionar “Não realizado”, sendo obrigatório informar uma justificativa.
-- O administrador ou o discipulador responsável pode corrigir a justificativa ou voltar o encontro para “Realizado”, desde que não haja chamada ou visitantes registrados.
+- O administrador ou o discipulador responsável pode corrigir a justificativa; somente o administrador pode voltar o encontro para “Realizado”, desde que não haja chamada ou visitantes registrados.
 - Gerentes consultam as não realizações da própria gerência no painel, sem permissão de alteração.
 
 ---
@@ -77,7 +77,7 @@ O acesso é cumulativo: `GERENTE + DISCIPULADOR` visualiza “Minha gerência”
 
 ---
 
-## UC006 - Consultar e imprimir relatório diário de frequência
+## UC006 - Consultar e imprimir relatório de frequência
 
 Ator:
 Administrador, Gerente, Discipulador ou Co-líder
@@ -85,7 +85,7 @@ Administrador, Gerente, Discipulador ou Co-líder
 Fluxo:
 
 1. Acessar “Relatórios”.
-2. Selecionar uma data.
+2. Selecionar uma data inicial e uma data final, iguais para um único dia ou separadas por no máximo 12 meses.
 3. Consultar os encontros realizados dentro do escopo dos perfis acumulados do usuário.
 4. Visualizar uma página por encontro, com nome e telefone de cada adolescente, data do encontro, situação presente/ausente, visitantes e totais.
 5. Acionar “Imprimir / salvar como PDF” e usar o diálogo nativo do navegador.
@@ -93,7 +93,7 @@ Fluxo:
 Fluxos alternativos:
 
 - Usuário com perfil permitido, mas sem associação organizacional aplicável: retornar `404`.
-- Escopo válido sem encontro realizado na data: retornar lista vazia e informar o estado na tela.
+- Escopo válido sem encontro realizado no período: retornar lista vazia e informar o estado na tela.
 - Encontros cancelados não são exibidos.
 
 ---

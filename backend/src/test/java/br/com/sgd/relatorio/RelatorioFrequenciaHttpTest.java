@@ -87,8 +87,8 @@ class RelatorioFrequenciaHttpTest {
         Discipulado gamma = discipulados.saveAndFlush(new Discipulado("Gamma", Sexo.MASCULINO, norte, liderGamma));
 
         Encontro alphaPrincipal = encontro(alpha, SituacaoEncontro.REALIZADO);
-        encontro(alpha, SituacaoEncontro.REALIZADO);
-        encontro(alpha, SituacaoEncontro.CANCELADO);
+        encontro(alpha, DATA.minusDays(1), SituacaoEncontro.REALIZADO);
+        encontro(alpha, DATA.minusDays(2), SituacaoEncontro.CANCELADO);
         encontro(beta, SituacaoEncontro.REALIZADO);
         encontro(gamma, SituacaoEncontro.REALIZADO);
         Adolescente bia = adolescentes.saveAndFlush(new Adolescente("Bia", LocalDate.of(2010, 2, 1), "(11) 98888-2222", null));
@@ -99,6 +99,26 @@ class RelatorioFrequenciaHttpTest {
         ana.atualizar("Ana", LocalDate.of(2010, 1, 1), "(11) 97777-1111", null, false);
         adolescentes.saveAndFlush(ana);
     }
+    @Test
+    void listaDiscipuladosConformeEscopoCumulativoDoUsuario() throws Exception {
+        mvc.perform(get("/api/v1/discipulados").param("size", "100")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(liderAlpha))))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.content.length()").value(1))
+            .andExpect(jsonPath("$.content[0].nome").value("Alpha"));
+        mvc.perform(get("/api/v1/discipulados").param("size", "100")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(coLiderAlpha))))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.content.length()").value(1));
+        mvc.perform(get("/api/v1/discipulados").param("size", "100")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(gerenteCentro))))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.content.length()").value(2));
+        mvc.perform(get("/api/v1/discipulados").param("size", "100")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(perfilAcumulado))))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.content.length()").value(2));
+        mvc.perform(get("/api/v1/discipulados").param("size", "100")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(admin))))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.content.length()").value(3));
+    }
+
 
     @Test
     void aplicaEscopoPorPerfilEEntregaDetalhesOrdenados() throws Exception {
@@ -107,7 +127,7 @@ class RelatorioFrequenciaHttpTest {
         String tokenGerente = token(gerenteCentro);
         String tokenAdmin = token(admin);
 
-        consultar(tokenLider).andExpect(status().isOk()).andExpect(jsonPath("$.relatorios.length()").value(2))
+        consultar(tokenLider).andExpect(status().isOk()).andExpect(jsonPath("$.relatorios.length()").value(1))
             .andExpect(jsonPath("$.relatorios[0].discipulado.nome").value("Alpha"))
             .andExpect(jsonPath("$.relatorios[0].participantes[0].nome").value("Ana"))
             .andExpect(jsonPath("$.relatorios[0].participantes[0].telefone").value("(11) 97777-1111"))
@@ -119,14 +139,14 @@ class RelatorioFrequenciaHttpTest {
             .andExpect(jsonPath("$.relatorios[0].resumo.ausentes").value(1))
             .andExpect(jsonPath("$.relatorios[0].resumo.percentualPresenca").value(50.00))
             .andExpect(jsonPath("$.relatorios[0].coLideres[0].nome").value("Co-líder Alpha"));
-        consultar(tokenCoLider).andExpect(status().isOk()).andExpect(jsonPath("$.relatorios.length()").value(2));
-        consultar(tokenGerente).andExpect(status().isOk()).andExpect(jsonPath("$.relatorios.length()").value(3))
-            .andExpect(jsonPath("$.relatorios[2].discipulado.nome").value("Beta"));
-        consultar(token(perfilAcumulado)).andExpect(status().isOk()).andExpect(jsonPath("$.relatorios.length()").value(3))
+        consultar(tokenCoLider).andExpect(status().isOk()).andExpect(jsonPath("$.relatorios.length()").value(1));
+        consultar(tokenGerente).andExpect(status().isOk()).andExpect(jsonPath("$.relatorios.length()").value(2))
+            .andExpect(jsonPath("$.relatorios[1].discipulado.nome").value("Beta"));
+        consultar(token(perfilAcumulado)).andExpect(status().isOk()).andExpect(jsonPath("$.relatorios.length()").value(2))
             .andExpect(jsonPath("$.relatorios[0].discipulado.nome").value("Alpha"))
+            .andExpect(jsonPath("$.relatorios[1].discipulado.nome").value("Gamma"));
+        consultar(tokenAdmin).andExpect(status().isOk()).andExpect(jsonPath("$.relatorios.length()").value(3))
             .andExpect(jsonPath("$.relatorios[2].discipulado.nome").value("Gamma"));
-        consultar(tokenAdmin).andExpect(status().isOk()).andExpect(jsonPath("$.relatorios.length()").value(4))
-            .andExpect(jsonPath("$.relatorios[3].discipulado.nome").value("Gamma"));
     }
 
     @Test
@@ -138,13 +158,38 @@ class RelatorioFrequenciaHttpTest {
             .andExpect(status().isOk()).andExpect(jsonPath("$.relatorios.length()").value(0));
     }
 
+    @Test
+    void consultaPeriodoDeAteDozeMesesEValidaLimites() throws Exception {
+        String token = token(liderAlpha);
+        mvc.perform(get("/api/v1/relatorios/frequencia").param("dataInicio", DATA.minusDays(2).toString())
+                .param("dataFim", DATA.toString()).header(HttpHeaders.AUTHORIZATION, bearer(token)))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.dataInicio").value(DATA.minusDays(2).toString()))
+            .andExpect(jsonPath("$.dataFim").value(DATA.toString()))
+            .andExpect(jsonPath("$.relatorios.length()").value(2))
+            .andExpect(jsonPath("$.relatorios[0].data").value(DATA.minusDays(1).toString()))
+            .andExpect(jsonPath("$.relatorios[1].data").value(DATA.toString()));
+        mvc.perform(get("/api/v1/relatorios/frequencia").param("dataInicio", DATA.toString())
+                .param("dataFim", DATA.minusDays(1).toString()).header(HttpHeaders.AUTHORIZATION, bearer(token)))
+            .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/relatorios/frequencia").param("dataInicio", DATA.toString())
+                .param("dataFim", DATA.plusMonths(12).toString()).header(HttpHeaders.AUTHORIZATION, bearer(token)))
+            .andExpect(status().isOk());
+        mvc.perform(get("/api/v1/relatorios/frequencia").param("dataInicio", DATA.toString())
+                .param("dataFim", DATA.plusMonths(12).plusDays(1).toString()).header(HttpHeaders.AUTHORIZATION, bearer(token)))
+            .andExpect(status().isBadRequest());
+    }
+
     private org.springframework.test.web.servlet.ResultActions consultar(String token) throws Exception {
         return mvc.perform(get("/api/v1/relatorios/frequencia-diaria").param("data", DATA.toString())
                 .header(HttpHeaders.AUTHORIZATION, bearer(token)));
     }
 
     private Encontro encontro(Discipulado discipulado, SituacaoEncontro situacao) {
-        return encontros.saveAndFlush(new Encontro(discipulado, DATA, situacao, AGORA));
+        return encontro(discipulado, DATA, situacao);
+    }
+
+    private Encontro encontro(Discipulado discipulado, LocalDate data, SituacaoEncontro situacao) {
+        return encontros.saveAndFlush(new Encontro(discipulado, data, situacao, AGORA));
     }
 
     private User usuario(String nome, String prefixo, Role... perfis) {
