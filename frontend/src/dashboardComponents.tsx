@@ -1,5 +1,5 @@
 import { EventAvailableRounded, FilterAltRounded, GroupsRounded, HowToRegRounded, PersonOffRounded, PersonRounded } from '@mui/icons-material'
-import { Box, Button, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField } from '@mui/material'
+import { Box, Button, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, useMediaQuery } from '@mui/material'
 import ReactECharts from 'echarts-for-react'
 import type { EvolucaoMensal, ResumoPainel } from './painelApi'
 import { formatarMes, percentual, type MesVisual } from './dashboardUtils'
@@ -34,10 +34,69 @@ export function PainelEvolucao({ titulo, tabelaTitulo, dados }: { titulo: string
 }
 
 export function GraficoEvolucao({ titulo, dados }: { titulo: string; dados: MesVisual[] }) {
+  const mobile = useMediaQuery('(max-width:599.95px)')
   const labels = dados.map((item) => formatarMes(item.referencia))
   const valor = (item: MesVisual, campo: keyof Pick<EvolucaoMensal, 'presentes' | 'ausentes' | 'visitantes' | 'percentualPresenca'>) => item.possuiEncontro ? item[campo] : null
-  return <Box role="img" aria-label={`${titulo}. Gráfico combinado de presentes, ausentes, visitantes e percentual de presença por mês.`}>
-    <ReactECharts style={{ height: 360 }} option={{ aria: { enabled: true }, tooltip: { trigger: 'axis' }, legend: { top: 8, data: ['Presentes', 'Ausentes', 'Visitantes', 'Presença'] }, grid: { top: 70, left: 55, right: 60, bottom: 45, containLabel: true }, xAxis: { type: 'category', data: labels }, yAxis: [{ type: 'value', name: 'Pessoas', minInterval: 1 }, { type: 'value', name: 'Presença', min: 0, max: 100, axisLabel: { formatter: '{value}%' } }], series: [{ name: 'Presentes', type: 'bar', data: dados.map((i) => valor(i, 'presentes')), itemStyle: { color: '#2E7D32', borderRadius: [4, 4, 0, 0] } }, { name: 'Ausentes', type: 'bar', data: dados.map((i) => valor(i, 'ausentes')), itemStyle: { color: '#C62828', borderRadius: [4, 4, 0, 0] } }, { name: 'Visitantes', type: 'bar', data: dados.map((i) => valor(i, 'visitantes')), itemStyle: { color: '#0F8B8D', borderRadius: [4, 4, 0, 0] } }, { name: 'Presença', type: 'line', yAxisIndex: 1, symbol: 'circle', symbolSize: 8, data: dados.map((i) => valor(i, 'percentualPresenca')), lineStyle: { width: 3, color: '#3451B2' }, itemStyle: { color: '#3451B2' } }] }} notMerge />
+  return <Box role="img" aria-label={`${titulo}. Gráfico combinado de presentes, ausentes, visitantes e percentual de presença por mês.`} sx={{ minWidth: 0, overflowX: 'hidden' }}>
+    <ReactECharts style={{ height: mobile ? 320 : 360, width: '100%' }} option={{
+      aria: { enabled: true },
+      tooltip: { trigger: 'axis' },
+      legend: {
+        top: 0,
+        left: 'center',
+        width: mobile ? '92%' : undefined,
+        itemGap: mobile ? 8 : 12,
+        textStyle: { fontSize: mobile ? 11 : 12 },
+        data: ['Presentes', 'Ausentes', 'Visitantes', 'Presença'],
+      },
+      grid: {
+        top: mobile ? 78 : 70,
+        left: mobile ? 12 : 48,
+        right: mobile ? 16 : 56,
+        bottom: mobile ? 36 : 45,
+        containLabel: true,
+      },
+      xAxis: { type: 'category', data: labels, axisLabel: { hideOverlap: true, fontSize: mobile ? 11 : 12 } },
+      yAxis: [
+        {
+          type: 'value',
+          name: mobile ? undefined : 'Pessoas',
+          nameGap: 28,
+          minInterval: 1,
+          splitNumber: mobile ? 3 : 5,
+        },
+        {
+          type: 'value',
+          name: mobile ? undefined : 'Presença',
+          nameGap: 32,
+          min: 0,
+          max: 100,
+          splitNumber: mobile ? 4 : 5,
+          axisLabel: { formatter: '{value}%' },
+        },
+      ],
+      series: [
+        { name: 'Presentes', type: 'bar', barMaxWidth: 32, data: dados.map((i) => valor(i, 'presentes')), itemStyle: { color: '#2E7D32', borderRadius: [4, 4, 0, 0] } },
+        { name: 'Ausentes', type: 'bar', barMaxWidth: 32, data: dados.map((i) => valor(i, 'ausentes')), itemStyle: { color: '#C62828', borderRadius: [4, 4, 0, 0] } },
+        { name: 'Visitantes', type: 'bar', barMaxWidth: 32, data: dados.map((i) => valor(i, 'visitantes')), itemStyle: { color: '#0F8B8D', borderRadius: [4, 4, 0, 0] } },
+        {
+          name: 'Presença',
+          type: 'line',
+          yAxisIndex: 1,
+          connectNulls: false,
+          clip: true,
+          showAllSymbol: false,
+          data: dados.map((item) => {
+            const value = valor(item, 'percentualPresenca')
+            return value == null
+              ? { value: null, symbol: 'none', symbolSize: 0 }
+              : { value, symbol: 'circle', symbolSize: 8 }
+          }),
+          lineStyle: { width: 3, color: '#3451B2' },
+          itemStyle: { color: '#3451B2' },
+        },
+      ],
+    }} notMerge />
   </Box>
 }
 

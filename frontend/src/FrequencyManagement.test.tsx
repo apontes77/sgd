@@ -56,7 +56,20 @@ describe('registro de frequência', () => {
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/encontros/10/frequencias'))).toBe(false)
   })
 
-  it('co-líder não vê a opção "Não houve discipulado"', async () => {
+  it('co-líder também vê a opção "Não houve discipulado"', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/adolescentes?')) return json({ content: [], page: 0, size: 100, totalElements: 0, totalPages: 0 })
+      if (url.includes('/encontros?')) return json([])
+      throw new Error(`Requisição inesperada: ${url}`)
+    })
+
+    render(<FrequencyManagement discipuladoId={1} podeRegistrarNaoRealizacao />)
+    expect(await screen.findByRole('button', { name: /^Houve discipulado/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Não houve discipulado/ })).toBeInTheDocument()
+  })
+
+  it('sem permissão de não realização, oculta "Não houve discipulado"', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input)
       if (url.includes('/adolescentes?')) return json({ content: [], page: 0, size: 100, totalElements: 0, totalPages: 0 })
@@ -65,8 +78,8 @@ describe('registro de frequência', () => {
     })
 
     render(<FrequencyManagement discipuladoId={1} />)
-    expect(await screen.findByRole('button', { name: /Houve discipulado/i })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Não houve discipulado/i })).not.toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /^Houve discipulado/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Não houve discipulado/ })).not.toBeInTheDocument()
   })
 
   it('data com registro existente abre direto no modo correspondente', async () => {
@@ -112,5 +125,24 @@ describe('registro de frequência', () => {
     expect(await screen.findByText('Frequência salva.')).toBeInTheDocument()
     const salvamento = fetchMock.mock.calls.find(([url, init]) => String(url).endsWith('/encontros/10/frequencias') && init?.method === 'PUT')
     expect(JSON.parse(String(salvamento?.[1]?.body)).frequencias).toEqual([{ adolescenteId: 99, situacao: 'PRESENTE' }])
+  })
+
+  it('alterna presença ao tocar na linha do adolescente', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input)
+      const method = init?.method ?? 'GET'
+      if (url.includes('/adolescentes?')) return json({ content: [{ id: 1, nome: 'Ana' }], page: 0, size: 100, totalElements: 1, totalPages: 1 })
+      if (url.endsWith('/encontros') && method === 'POST') return json(encontro, 201)
+      if (url.includes('/encontros?')) return json([])
+      if (url.endsWith('/encontros/10/frequencias') && method === 'GET') return json([])
+      throw new Error(`Requisição inesperada: ${method} ${url}`)
+    })
+
+    render(<FrequencyManagement discipuladoId={1} />)
+    await userEvent.click(await screen.findByRole('button', { name: /Houve discipulado/i }))
+    const toggle = await screen.findByRole('button', { name: /Ana: ausente/i })
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    await userEvent.click(toggle.closest('.MuiPaper-root')!)
+    expect(await screen.findByRole('button', { name: /Ana: presente/i })).toHaveAttribute('aria-pressed', 'true')
   })
 })
