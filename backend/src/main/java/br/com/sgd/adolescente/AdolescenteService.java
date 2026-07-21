@@ -37,7 +37,8 @@ public class AdolescenteService {
         Adolescente adolescente = new Adolescente(dados.nome(), dados.dataNascimento(), dados.telefone(), dados.instagram());
         if (Boolean.FALSE.equals(dados.ativo())) adolescente.atualizar(dados.nome(), dados.dataNascimento(), dados.telefone(), dados.instagram(), false);
         adolescente = adolescentes.save(adolescente);
-        vinculos.save(new VinculoAdolescenteDiscipulado(adolescente, discipulado, LocalDate.now(ZONA_NEGOCIO)));
+        LocalDate inicioVinculo = dados.dataInicio() == null ? LocalDate.now(ZONA_NEGOCIO) : dados.dataInicio();
+        vinculos.save(new VinculoAdolescenteDiscipulado(adolescente, discipulado, inicioVinculo));
         return adolescente;
     }
 
@@ -114,5 +115,5 @@ public class AdolescenteService {
     private Discipulado discipuladoAtivoOuInativo(long id) { return discipulados.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Discipulado não encontrado.")); }
     private static ResponseStatusException conflito(String mensagem) { return new ResponseStatusException(HttpStatus.CONFLICT, mensagem); }
 
-    public record DadosAdolescente(String nome, LocalDate dataNascimento, String telefone, String instagram, Long discipuladoId, Boolean ativo) { }
+    public record DadosAdolescente(String nome, LocalDate dataNascimento, String telefone, String instagram, Long discipuladoId, Boolean ativo, LocalDate dataInicio) { }
 }

@@ -173,6 +173,31 @@ class FrequenciaHttpTest {
     }
 
     @Test
+    void discipuladorECoLiderRegistramVisitanteComoAdolescenteNaFrequencia() throws Exception {
+        String tokenDiscipulador = token(discipulador);
+        String tokenCoLider = token(coLider);
+
+        // Discipulador: encontro de hoje, visitante com dataInicio na data do encontro, chamada salva com o visitante.
+        long encontroId = criarEncontro(tokenDiscipulador, proprio.getId(), "2026-07-17", 201);
+        long visitanteId = criarVisitante(tokenDiscipulador, "Visitante Um", "2026-07-17");
+        salvarChamada(tokenDiscipulador, encontroId, "{\"frequencias\":[{\"adolescenteId\":" + visitanteId + ",\"situacao\":\"PRESENTE\"}]}", 200);
+        mvc.perform(get("/api/v1/encontros/{id}/frequencias", encontroId).header(HttpHeaders.AUTHORIZATION, bearer(tokenDiscipulador)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].adolescenteId").value(visitanteId))
+            .andExpect(jsonPath("$[0].situacao").value("PRESENTE"));
+
+        // Co-líder: mesmo fluxo em uma data futura (encontro agendado), incluindo o adolescente já vinculado.
+        String dataFutura = java.time.LocalDate.now().plusDays(7).toString();
+        long outroEncontroId = criarEncontro(tokenCoLider, proprio.getId(), dataFutura, 201);
+        long segundoVisitanteId = criarVisitante(tokenCoLider, "Visitante Dois", dataFutura);
+        salvarChamada(tokenCoLider, outroEncontroId,
+            "{\"frequencias\":[{\"adolescenteId\":" + visitanteId + ",\"situacao\":\"AUSENTE\"},{\"adolescenteId\":" + segundoVisitanteId + ",\"situacao\":\"PRESENTE\"}]}", 200);
+        mvc.perform(get("/api/v1/encontros/{id}/frequencias", outroEncontroId).header(HttpHeaders.AUTHORIZATION, bearer(tokenCoLider)))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(2));
+    }
+
+    @Test
     void consultaVisitantesRespeitaEscopoERetornaZeroQuandoNaoHaRegistro() throws Exception {
         String tokenDiscipulador = token(discipulador);
         String tokenOutro = token(outroDiscipulador);
@@ -216,6 +241,15 @@ class FrequenciaHttpTest {
                 .content("{\"discipuladoId\":" + discipuladoId + ",\"data\":\"" + data + "\",\"situacao\":\"REALIZADO\"}"))
             .andExpect(status().is(statusEsperado)).andReturn().getResponse().getContentAsString();
         if (statusEsperado != 201) return 0;
+        return json.readTree(response).get("id").asLong();
+    }
+
+    private long criarVisitante(String token, String nome, String dataInicio) throws Exception {
+        String response = mvc.perform(post("/api/v1/adolescentes").header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nome\":\"" + nome + "\",\"dataNascimento\":\"2011-05-04\",\"discipuladoId\":" + proprio.getId()
+                    + ",\"ativo\":true,\"dataInicio\":\"" + dataInicio + "\"}"))
+            .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
         return json.readTree(response).get("id").asLong();
     }
 

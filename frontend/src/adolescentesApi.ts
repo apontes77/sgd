@@ -2,7 +2,7 @@ import { request, type Pagina } from './api'
 
 export type { Pagina }
 export interface Adolescente { id: number; nome: string; dataNascimento: string; telefone?: string; instagram?: string; discipuladoId: number; ativo: boolean }
-export interface AdolescenteInput { nome: string; dataNascimento: string; telefone?: string; instagram?: string; discipuladoId: number; ativo?: boolean }
+export interface AdolescenteInput { nome: string; dataNascimento: string; telefone?: string; instagram?: string; discipuladoId: number; ativo?: boolean; dataInicio?: string }
 export interface Vinculo { id: number; adolescenteId: number; discipuladoId: number; dataInicio: string; dataFim?: string; ativo: boolean }
 export interface DiscipuladoResumo { id: number; nome: string; ativo?: boolean }
 

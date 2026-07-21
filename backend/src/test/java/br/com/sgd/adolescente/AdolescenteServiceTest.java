@@ -39,7 +39,7 @@ class AdolescenteServiceTest {
         when(discipulados.findById(10L)).thenReturn(Optional.of(origem));
         when(adolescentes.save(any())).thenAnswer(i -> i.getArgument(0));
         when(vinculos.save(any())).thenAnswer(i -> i.getArgument(0));
-        var dados = new AdolescenteService.DadosAdolescente(" Ana ", LocalDate.of(2010, 3, 2), null, "@ana", 10L, true);
+        var dados = new AdolescenteService.DadosAdolescente(" Ana ", LocalDate.of(2010, 3, 2), null, "@ana", 10L, true, null);
 
         Adolescente criado = service.criar(usuario, dados);
 
@@ -49,6 +49,20 @@ class AdolescenteServiceTest {
         assertThat(captor.getValue().getAdolescente()).isSameAs(criado);
         assertThat(captor.getValue().getDiscipulado()).isSameAs(origem);
         verify(escopo).exigirAlteracao(usuario, origem);
+    }
+
+    @Test void usaDataInicioInformadaAoRegistrarVisitanteEmDataAnterior() {
+        configurarAtivo(origem);
+        when(discipulados.findById(10L)).thenReturn(Optional.of(origem));
+        when(adolescentes.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(vinculos.save(any())).thenAnswer(i -> i.getArgument(0));
+        var dados = new AdolescenteService.DadosAdolescente("Bia", LocalDate.of(2011, 5, 4), null, null, 10L, true, LocalDate.of(2026, 3, 1));
+
+        service.criar(usuario, dados);
+
+        var captor = ArgumentCaptor.forClass(VinculoAdolescenteDiscipulado.class);
+        verify(vinculos).save(captor.capture());
+        assertThat(captor.getValue().getDataInicio()).isEqualTo(LocalDate.of(2026, 3, 1));
     }
 
     @Test void transfereEncerrandoAnteriorSemApagarHistorico() {
@@ -91,7 +105,7 @@ class AdolescenteServiceTest {
         when(adolescentes.findById(1L)).thenReturn(Optional.of(adolescente));
         when(vinculos.findByAdolescenteIdAndAtivoTrue(1L)).thenReturn(Optional.of(atual));
         when(origem.getId()).thenReturn(10L);
-        var dados = new AdolescenteService.DadosAdolescente("Ana", LocalDate.of(2010, 3, 2), null, null, 20L, true);
+        var dados = new AdolescenteService.DadosAdolescente("Ana", LocalDate.of(2010, 3, 2), null, null, 20L, true, null);
 
         assertThatThrownBy(() -> service.atualizar(usuario, 1L, dados))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("endpoint de vínculos");

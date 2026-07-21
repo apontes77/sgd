@@ -49,8 +49,9 @@ public class AdolescenteController {
     private static AdolescenteResponse resposta(Adolescente a, long discipuladoId) { return new AdolescenteResponse(a.getId(), a.getNome(), a.getDataNascimento(), a.getTelefone(), a.getInstagram(), discipuladoId, a.isAtivo()); }
 
     public record AdolescenteRequest(@NotBlank @Size(max=120) String nome, @NotNull @PastOrPresent LocalDate dataNascimento,
-            @Size(max=40) String telefone, @Size(max=120) String instagram, @NotNull @Positive Long discipuladoId, Boolean ativo) {
-        AdolescenteService.DadosAdolescente dados() { return new AdolescenteService.DadosAdolescente(nome, dataNascimento, telefone, instagram, discipuladoId, ativo); }
+            @Size(max=40) String telefone, @Size(max=120) String instagram, @NotNull @Positive Long discipuladoId, Boolean ativo,
+            LocalDate dataInicio) {
+        AdolescenteService.DadosAdolescente dados() { return new AdolescenteService.DadosAdolescente(nome, dataNascimento, telefone, instagram, discipuladoId, ativo, dataInicio); }
     }
     public record AdolescenteResponse(long id, String nome, LocalDate dataNascimento, String telefone, String instagram, long discipuladoId, boolean ativo) { }
     public record VinculoRequest(@NotNull @Positive Long discipuladoId, @NotNull LocalDate dataInicio) { }
