@@ -4,13 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import br.com.sgd.audit.AuditLogRepository;
+import br.com.sgd.auth.PasswordCredentialService;
 import br.com.sgd.auth.RefreshTokenRepository;
 import java.util.List;
 import java.util.Optional;
@@ -19,25 +19,24 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 class UserServiceCoverageTest {
     @Test
-    void createsUserWithEncodedPasswordAndAudit() {
+    void createsUserWithoutPasswordAndRequestsInitialSetup() {
         UserRepository users = mock(UserRepository.class);
-        PasswordEncoder passwords = mock(PasswordEncoder.class);
         AuditLogRepository audit = mock(AuditLogRepository.class);
+        PasswordCredentialService credentials = mock(PasswordCredentialService.class);
         when(users.existsByEmailIgnoreCase("USER@example.com")).thenReturn(false);
-        when(passwords.encode("secret")).thenReturn("encoded");
         when(users.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        UserService service = new UserService(users, passwords, audit, mock(RefreshTokenRepository.class));
+        UserService service = new UserService(users, audit, mock(RefreshTokenRepository.class), credentials);
 
-        User user = service.create("User", "USER@example.com", "secret", Set.of(Role.ADMIN));
+        User user = service.create("User", "USER@example.com", Set.of(Role.ADMIN));
 
         assertThat(user.getEmail()).isEqualTo("user@example.com");
-        assertThat(user.getSenhaHash()).isEqualTo("encoded");
+        assertThat(user.isSenhaDefinida()).isFalse();
         assertThat(user.getPerfis()).containsExactly(Role.ADMIN);
         verify(audit).save(any());
+        verify(credentials).requestInitialSetup(user);
     }
 
     @Test
@@ -46,7 +45,7 @@ class UserServiceCoverageTest {
         when(users.existsByEmailIgnoreCase("duplicate@example.com")).thenReturn(true);
         UserService service = service(users, mock(RefreshTokenRepository.class), mock(AuditLogRepository.class));
 
-        assertThatThrownBy(() -> service.create("User", "duplicate@example.com", "secret", Set.of()))
+        assertThatThrownBy(() -> service.create("User", "duplicate@example.com", Set.of()))
                 .isInstanceOf(UserService.DuplicateEmailException.class);
         verify(users, never()).save(any());
     }
@@ -92,6 +91,6 @@ class UserServiceCoverageTest {
     }
 
     private UserService service(UserRepository users, RefreshTokenRepository tokens, AuditLogRepository audit) {
-        return new UserService(users, mock(PasswordEncoder.class), audit, tokens);
+        return new UserService(users, audit, tokens, mock(PasswordCredentialService.class));
     }
 }

@@ -1,13 +1,21 @@
 import { AlternateEmailRounded, GroupsRounded, InsightsRounded, LockRounded, SecurityRounded } from '@mui/icons-material'
 import { Alert, Box, Button, Card, CircularProgress, InputAdornment, Stack, TextField, Typography } from '@mui/material'
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useEffect, useLayoutEffect, useState } from 'react'
 import AuthenticatedApp from './AuthenticatedApp'
 import { authApi, Usuario } from './api'
 import { ForgotPassword, PasswordRecoveryClient, ResetPassword } from './PasswordRecovery'
 
 type PublicView = 'login' | 'forgot' | 'reset'
 
+function resetTokenFromHash(hash: string) {
+  const match = hash.match(/^#\/redefinir-senha\/([^/?#]+)$/)
+  if (!match) return undefined
+  try { return decodeURIComponent(match[1]) } catch { return undefined }
+}
+
 function initialPublicState(): { view: PublicView; token: string } {
+  const fromHash = resetTokenFromHash(window.location.hash)
+  if (fromHash) return { view: 'reset', token: fromHash }
   const url = new URL(window.location.href)
   const token = url.searchParams.get('token') ?? ''
   if (url.pathname.endsWith('/redefinir-senha') && token) return { view: 'reset', token }
@@ -22,6 +30,7 @@ export default function App() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [currentUser, setCurrentUser] = useState<Usuario>()
   const [checkingSession, setCheckingSession] = useState(publicView === 'login' && authApi.hasSession())
@@ -29,6 +38,11 @@ export default function App() {
     request: authApi.solicitarRedefinicaoSenha,
     reset: authApi.redefinirSenha,
   }
+
+  useLayoutEffect(() => {
+    if (!resetToken) return
+    window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}`)
+  }, [resetToken])
 
   function navigatePublic(view: PublicView, token = '') {
     const path = view === 'forgot' ? '/esqueci-senha' : view === 'reset' ? '/redefinir-senha' : '/'
@@ -38,17 +52,24 @@ export default function App() {
     setPublicView(view)
     setResetToken(token)
     setError('')
+    setMessage('')
   }
+
   function finishPasswordReset() {
     authApi.logoutLocal()
+    setPassword('')
     navigatePublic('login')
+    setMessage('Senha definida com sucesso. Entre com a sua nova senha.')
   }
+
   useEffect(() => {
     const expire = () => { setCurrentUser(undefined); setCheckingSession(false) }
     window.addEventListener('sgd:session-expired', expire)
     if (publicView === 'login' && authApi.hasSession()) authApi.me().then(setCurrentUser).catch(() => authApi.logoutLocal()).finally(() => setCheckingSession(false))
+    else setCheckingSession(false)
     return () => window.removeEventListener('sgd:session-expired', expire)
   }, [publicView])
+
   useEffect(() => {
     const navigateFromHistory = () => {
       const state = initialPublicState()
@@ -59,24 +80,28 @@ export default function App() {
     window.addEventListener('popstate', navigateFromHistory)
     return () => window.removeEventListener('popstate', navigateFromHistory)
   }, [])
+
   async function login(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setError(''); setLoading(true)
+    event.preventDefault(); setError(''); setMessage(''); setLoading(true)
     try {
       const user = await authApi.login(email, password)
       setCurrentUser(user ?? await authApi.me())
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Não foi possível entrar.') } finally { setLoading(false) }
   }
+
   async function logout() {
     try { await authApi.logout() }
     finally { setPassword(''); setCurrentUser(undefined) }
   }
+
   if (checkingSession) return <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}><Stack alignItems="center" spacing={2}><CircularProgress size={32} /><Typography color="text.secondary">Validando sessão...</Typography></Stack></Box>
-  if (currentUser) return <AuthenticatedApp currentUser={currentUser} onLogout={() => void logout()} />
+  if (currentUser && publicView === 'login') return <AuthenticatedApp currentUser={currentUser} onLogout={() => void logout()} />
   if (publicView !== 'login') return <PublicRecoveryLayout>
     {publicView === 'forgot'
       ? <ForgotPassword client={passwordRecoveryClient} onBack={() => navigatePublic('login')} />
       : <ResetPassword client={passwordRecoveryClient} token={resetToken} onSuccess={finishPasswordReset} />}
   </PublicRecoveryLayout>
+
   return <Box component="main" sx={{ minHeight: '100vh', display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1.2fr) minmax(460px, .8fr)' }, bgcolor: 'background.paper' }}>
     <Box sx={{ display: { xs: 'none', md: 'flex' }, position: 'relative', overflow: 'hidden', p: { md: 6, lg: 9 }, color: '#fff', background: 'linear-gradient(145deg, #243B80 0%, #3451B2 52%, #0F8B8D 140%)', alignItems: 'center' }}>
       <Box sx={{ position: 'absolute', width: 480, height: 480, borderRadius: '50%', border: '1px solid rgba(255,255,255,.16)', top: -180, right: -120 }} />
@@ -92,6 +117,7 @@ export default function App() {
         <Stack spacing={3}>
           <Box><Stack direction="row" alignItems="center" spacing={1.25} sx={{ display: { md: 'none' }, mb: 3 }}><Box sx={{ width: 42, height: 42, borderRadius: 2.5, display: 'grid', placeItems: 'center', color: 'primary.main', bgcolor: '#EEF1FF' }}><GroupsRounded /></Box><Typography variant="h5" color="primary.dark">SGD</Typography></Stack><Typography component="h1" variant="h4">Bem-vindo de volta</Typography><Typography color="text.secondary" sx={{ mt: 1 }}>Entre com suas credenciais para acessar o sistema.</Typography></Box>
           {error && <Alert severity="error">{error}</Alert>}
+          {message && <Alert severity="success">{message}</Alert>}
           <Stack spacing={2}>
             <TextField fullWidth required type="email" label="E-mail" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} InputProps={{ startAdornment: <InputAdornment position="start"><AlternateEmailRounded fontSize="small" /></InputAdornment> }} />
             <TextField fullWidth required type="password" label="Senha" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} InputProps={{ startAdornment: <InputAdornment position="start"><LockRounded fontSize="small" /></InputAdornment> }} />

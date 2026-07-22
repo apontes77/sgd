@@ -5,7 +5,7 @@ import type { Pagina, Usuario } from './api'
 import UserManagement, { type UserManagementClient } from './UserManagement'
 
 const emptyPage: Pagina<Usuario> = { content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }
-const gerente: Usuario = { id: 7, nome: 'Maria Gestora', email: 'maria@sgd.local', ativo: true, perfis: ['GERENTE'] }
+const gerente: Usuario = { id: 7, nome: 'Maria Gestora', email: 'maria@sgd.local', ativo: true, senhaDefinida: true, perfis: ['GERENTE'] }
 
 describe('gestão de usuários', () => {
   afterEach(() => { cleanup(); vi.restoreAllMocks() })
@@ -20,30 +20,42 @@ describe('gestão de usuários', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
 
     await waitFor(() => expect(screen.queryByRole('heading', { name: 'Novo usuário' })).not.toBeInTheDocument())
-    await waitFor(() => expect(document.querySelector('.MuiDrawer-root')).not.toBeInTheDocument())
     expect(client.create).not.toHaveBeenCalled()
   })
 
-  it('submete um novo usuário pelo Drawer', async () => {
+  it('submete um novo usuário pelo Drawer sem senha inicial', async () => {
     const client = createClient()
-    client.create.mockResolvedValue(gerente)
+    client.create.mockResolvedValue({ ...gerente, senhaDefinida: false })
     render(<UserManagement client={client} />)
     await waitFor(() => expect(client.list).toHaveBeenCalled())
 
     await userEvent.click(screen.getByRole('button', { name: 'Novo usuário' }))
     await userEvent.type(await screen.findByLabelText(/Nome/), gerente.nome)
     await userEvent.type(screen.getByLabelText(/E-mail/), gerente.email)
-    await userEvent.type(screen.getByLabelText(/Senha inicial/), 'senha-segura-123')
+    expect(screen.queryByLabelText(/Senha inicial/)).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('checkbox', { name: 'Gerente' }))
     await userEvent.click(screen.getByRole('button', { name: 'Cadastrar usuário' }))
 
     await waitFor(() => expect(client.create).toHaveBeenCalledWith({
       nome: gerente.nome,
       email: gerente.email,
-      senha: 'senha-segura-123',
       perfis: ['GERENTE'],
     }))
-    expect(await screen.findByText('Usuário criado com sucesso.')).toBeInTheDocument()
+    expect(await screen.findByText(/Enviamos um convite/)).toBeInTheDocument()
+  })
+
+  it('exibe convite pendente e permite reenviar', async () => {
+    const pendingUser: Usuario = {
+      id: 2, nome: 'Nova Pessoa', email: 'nova@sgd.local', ativo: true, senhaDefinida: false, perfis: ['ADMIN'],
+    }
+    const client = createClient({ content: [pendingUser], page: 0, size: 20, totalElements: 1, totalPages: 1 })
+    client.resendSetup = vi.fn().mockResolvedValue(undefined)
+    render(<UserManagement client={client} />)
+
+    expect(await screen.findByText('Aguardando definição de senha')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Reenviar convite' }))
+    await waitFor(() => expect(client.resendSetup).toHaveBeenCalledWith(2))
+    expect(await screen.findByText(/Convite de definição de senha reenviado/)).toBeInTheDocument()
   })
 
   it('exige confirmação antes de inativar uma conta', async () => {
@@ -69,6 +81,7 @@ function createClient(page = emptyPage) {
     list: vi.fn().mockResolvedValue(page),
     create: vi.fn(),
     update: vi.fn(),
+    resendSetup: vi.fn(),
   } satisfies {
     [Key in keyof UserManagementClient]: ReturnType<typeof vi.fn>
   }

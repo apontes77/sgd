@@ -14,20 +14,17 @@ import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 class OAuthIdentityServiceTest {
     private OAuthIdentityRepository identities;
     private UserRepository users;
-    private PasswordEncoder passwords;
     private OAuthIdentityService service;
 
     @BeforeEach
     void setUp() {
         identities = mock(OAuthIdentityRepository.class);
         users = mock(UserRepository.class);
-        passwords = mock(PasswordEncoder.class);
-        service = new OAuthIdentityService(identities, users, passwords);
+        service = new OAuthIdentityService(identities, users);
     }
 
     @Test
@@ -72,7 +69,6 @@ class OAuthIdentityServiceTest {
     void provisionsUserAndUsesEmailWhenDisplayNameIsBlank() {
         when(identities.findByProviderAndExternalSubject(OAuthProvider.GOOGLE, "new-subject")).thenReturn(Optional.empty());
         when(users.findByEmailIgnoreCase("new@example.com")).thenReturn(Optional.empty());
-        when(passwords.encode(any())).thenReturn("encoded-random-password");
         when(users.save(any(User.class))).thenAnswer(invocation -> withId(invocation.getArgument(0), 15L));
         when(identities.findByProviderAndUsuarioId(OAuthProvider.GOOGLE, 15L)).thenReturn(Optional.empty());
 
@@ -80,8 +76,8 @@ class OAuthIdentityServiceTest {
 
         assertThat(created.getNome()).isEqualTo("new@example.com");
         assertThat(created.getEmail()).isEqualTo("new@example.com");
+        assertThat(created.isSenhaDefinida()).isFalse();
         assertThat(created.getPerfis()).isEqualTo(Set.of());
-        verify(passwords).encode(any(String.class));
         ArgumentCaptor<OAuthIdentity> identity = ArgumentCaptor.forClass(OAuthIdentity.class);
         verify(identities).save(identity.capture());
         assertThat(identity.getValue().getExternalSubject()).isEqualTo("new-subject");

@@ -20,19 +20,18 @@ O arquivo `render.yaml` cria os três recursos de produção do SGD:
 
    | Variável | Conteúdo |
    | --- | --- |
-   | `ADMIN_INITIAL_EMAIL` | E-mail do primeiro administrador |
-   | `ADMIN_INITIAL_PASSWORD` | Senha aleatória temporária |
+   | `ADMIN_INITIAL_EMAIL` | E-mail do primeiro administrador (receberá convite para definir senha) |
    | `MAIL_FROM` | Remetente autorizado pelo SMTP |
-   | `SMTP_HOST` | Host SMTP |
-   | `SMTP_USERNAME` | Usuário SMTP |
-   | `SMTP_PASSWORD` | Senha SMTP |
+   | `MAIL_HOST` | Host SMTP |
+   | `MAIL_USERNAME` | Usuário SMTP |
+   | `MAIL_PASSWORD` | Senha SMTP |
    | `OTEL_EXPORTER_OTLP_ENDPOINT` | Endpoint OTLP base do vendor |
    | `OTEL_EXPORTER_OTLP_HEADERS` | Headers exigidos pelo vendor, no formato `chave=valor` |
 
 3. Aguarde primeiro o banco e depois a API. O Flyway aplica as migrações no startup; a API só fica pronta quando a aplicação e o indicador `db` estiverem saudáveis.
 4. Aguarde o build do frontend. `VITE_API_ORIGIN` é preenchida com a URL pública da API pelo próprio Blueprint.
-5. Faça os testes de fumaça descritos abaixo.
-6. Entre com o administrador, valide a recuperação de senha e então apague `ADMIN_INITIAL_EMAIL` e `ADMIN_INITIAL_PASSWORD` do ambiente. Sem ambos os valores, o bootstrap não tenta recriar o usuário.
+5. Faça os testes de fumaça descritos abaixo. O administrador inicial define a senha pelo link recebido por e-mail (ou pelo Mailpit em ambientes locais).
+6. Depois do primeiro acesso, você pode remover `ADMIN_INITIAL_EMAIL` do ambiente. Sem esse valor, o bootstrap não tenta recriar o usuário.
 
 O entrypoint recebe a URL interna do Render Postgres, extrai somente host e porta e mantém usuário, senha e nome do banco nas referências gerenciadas pelo Blueprint. O banco continua inacessível pela internet.
 
@@ -42,7 +41,7 @@ Por padrão, frontend e API usam URLs `onrender.com`. Ao adicionar um domínio p
 
 1. configure o domínio do frontend no Render;
 2. altere `CORS_ALLOWED_ORIGIN` para a origem HTTPS exata do frontend;
-3. altere `PASSWORD_RESET_FRONTEND_URL` para a mesma origem;
+3. altere `APP_PUBLIC_URL` para a mesma origem;
 4. opcionalmente configure um domínio para a API e atualize `VITE_API_ORIGIN`, provocando um novo build do frontend.
 
 Não use curingas no CORS e não coloque segredos em variáveis `VITE_*`, pois elas fazem parte do bundle público.

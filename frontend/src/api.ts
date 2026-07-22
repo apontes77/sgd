@@ -5,6 +5,7 @@ export interface Usuario {
   nome: string
   email: string
   ativo?: boolean
+  senhaDefinida: boolean
   perfis: Perfil[]
 }
 
@@ -31,7 +32,6 @@ export interface GerenciaRequest {
 export interface CriarUsuarioRequest {
   nome: string
   email: string
-  senha: string
   perfis: Perfil[]
 }
 
@@ -160,6 +160,15 @@ export const authApi = {
   hasSession: () => Boolean(sessionStorage.getItem(ACCESS_TOKEN_KEY) && sessionStorage.getItem(REFRESH_TOKEN_KEY)),
 }
 
+export const passwordRecoveryApi = {
+  request: (email: string) => request<void>('/autenticacao/esqueci-a-senha', {
+    method: 'POST', body: JSON.stringify({ email }),
+  }, false),
+  reset: (token: string, novaSenha: string) => request<void>('/autenticacao/redefinir-senha', {
+    method: 'POST', body: JSON.stringify({ token, novaSenha }),
+  }, false),
+}
+
 export const organizationApi = {
   listarUsuarios: (page = 0, size = 100, ativo?: boolean) => {
     const params = new URLSearchParams({ page: String(page), size: String(size) })
@@ -168,6 +177,7 @@ export const organizationApi = {
   },
   criarUsuario: (body: CriarUsuarioRequest) => request<Usuario>('/usuarios', { method: 'POST', body: JSON.stringify(body) }),
   atualizarUsuario: (id: number, body: AtualizarUsuarioRequest) => request<Usuario>(`/usuarios/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  reenviarDefinicaoSenha: (id: number) => request<void>(`/usuarios/${id}/reenviar-definicao-senha`, { method: 'POST' }),
   listarGerencias: () => request<Pagina<Gerencia>>('/gerencias?page=0&size=100'),
   criarGerencia: (body: GerenciaRequest) => request<Gerencia>('/gerencias', { method: 'POST', body: JSON.stringify(body) }),
   atualizarGerencia: (id: number, body: GerenciaRequest) => request<Gerencia>(`/gerencias/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
@@ -191,4 +201,5 @@ export const userManagementClient = {
   list: (page: number, size: number, active?: boolean) => organizationApi.listarUsuarios(page, size, active),
   create: (body: CriarUsuarioRequest) => organizationApi.criarUsuario(body),
   update: (id: number, body: AtualizarUsuarioRequest) => organizationApi.atualizarUsuario(id, body),
+  resendSetup: (id: number) => organizationApi.reenviarDefinicaoSenha(id),
 }

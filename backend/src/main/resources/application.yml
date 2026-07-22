@@ -14,16 +14,16 @@ spring:
   flyway:
     enabled: true
   mail:
-    host: ${SMTP_HOST:}
-    port: ${SMTP_PORT:587}
-    username: ${SMTP_USERNAME:}
-    password: ${SMTP_PASSWORD:}
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
-          auth: ${SMTP_AUTH:true}
+          auth: ${MAIL_AUTH:false}
           starttls:
-            enable: ${SMTP_STARTTLS:true}
+            enable: ${MAIL_TLS:false}
 
 server:
   port: ${PORT:8080}
@@ -43,17 +43,21 @@ management:
         readiness:
           include: readinessState,db
 
+logging:
+  pattern:
+    level: "%5p [traceId=%X{traceId:-}]"
+
 app:
-  password-reset:
-    frontend-url: ${PASSWORD_RESET_FRONTEND_URL:}
   mail:
-    from: ${MAIL_FROM:}
+    public-url: ${APP_PUBLIC_URL:http://localhost:5173}
+    from: ${MAIL_FROM:nao-responda@sgd.local}
+    tls: ${MAIL_TLS:false}
   cors:
     allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:5173}
   security:
     jwt-secret: ${JWT_SECRET:desenvolvimento-apenas-troque-por-um-segredo-com-32-bytes}
     access-token-minutes: ${JWT_ACCESS_TOKEN_MINUTES:15}
     refresh-token-days: ${JWT_REFRESH_TOKEN_DAYS:7}
-    password-reset-minutes: ${PASSWORD_RESET_MINUTES:60}
+    password-reset-minutes: ${PASSWORD_RESET_MINUTES:30}
+    password-setup-hours: ${PASSWORD_SETUP_HOURS:24}
     admin-email: ${ADMIN_INITIAL_EMAIL:}
-    admin-password: ${ADMIN_INITIAL_PASSWORD:}

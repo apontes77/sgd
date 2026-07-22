@@ -36,6 +36,6 @@ class JwtServiceTest {
     }
 
     private JwtService service(String secret, long minutes) {
-        return new JwtService(new SecurityProperties(secret, minutes, 7, 30, null, null));
+        return new JwtService(new SecurityProperties(secret, minutes, 7, 30, 24, null));
     }
 }

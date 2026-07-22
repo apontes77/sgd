@@ -28,7 +28,7 @@ public class AuthController {
     public record LoginRequest(@Email @NotBlank String email, @NotBlank String senha) { }
     public record RefreshRequest(@NotBlank String refreshToken) { }
     public record ForgotPasswordRequest(@Email @NotBlank String email) { }
-    public record ResetPasswordRequest(@NotBlank String token, @NotBlank @Size(min = 12, max = 128) String novaSenha) { }
+    public record ResetPasswordRequest(@NotBlank String token, @NotBlank String novaSenha) { }
     public record TokenResponse(String accessToken, String refreshToken, UserResponse usuario) { static TokenResponse of(AuthService.Tokens t) { return new TokenResponse(t.accessToken(), t.refreshToken(), UserResponse.of(t.user())); } }
-    public record UserResponse(Long id, String nome, String email, boolean ativo, Set<Role> perfis) { public static UserResponse of(User user) { return new UserResponse(user.getId(), user.getNome(), user.getEmail(), user.isAtivo(), user.getPerfis()); } }
+    public record UserResponse(Long id, String nome, String email, boolean ativo, boolean senhaDefinida, Set<Role> perfis) { public static UserResponse of(User user) { return new UserResponse(user.getId(), user.getNome(), user.getEmail(), user.isAtivo(), user.isSenhaDefinida(), user.getPerfis()); } }
 }

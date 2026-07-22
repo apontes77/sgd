@@ -21,10 +21,13 @@ class TokenLifecycleTest {
 
     @Test
     void passwordResetTokenIsInvalidWhenExpiredOrUsed() {
-        assertThat(new PasswordResetToken(user, "expired", Instant.now().minusSeconds(1)).isValid()).isFalse();
-        PasswordResetToken token = new PasswordResetToken(user, "valid", Instant.now().plusSeconds(60));
-        assertThat(token.isValid()).isTrue();
-        token.use();
-        assertThat(token.isValid()).isFalse();
+        Instant now = Instant.now();
+        assertThat(new PasswordResetToken(user, "expired", now.minusSeconds(120), now.minusSeconds(1),
+                PasswordResetToken.Type.REDEFINICAO).isValid(now)).isFalse();
+        PasswordResetToken token = new PasswordResetToken(user, "valid", now, now.plusSeconds(60),
+                PasswordResetToken.Type.REDEFINICAO);
+        assertThat(token.isValid(now)).isTrue();
+        token.use(now);
+        assertThat(token.isValid(now)).isFalse();
     }
 }

@@ -59,32 +59,36 @@ services:
         generateValue: true
       - key: ADMIN_INITIAL_EMAIL
         sync: false
-      - key: ADMIN_INITIAL_PASSWORD
-        sync: false
-      - key: PASSWORD_RESET_FRONTEND_URL
+      - key: APP_PUBLIC_URL
         fromService:
           type: web
           name: sgd-web
           envVarKey: RENDER_EXTERNAL_URL
       - key: MAIL_FROM
         sync: false
-      - key: SMTP_HOST
+      - key: MAIL_HOST
         sync: false
-      - key: SMTP_PORT
+      - key: MAIL_PORT
         value: "587"
-      - key: SMTP_USERNAME
+      - key: MAIL_USERNAME
         sync: false
-      - key: SMTP_PASSWORD
+      - key: MAIL_PASSWORD
         sync: false
-      - key: SMTP_AUTH
+      - key: MAIL_TLS
         value: "true"
-      - key: SMTP_STARTTLS
+      - key: MAIL_AUTH
         value: "true"
+      - key: PASSWORD_RESET_MINUTES
+        value: "30"
+      - key: PASSWORD_SETUP_HOURS
+        value: "24"
       - key: CORS_ALLOWED_ORIGIN
         fromService:
           type: web
           name: sgd-web
           envVarKey: RENDER_EXTERNAL_URL
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
       - key: DEPLOYMENT_ENVIRONMENT
         value: production
       - key: OTEL_SERVICE_NAME

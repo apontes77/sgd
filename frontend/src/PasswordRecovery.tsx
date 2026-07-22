@@ -15,6 +15,11 @@ const cardSx = {
   boxShadow: '0 20px 50px rgba(23, 32, 51, 0.10)',
 }
 
+function passwordTooShortOrLong(password: string) {
+  const bytes = new TextEncoder().encode(password).length
+  return bytes < 12 || bytes > 72
+}
+
 export function ForgotPassword({ client, onBack }: { client: PasswordRecoveryClient; onBack(): void }) {
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
@@ -23,7 +28,9 @@ export function ForgotPassword({ client, onBack }: { client: PasswordRecoveryCli
 
   async function submit(event: FormEvent) {
     event.preventDefault()
+    if (loading) return
     setError('')
+    setSent(false)
     setLoading(true)
     try {
       await client.request(email)
@@ -40,15 +47,17 @@ export function ForgotPassword({ client, onBack }: { client: PasswordRecoveryCli
       <Stack spacing={0.75}>
         <LockResetRounded color="primary" sx={{ fontSize: 36 }} />
         <Typography component="h1" variant="h4">Recuperar senha</Typography>
-        <Typography color="text.secondary">Informe o e-mail da sua conta para receber as instruções de redefinição.</Typography>
+        <Typography color="text.secondary">
+          Informe o e-mail da sua conta para receber o link. Isso também vale se você ainda não definiu a senha do convite inicial.
+        </Typography>
       </Stack>
       {sent && <Alert severity="success">Se o e-mail estiver cadastrado e ativo, você receberá as instruções.</Alert>}
       {error && <Alert severity="error">{error}</Alert>}
-      <TextField required autoFocus type="email" label="E-mail" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+      <TextField required autoFocus disabled={loading} type="email" label="E-mail" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} />
       <Button type="submit" variant="contained" size="large" disabled={loading} startIcon={loading ? <CircularProgress size={18} color="inherit" /> : undefined}>
         {loading ? 'Enviando...' : 'Solicitar redefinição'}
       </Button>
-      <Button onClick={onBack} startIcon={<ArrowBackRounded />}>Voltar ao login</Button>
+      <Button type="button" disabled={loading} onClick={onBack} startIcon={<ArrowBackRounded />}>Voltar ao login</Button>
     </Stack>
   </Paper>
 }
@@ -61,17 +70,22 @@ export function ResetPassword({ client, token, onSuccess }: { client: PasswordRe
 
   async function submit(event: FormEvent) {
     event.preventDefault()
+    if (loading) return
     setError('')
     if (password !== confirmation) {
       setError('As senhas não coincidem.')
+      return
+    }
+    if (passwordTooShortOrLong(password)) {
+      setError('Use pelo menos 12 caracteres (limite técnico de 72 bytes UTF-8).')
       return
     }
     setLoading(true)
     try {
       await client.reset(token, password)
       onSuccess()
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Token inválido ou expirado.')
+    } catch {
+      setError('O link de redefinição é inválido ou expirou. Solicite um novo link.')
     } finally {
       setLoading(false)
     }
@@ -82,11 +96,11 @@ export function ResetPassword({ client, token, onSuccess }: { client: PasswordRe
       <Stack spacing={0.75}>
         <LockResetRounded color="primary" sx={{ fontSize: 36 }} />
         <Typography component="h1" variant="h4">Definir nova senha</Typography>
-        <Typography color="text.secondary">Crie uma senha segura com pelo menos 12 caracteres.</Typography>
+        <Typography color="text.secondary">Crie uma senha com pelo menos 12 caracteres.</Typography>
       </Stack>
       {error && <Alert severity="error">{error}</Alert>}
-      <TextField required autoFocus type="password" inputProps={{ minLength: 12 }} label="Nova senha" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} />
-      <TextField required type="password" inputProps={{ minLength: 12 }} label="Confirmar senha" autoComplete="new-password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} />
+      <TextField required autoFocus disabled={loading} type="password" inputProps={{ minLength: 12 }} label="Nova senha" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} />
+      <TextField required disabled={loading} type="password" inputProps={{ minLength: 12 }} label="Confirmar senha" autoComplete="new-password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} />
       <Button type="submit" variant="contained" size="large" disabled={loading} startIcon={loading ? <CircularProgress size={18} color="inherit" /> : undefined}>
         {loading ? 'Redefinindo...' : 'Redefinir senha'}
       </Button>

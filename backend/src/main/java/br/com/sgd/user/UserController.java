@@ -23,8 +23,10 @@ public class UserController {
         var result = service.list(ativo, PageRequest.of(page, size));
         return PaginaResponse.of(result.map(UserResponse::of));
     }
-    @PostMapping @ResponseStatus(HttpStatus.CREATED) public UserResponse create(@Valid @RequestBody CreateUserRequest r) { return UserResponse.of(service.create(r.nome(), r.email(), r.senha(), r.perfis())); }
+    @PostMapping @ResponseStatus(HttpStatus.CREATED) public UserResponse create(@Valid @RequestBody CreateUserRequest r) { return UserResponse.of(service.create(r.nome(), r.email(), r.perfis())); }
+    @PostMapping("/{id}/reenviar-definicao-senha") @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resendSetup(@PathVariable long id) { service.resendInitialSetup(id); }
     @PatchMapping("/{id}") public UserResponse update(@PathVariable long id, @Valid @RequestBody UpdateUserRequest r) { return UserResponse.of(service.update(id, r.nome(), r.perfis(), r.ativo())); }
-    public record CreateUserRequest(@NotBlank @Size(max = 120) String nome, @Email @NotBlank String email, @NotBlank @Size(min = 12) String senha, @NotEmpty Set<Role> perfis) { }
+    public record CreateUserRequest(@NotBlank @Size(max = 120) String nome, @Email @NotBlank String email, @NotEmpty Set<Role> perfis) { }
     public record UpdateUserRequest(@Size(min = 1, max = 120) String nome, Set<Role> perfis, Boolean ativo) { }
 }

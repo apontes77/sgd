@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -17,7 +16,6 @@ import br.com.sgd.user.User;
 import br.com.sgd.user.UserRepository;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.time.Instant;
 import java.util.HexFormat;
 import java.util.Optional;
 import java.util.Set;
@@ -28,23 +26,21 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 class AuthServiceCoverageTest {
     private UserRepository users;
     private RefreshTokenRepository refreshTokens;
-    private PasswordResetTokenRepository resetTokens;
     private AuditLogRepository audit;
     private PasswordEncoder passwords;
     private JwtService jwt;
-    private PasswordResetNotifier notifier;
+    private PasswordCredentialService credentials;
     private AuthService service;
 
     @BeforeEach
     void setUp() {
         users = mock(UserRepository.class);
         refreshTokens = mock(RefreshTokenRepository.class);
-        resetTokens = mock(PasswordResetTokenRepository.class);
         audit = mock(AuditLogRepository.class);
         passwords = mock(PasswordEncoder.class);
         jwt = mock(JwtService.class);
-        notifier = mock(PasswordResetNotifier.class);
-        service = service(null, null);
+        credentials = mock(PasswordCredentialService.class);
+        service = service(null);
     }
 
     @Test
@@ -64,7 +60,7 @@ class AuthServiceCoverageTest {
     }
 
     @Test
-    void loginRejectsUnknownInactiveAndWrongPassword() {
+    void loginRejectsUnknownInactiveWrongPasswordAndUndefinedPassword() {
         when(users.findByEmailIgnoreCase("missing@example.com")).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.login("missing@example.com", "secret"))
                 .isInstanceOf(AuthService.InvalidCredentialsException.class);
@@ -75,8 +71,16 @@ class AuthServiceCoverageTest {
         assertThatThrownBy(() -> service.login("inactive@example.com", "secret"))
                 .isInstanceOf(AuthService.InvalidCredentialsException.class);
 
+        User pending = mock(User.class);
+        when(pending.isAtivo()).thenReturn(true);
+        when(pending.isSenhaDefinida()).thenReturn(false);
+        when(users.findByEmailIgnoreCase("pending@example.com")).thenReturn(Optional.of(pending));
+        assertThatThrownBy(() -> service.login("pending@example.com", "secret"))
+                .isInstanceOf(AuthService.InvalidCredentialsException.class);
+
         User active = mock(User.class);
         when(active.isAtivo()).thenReturn(true);
+        when(active.isSenhaDefinida()).thenReturn(true);
         when(active.getSenhaHash()).thenReturn("encoded");
         when(users.findByEmailIgnoreCase("active@example.com")).thenReturn(Optional.of(active));
         when(passwords.matches("wrong", "encoded")).thenReturn(false);
@@ -121,45 +125,11 @@ class AuthServiceCoverageTest {
     }
 
     @Test
-    void resetPasswordConsumesTokenAndRevokesSessions() throws Exception {
-        User user = mock(User.class);
-        when(user.getId()).thenReturn(42L);
-        PasswordResetToken token = mock(PasswordResetToken.class);
-        when(token.isValid()).thenReturn(true);
-        when(token.getUsuario()).thenReturn(user);
-        when(passwords.encode("new-password")).thenReturn("new-hash");
-        when(resetTokens.findByTokenHash(hash("reset-token"))).thenReturn(Optional.of(token));
-
-        service.resetPassword("reset-token", "new-password");
-
-        verify(user).updatePassword("new-hash");
-        verify(token).use();
-        verify(resetTokens).invalidateAllByUserId(eq(42L), any(Instant.class));
-        verify(refreshTokens).revokeAllByUserId(eq(42L), any(Instant.class));
-        verify(audit).save(any());
-    }
-
-    @Test
-    void resetPasswordRejectsMissingOrExpiredToken() throws Exception {
-        when(resetTokens.findByTokenHash(hash("missing"))).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.resetPassword("missing", "password"))
-                .isInstanceOf(AuthService.InvalidTokenException.class);
-        PasswordResetToken expired = mock(PasswordResetToken.class);
-        when(expired.isValid()).thenReturn(false);
-        when(resetTokens.findByTokenHash(hash("expired"))).thenReturn(Optional.of(expired));
-        assertThatThrownBy(() -> service.resetPassword("expired", "password"))
-                .isInstanceOf(AuthService.InvalidTokenException.class);
-    }
-
-    @Test
-    void resetRequestDoesNotRevealMissingOrInactiveAccount() {
-        when(users.findByEmailIgnoreCase("missing@example.com")).thenReturn(Optional.empty());
-        service.requestPasswordReset("missing@example.com");
-        User inactive = mock(User.class);
-        when(inactive.isAtivo()).thenReturn(false);
-        when(users.findByEmailIgnoreCase("inactive@example.com")).thenReturn(Optional.of(inactive));
-        service.requestPasswordReset("inactive@example.com");
-        verifyNoInteractions(resetTokens, notifier);
+    void passwordOperationsDelegateToCredentialService() {
+        service.requestPasswordReset("user@example.com");
+        service.resetPassword("token", "nova-senha-segura");
+        verify(credentials).requestPasswordReset("user@example.com");
+        verify(credentials).resetPassword("token", "nova-senha-segura");
     }
 
     @Test
@@ -181,16 +151,17 @@ class AuthServiceCoverageTest {
         service.bootstrapAdmin();
         verifyNoInteractions(users);
 
-        service = service("admin@example.com", "secret");
+        service = service("admin@example.com");
         when(users.existsByEmailIgnoreCase("admin@example.com")).thenReturn(false);
-        when(passwords.encode("secret")).thenReturn("encoded");
+        when(users.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
         service.bootstrapAdmin();
         verify(users).save(any(User.class));
+        verify(credentials).requestInitialSetup(any(User.class));
     }
 
-    private AuthService service(String adminEmail, String adminPassword) {
-        return new AuthService(users, refreshTokens, resetTokens, audit, passwords, jwt,
-                new SecurityProperties("01234567890123456789012345678901", 15, 7, 30, adminEmail, adminPassword), notifier);
+    private AuthService service(String adminEmail) {
+        return new AuthService(users, refreshTokens, audit, passwords, jwt,
+                new SecurityProperties("01234567890123456789012345678901", 15, 7, 30, 24, adminEmail), credentials);
     }
 
     private String hash(String value) throws Exception {

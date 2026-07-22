@@ -25,9 +25,12 @@ Usuários, adolescentes e discipulados não são excluídos fisicamente. Use `PA
 | Renovar sessão | `POST /autenticacao/atualizar-token` | Público, com refresh token |
 | Solicitar redefinição | `POST /autenticacao/esqueci-a-senha` | Público |
 | Redefinir senha | `POST /autenticacao/redefinir-senha` | Público, com token único |
+| Reenviar convite de senha | `POST /usuarios/{id}/reenviar-definicao-senha` | `ADMIN` |
 | Consultar sessão | `GET /autenticacao/eu` | Autenticado |
 
-O refresh token é rotacionado a cada renovação. Tokens de redefinição não são expostos pela API e devem ser entregues por provedor transacional de e-mail.
+O refresh token é rotacionado a cada renovação. Tokens de redefinição não são expostos pela API e devem ser entregues por SMTP/provedor transacional.
+
+Solicitações de recuperação sempre retornam a mesma resposta, exista ou não uma conta ativa para o e-mail informado. O cooldown de novas solicitações só começa após o e-mail ser enviado com sucesso, para permitir nova tentativa quando a entrega falha. O link é de uso único, expira e a definição de uma nova senha encerra todas as sessões existentes. Novos usuários não recebem senha inicial: após o cadastro administrativo, recebem por e-mail um convite para definir a própria senha.
 
 ## Autorização
 

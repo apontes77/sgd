@@ -2,7 +2,7 @@ package br.com.sgd.config;
 
 import br.com.sgd.auth.AuthService;
 import br.com.sgd.auth.JwtService;
-import br.com.sgd.observability.TraceIds;
+import br.com.sgd.observability.TraceContext;
 import br.com.sgd.user.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -36,7 +36,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @EnableMethodSecurity
 @EnableConfigurationProperties(SecurityProperties.class)
 public class SecurityConfig {
-    @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
+    @Bean PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(12); }
     @Bean ApplicationRunner adminBootstrap(AuthService authService) { return arguments -> authService.bootstrapAdmin(); }
     @Bean SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter, ObjectMapper json) throws Exception {
         return http.cors(cors -> {}).csrf(csrf -> csrf.disable())
@@ -62,7 +62,7 @@ public class SecurityConfig {
         response.setStatus(status);
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
         json.writeValue(response.getOutputStream(), Map.of("type", "about:blank", "title", title, "status", status,
-                "detail", detail, "traceId", TraceIds.currentOrRandom()));
+                "detail", detail, "traceId", TraceContext.currentTraceId()));
     }
 
     @Component

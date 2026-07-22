@@ -14,6 +14,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 
 @Entity
@@ -25,7 +26,7 @@ public class User {
     private String nome;
     @Column(nullable = false, unique = true, length = 254)
     private String email;
-    @Column(name = "senha_hash", nullable = false)
+    @Column(name = "senha_hash")
     private String senhaHash;
     @Column(nullable = false)
     private boolean ativo = true;
@@ -41,12 +42,13 @@ public class User {
 
     protected User() { }
     public User(String nome, String email, String senhaHash, Set<Role> perfis) {
-        this.nome = nome; this.email = email.toLowerCase(); this.senhaHash = senhaHash; this.perfis = new HashSet<>(perfis);
+        this.nome = nome; this.email = email.toLowerCase(Locale.ROOT); this.senhaHash = senhaHash; this.perfis = new HashSet<>(perfis);
     }
     public Long getId() { return id; }
     public String getNome() { return nome; }
     public String getEmail() { return email; }
     public String getSenhaHash() { return senhaHash; }
+    public boolean isSenhaDefinida() { return senhaHash != null && !senhaHash.isBlank(); }
     public boolean isAtivo() { return ativo; }
     public Set<Role> getPerfis() { return Set.copyOf(perfis); }
     public void update(String nome, Set<Role> perfis, Boolean ativo) {
