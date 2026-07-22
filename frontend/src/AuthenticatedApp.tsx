@@ -1,6 +1,6 @@
 import {
   AccountTreeRounded, AssessmentRounded, DashboardRounded, Diversity3Rounded, FactCheckRounded,
-  GroupsRounded, LogoutRounded, MoreHorizRounded, PeopleAltRounded,
+  GroupsRounded, InsightsRounded, LogoutRounded, MoreHorizRounded, PeopleAltRounded,
 } from '@mui/icons-material'
 import {
   AppBar, Avatar, BottomNavigation, BottomNavigationAction, Box, Divider, Drawer, FormControl,
@@ -15,19 +15,20 @@ import UserManagement from './UserManagement'
 import { organizationApi, userManagementClient, type Discipulado, type Perfil, type Usuario } from './api'
 import { BOTTOM_NAV_OFFSET, EmptyState, LoadingState, PageHeader } from './ui'
 
+const ExecutiveDashboard = lazy(() => import('./ExecutiveDashboard'))
 const AdminDashboard = lazy(() => import('./AdminDashboard'))
 const ManagerDashboard = lazy(() => import('./ManagerDashboard'))
 const LeaderDashboard = lazy(() => import('./LeaderDashboard'))
 const FrequencyReport = lazy(() => import('./FrequencyReport'))
 
-type Section = 'painel' | 'minha-gerencia' | 'meu-discipulado' | 'estrutura' | 'usuarios' | 'adolescentes' | 'frequencia' | 'relatorios'
-type NavGroup = 'Visão geral' | 'Gestão' | 'Operação' | 'Análises'
+type Section = 'visao-executiva' | 'painel' | 'minha-gerencia' | 'meu-discipulado' | 'estrutura' | 'usuarios' | 'adolescentes' | 'frequencia' | 'relatorios'
+type NavGroup = 'Dashboards & BI' | 'Cadastros' | 'Operações' | 'Relatórios'
 type NavItem = { value: Section; label: string; shortLabel?: string; group: NavGroup; icon: ReactNode }
 const drawerWidth = 264
 const roleLabel: Record<Perfil, string> = { ADMIN: 'Administrador', GERENTE: 'Gerente', DISCIPULADOR: 'Discipulador', CO_LIDER: 'Co-líder' }
 
 function primaryBottomItems(items: NavItem[]): NavItem[] {
-  const overview = items.find((item) => item.group === 'Visão geral')
+  const overview = items.find((item) => item.group === 'Dashboards & BI')
   const adolescentes = items.find((item) => item.value === 'adolescentes')
   const frequencia = items.find((item) => item.value === 'frequencia')
   const relatorios = items.find((item) => item.value === 'relatorios')
@@ -37,13 +38,14 @@ function primaryBottomItems(items: NavItem[]): NavItem[] {
 export default function AuthenticatedApp({ currentUser, onLogout }: { currentUser: Usuario; onLogout: () => void }) {
   const sections = useMemo(() => {
     const values: NavItem[] = []
-    if (currentUser.perfis.includes('ADMIN')) values.push({ value: 'painel', label: 'Painel', shortLabel: 'Painel', group: 'Visão geral', icon: <DashboardRounded /> })
-    if (currentUser.perfis.includes('GERENTE')) values.push({ value: 'minha-gerencia', label: 'Minha gerência', shortLabel: 'Gerência', group: 'Visão geral', icon: <DashboardRounded /> })
-    if (currentUser.perfis.some((role) => role === 'DISCIPULADOR' || role === 'CO_LIDER')) values.push({ value: 'meu-discipulado', label: 'Meu discipulado', shortLabel: 'Discipulado', group: 'Visão geral', icon: <DashboardRounded /> })
-    if (currentUser.perfis.includes('ADMIN')) values.push({ value: 'estrutura', label: 'Estrutura', group: 'Gestão', icon: <AccountTreeRounded /> }, { value: 'usuarios', label: 'Usuários', group: 'Gestão', icon: <PeopleAltRounded /> })
-    values.push({ value: 'adolescentes', label: 'Adolescentes', shortLabel: 'Adolescentes', group: 'Gestão', icon: <GroupsRounded /> })
-    if (currentUser.perfis.some((role) => role === 'ADMIN' || role === 'DISCIPULADOR' || role === 'CO_LIDER')) values.push({ value: 'frequencia', label: currentUser.perfis.includes('ADMIN') ? 'Encontros e frequência' : 'Registrar frequência', shortLabel: 'Frequência', group: 'Operação', icon: <FactCheckRounded /> })
-    values.push({ value: 'relatorios', label: 'Relatórios', shortLabel: 'Relatórios', group: 'Análises', icon: <AssessmentRounded /> })
+    if (currentUser.perfis.includes('ADMIN')) values.push({ value: 'visao-executiva', label: 'Visão executiva', shortLabel: 'Executiva', group: 'Dashboards & BI', icon: <InsightsRounded /> })
+    if (currentUser.perfis.includes('ADMIN')) values.push({ value: 'painel', label: 'Painel', shortLabel: 'Painel', group: 'Dashboards & BI', icon: <DashboardRounded /> })
+    if (currentUser.perfis.includes('GERENTE')) values.push({ value: 'minha-gerencia', label: 'Minha gerência', shortLabel: 'Gerência', group: 'Dashboards & BI', icon: <DashboardRounded /> })
+    if (currentUser.perfis.some((role) => role === 'DISCIPULADOR' || role === 'CO_LIDER')) values.push({ value: 'meu-discipulado', label: 'Meu discipulado', shortLabel: 'Discipulado', group: 'Dashboards & BI', icon: <DashboardRounded /> })
+    if (currentUser.perfis.includes('ADMIN')) values.push({ value: 'estrutura', label: 'Estrutura', group: 'Cadastros', icon: <AccountTreeRounded /> }, { value: 'usuarios', label: 'Usuários', group: 'Cadastros', icon: <PeopleAltRounded /> })
+    values.push({ value: 'adolescentes', label: 'Adolescentes', shortLabel: 'Adolescentes', group: 'Cadastros', icon: <GroupsRounded /> })
+    if (currentUser.perfis.some((role) => role === 'ADMIN' || role === 'DISCIPULADOR' || role === 'CO_LIDER')) values.push({ value: 'frequencia', label: currentUser.perfis.includes('ADMIN') ? 'Encontros e frequência' : 'Registrar frequência', shortLabel: 'Frequência', group: 'Operações', icon: <FactCheckRounded /> })
+    values.push({ value: 'relatorios', label: 'Relatórios', shortLabel: 'Relatórios', group: 'Relatórios', icon: <AssessmentRounded /> })
     return values
   }, [currentUser.perfis])
   const [section, setSection] = useState<Section>(sections[0].value)
@@ -63,7 +65,10 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
   return <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
     <AppBar position="fixed" color="inherit" elevation={0} sx={{ width: { md: `calc(100% - ${drawerWidth}px)` }, ml: { md: `${drawerWidth}px` }, borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'rgba(255,255,255,.94)', backdropFilter: 'blur(12px)', zIndex: (theme) => theme.zIndex.drawer - 1 }}>
       <Toolbar sx={{ minHeight: { xs: 64, md: 68 }, px: { xs: 2, md: 3 } }}>
-        <Box sx={{ flexGrow: 1 }}><Typography variant="body2" color="text.secondary">SGD</Typography><Typography variant="h6">{currentSection.label}</Typography></Box>
+        <Box sx={{ flexGrow: 1 }}>
+          <Typography variant="body2" color="text.secondary">{currentSection.group} / {currentSection.label}</Typography>
+          <Typography variant="h6">{currentSection.label}</Typography>
+        </Box>
       </Toolbar>
     </AppBar>
     <Box component="nav" aria-label="Navegação principal" sx={{ display: { xs: 'none', md: 'block' } }}>
@@ -72,6 +77,7 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
     <Box component="main" sx={{ ml: { md: `${drawerWidth}px` }, pt: { xs: '64px', md: '68px' }, pb: { xs: BOTTOM_NAV_OFFSET, md: 0 }, minHeight: '100vh' }}>
       <Box sx={{ width: '100%', maxWidth: 1600, mx: 'auto', p: { xs: 2, sm: 3, lg: 4 } }}>
         <Suspense fallback={<LoadingState label="Carregando módulo..." />}>
+          {section === 'visao-executiva' && <ExecutiveDashboard />}
           {section === 'painel' && <AdminDashboard />}
           {section === 'minha-gerencia' && <ManagerDashboard />}
           {section === 'meu-discipulado' && <LeaderDashboard />}
@@ -156,7 +162,7 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
 }
 
 function Navigation({ items, current, currentUser, onNavigate, onLogout }: { items: NavItem[]; current: Section; currentUser: Usuario; onNavigate: (value: Section) => void; onLogout: () => void }) {
-  const groups: NavGroup[] = ['Visão geral', 'Gestão', 'Operação', 'Análises']
+  const groups: NavGroup[] = ['Dashboards & BI', 'Cadastros', 'Operações', 'Relatórios']
   return <Stack sx={{ height: '100%', bgcolor: 'background.paper' }}>
     <Stack direction="row" alignItems="center" spacing={1.4} sx={{ height: 76, px: 2.5, borderBottom: '1px solid', borderColor: 'divider' }}><Box sx={{ width: 42, height: 42, borderRadius: 2.5, display: 'grid', placeItems: 'center', color: '#fff', bgcolor: 'primary.main' }}><Diversity3Rounded /></Box><Box><Typography variant="h6" color="primary.dark">SGD</Typography><Typography variant="caption" color="text.secondary">Gestão de discipulados</Typography></Box></Stack>
     <List role="tablist" sx={{ flexGrow: 1, overflowY: 'auto', px: 1.5, py: 2 }}>

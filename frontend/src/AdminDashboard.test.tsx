@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import AdminDashboard from './AdminDashboard'
 
 vi.mock('echarts-for-react', () => ({ default: () => <div data-testid="grafico" /> }))
-const resposta = { dataInicio: '2026-01-01', dataFim: '2026-07-01', resumo: { encontrosRealizados: 2, presentes: 3, ausentes: 1, visitantes: 7, percentualPresenca: 75 }, evolucao: [{ referencia: '2026-06', presentes: 3, ausentes: 1, visitantes: 7, percentualPresenca: 75 }], gerencias: [{ id: 1, nome: 'Gerência Centro', presentes: 3, ausentes: 1, percentualPresenca: 75 }], sexos: [{ sexo: 'MASCULINO', presentes: 2, ausentes: 1, percentualPresenca: 66.67 }, { sexo: 'FEMININO', presentes: 1, ausentes: 0, percentualPresenca: 100 }] }
+const resposta = { dataInicio: '2026-01-01', dataFim: '2026-07-01', resumo: { encontrosRealizados: 2, presentes: 3, ausentes: 1, visitantes: 7, percentualPresenca: 75 }, evolucao: [{ referencia: '2026-06', presentes: 3, ausentes: 1, visitantes: 7, percentualPresenca: 75 }], gerencias: [{ id: 1, nome: 'Gerência Centro', presentes: 3, ausentes: 1, percentualPresenca: 75 }], sexos: [{ sexo: 'MASCULINO', presentes: 2, ausentes: 1, percentualPresenca: 66.67 }, { sexo: 'FEMININO', presentes: 1, ausentes: 0, percentualPresenca: 100 }], encontrosNaoRealizados: 1, gerenciasMensal: [{ gerenciaId: 1, gerenciaNome: 'Gerência Centro', referencia: '2026-06', presentes: 3, ausentes: 1, percentualPresenca: 75 }] }
 
 describe('painel administrativo', () => {
   afterEach(() => { cleanup(); vi.restoreAllMocks(); sessionStorage.clear() })

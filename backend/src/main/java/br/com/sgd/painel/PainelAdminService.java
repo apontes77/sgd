@@ -37,13 +37,19 @@ public class PainelAdminService {
             .map(item -> new GerenciaIndicador(item.getId(), item.getNome(), valor(item.getPresentes()), valor(item.getAusentes()), percentual(item.getPresentes(), item.getAusentes())))
             .sorted(java.util.Comparator.comparing(GerenciaIndicador::percentualPresenca).reversed().thenComparing(GerenciaIndicador::nome)).toList();
 
+        List<GerenciaMensalIndicador> gerenciasMensal = repository.porGerenciaMensal(inicio, fim).stream()
+            .map(item -> new GerenciaMensalIndicador(item.getGerenciaId(), item.getGerenciaNome(), item.getReferencia(),
+                valor(item.getPresentes()), valor(item.getAusentes()), percentual(item.getPresentes(), item.getAusentes())))
+            .toList();
+
         Map<String, SexoIndicador> sexosEncontrados = new LinkedHashMap<>();
         repository.porSexo(inicio, fim).forEach(item -> sexosEncontrados.put(item.getSexo(),
             new SexoIndicador(item.getSexo(), valor(item.getPresentes()), valor(item.getAusentes()), percentual(item.getPresentes(), item.getAusentes()))));
         List<SexoIndicador> sexos = new ArrayList<>();
         sexos.add(sexosEncontrados.getOrDefault("MASCULINO", new SexoIndicador("MASCULINO", 0, 0, BigDecimal.ZERO)));
         sexos.add(sexosEncontrados.getOrDefault("FEMININO", new SexoIndicador("FEMININO", 0, 0, BigDecimal.ZERO)));
-        return new PainelAdminResponse(inicio, fim, resumo, serie, gerencias, sexos);
+        long naoRealizados = repository.encontrosNaoRealizados(inicio, fim);
+        return new PainelAdminResponse(inicio, fim, resumo, serie, gerencias, sexos, naoRealizados, gerenciasMensal);
     }
 
     private static void validar(LocalDate inicio, LocalDate fim) {
@@ -59,9 +65,11 @@ public class PainelAdminService {
     }
 
     public record PainelAdminResponse(LocalDate dataInicio, LocalDate dataFim, Resumo resumo, List<EvolucaoMensal> evolucao,
-                                      List<GerenciaIndicador> gerencias, List<SexoIndicador> sexos) { }
+                                      List<GerenciaIndicador> gerencias, List<SexoIndicador> sexos,
+                                      long encontrosNaoRealizados, List<GerenciaMensalIndicador> gerenciasMensal) { }
     public record Resumo(long encontrosRealizados, long presentes, long ausentes, long visitantes, BigDecimal percentualPresenca) { }
     public record EvolucaoMensal(String referencia, long presentes, long ausentes, long visitantes, BigDecimal percentualPresenca) { }
     public record GerenciaIndicador(long id, String nome, long presentes, long ausentes, BigDecimal percentualPresenca) { }
+    public record GerenciaMensalIndicador(long gerenciaId, String gerenciaNome, String referencia, long presentes, long ausentes, BigDecimal percentualPresenca) { }
     public record SexoIndicador(String sexo, long presentes, long ausentes, BigDecimal percentualPresenca) { }
 }

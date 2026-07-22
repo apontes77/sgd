@@ -5,8 +5,8 @@ import AuthenticatedApp from './AuthenticatedApp'
 import type { Usuario } from './api'
 
 const emptyPage = { content: [], page: 0, size: 100, totalElements: 0, totalPages: 0 }
-const emptyDashboard = { dataInicio: '2026-01-01', dataFim: '2026-07-01', resumo: { encontrosRealizados: 0, presentes: 0, ausentes: 0, visitantes: 0, percentualPresenca: 0 }, evolucao: [], gerencias: [], sexos: [{ sexo: 'MASCULINO', presentes: 0, ausentes: 0, percentualPresenca: 0 }, { sexo: 'FEMININO', presentes: 0, ausentes: 0, percentualPresenca: 0 }] }
-const emptyManagerDashboard = { dataInicio: '2026-01-01', dataFim: '2026-07-01', gerencia: { id: 1, nome: 'Centro' }, resumo: emptyDashboard.resumo, evolucao: [], discipulados: [] }
+const emptyDashboard = { dataInicio: '2026-01-01', dataFim: '2026-07-01', resumo: { encontrosRealizados: 0, presentes: 0, ausentes: 0, visitantes: 0, percentualPresenca: 0 }, evolucao: [], gerencias: [], sexos: [{ sexo: 'MASCULINO', presentes: 0, ausentes: 0, percentualPresenca: 0 }, { sexo: 'FEMININO', presentes: 0, ausentes: 0, percentualPresenca: 0 }], encontrosNaoRealizados: 0, gerenciasMensal: [] }
+const emptyManagerDashboard = { dataInicio: '2026-01-01', dataFim: '2026-07-01', gerencia: { id: 1, nome: 'Centro' }, resumo: emptyDashboard.resumo, evolucao: [], discipulados: [], encontrosNaoRealizados: [] }
 const emptyLeaderDashboard = { dataInicio: '2026-01-01', dataFim: '2026-07-01', discipulado: { id: 1, nome: 'Discipulado A', sexo: 'MASCULINO', ativo: true }, resumo: emptyDashboard.resumo, evolucao: [], discipulos: [] }
 
 vi.mock('echarts-for-react', () => ({ default: () => <div data-testid="grafico" /> }))
@@ -42,8 +42,9 @@ describe('navegação autenticada', () => {
 
   it('oferece todos os módulos administrativos ao ADMIN', () => {
     render(<AuthenticatedApp currentUser={user(['ADMIN'])} onLogout={() => undefined} />)
+    expect(screen.getByRole('tab', { name: 'Visão executiva' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Visão executiva' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tab', { name: 'Painel' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Painel' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tab', { name: 'Estrutura' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Usuários' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Adolescentes' })).toBeInTheDocument()
@@ -71,6 +72,7 @@ describe('navegação autenticada', () => {
 
   it('mantém os painéis administrativo e gerencial para perfil combinado', () => {
     render(<AuthenticatedApp currentUser={user(['ADMIN', 'GERENTE'])} onLogout={() => undefined} />)
+    expect(screen.getByRole('tab', { name: 'Visão executiva' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Painel' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Minha gerência' })).toBeInTheDocument()
   })
@@ -100,6 +102,7 @@ describe('navegação autenticada', () => {
 
   it('soma Meu discipulado aos painéis de perfis acumulados', () => {
     render(<AuthenticatedApp currentUser={user(['ADMIN', 'GERENTE', 'DISCIPULADOR'])} onLogout={() => undefined} />)
+    expect(screen.getByRole('tab', { name: 'Visão executiva' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Painel' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Minha gerência' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Meu discipulado' })).toBeInTheDocument()

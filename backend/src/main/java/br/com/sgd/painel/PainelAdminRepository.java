@@ -36,6 +36,9 @@ public interface PainelAdminRepository extends Repository<Encontro, Long> {
     @Query(value = "select count(*) from encontros e where e.situacao = 'REALIZADO' and e.data between :inicio and :fim", nativeQuery = true)
     long encontrosRealizados(@Param("inicio") LocalDate inicio, @Param("fim") LocalDate fim);
 
+    @Query(value = "select count(*) from encontros e where e.situacao = 'NAO_REALIZADO' and e.data between :inicio and :fim", nativeQuery = true)
+    long encontrosNaoRealizados(@Param("inicio") LocalDate inicio, @Param("fim") LocalDate fim);
+
     @Query(value = """
         select g.id as id, g.nome as nome,
                coalesce(sum(case when f.situacao = 'PRESENTE' then 1 else 0 end), 0) as presentes,
@@ -49,6 +52,21 @@ public interface PainelAdminRepository extends Repository<Encontro, Long> {
          order by g.nome
         """, nativeQuery = true)
     List<ContagemGerencia> porGerencia(@Param("inicio") LocalDate inicio, @Param("fim") LocalDate fim);
+
+    @Query(value = """
+        select g.id as gerenciaId, g.nome as gerenciaNome,
+               substring(cast(e.data as varchar), 1, 7) as referencia,
+               coalesce(sum(case when f.situacao = 'PRESENTE' then 1 else 0 end), 0) as presentes,
+               coalesce(sum(case when f.situacao = 'AUSENTE' then 1 else 0 end), 0) as ausentes
+          from encontros e
+          join discipulados d on d.id = e.discipulado_id
+          join gerencias g on g.id = d.gerencia_id
+          left join frequencias f on f.encontro_id = e.id
+         where e.situacao = 'REALIZADO' and e.data between :inicio and :fim
+         group by g.id, g.nome, substring(cast(e.data as varchar), 1, 7)
+         order by g.nome, referencia
+        """, nativeQuery = true)
+    List<ContagemGerenciaMensal> porGerenciaMensal(@Param("inicio") LocalDate inicio, @Param("fim") LocalDate fim);
 
     @Query(value = """
         select d.sexo as sexo,
@@ -66,5 +84,12 @@ public interface PainelAdminRepository extends Repository<Encontro, Long> {
     interface ContagemMensal { String getReferencia(); Long getPresentes(); Long getAusentes(); }
     interface VisitantesMensais { String getReferencia(); Long getVisitantes(); }
     interface ContagemGerencia { Long getId(); String getNome(); Long getPresentes(); Long getAusentes(); }
+    interface ContagemGerenciaMensal {
+        Long getGerenciaId();
+        String getGerenciaNome();
+        String getReferencia();
+        Long getPresentes();
+        Long getAusentes();
+    }
     interface ContagemSexo { String getSexo(); Long getPresentes(); Long getAusentes(); }
 }

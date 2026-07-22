@@ -23,7 +23,9 @@ class PainelAdminServiceTest {
         when(repository.frequenciasMensais(inicio, fim)).thenReturn(List.of());
         when(repository.visitantesMensais(inicio, fim)).thenReturn(List.of());
         when(repository.porGerencia(inicio, fim)).thenReturn(List.of());
+        when(repository.porGerenciaMensal(inicio, fim)).thenReturn(List.of());
         when(repository.porSexo(inicio, fim)).thenReturn(List.of());
+        when(repository.encontrosNaoRealizados(inicio, fim)).thenReturn(0L);
     }
 
     @Test void retornaZerosESexosQuandoNaoHaRegistros() {
@@ -31,6 +33,8 @@ class PainelAdminServiceTest {
         assertThat(resposta.resumo().presentes()).isZero();
         assertThat(resposta.resumo().percentualPresenca()).isZero();
         assertThat(resposta.evolucao()).isEmpty();
+        assertThat(resposta.encontrosNaoRealizados()).isZero();
+        assertThat(resposta.gerenciasMensal()).isEmpty();
         assertThat(resposta.sexos()).extracting(PainelAdminService.SexoIndicador::sexo).containsExactly("MASCULINO", "FEMININO");
     }
 
@@ -57,6 +61,24 @@ class PainelAdminServiceTest {
         var maior = gerencia(2L, "Maior", 9L, 1L);
         when(repository.porGerencia(inicio, fim)).thenReturn(List.of(menor, maior));
         assertThat(service.consultar(inicio, fim).gerencias()).extracting(PainelAdminService.GerenciaIndicador::nome).containsExactly("Maior", "Menor");
+    }
+
+    @Test void incluiNaoRealizadosESerieMensalPorGerencia() {
+        when(repository.encontrosNaoRealizados(inicio, fim)).thenReturn(3L);
+        var mensal = mock(PainelAdminRepository.ContagemGerenciaMensal.class);
+        when(mensal.getGerenciaId()).thenReturn(10L);
+        when(mensal.getGerenciaNome()).thenReturn("Norte");
+        when(mensal.getReferencia()).thenReturn("2026-02");
+        when(mensal.getPresentes()).thenReturn(4L);
+        when(mensal.getAusentes()).thenReturn(1L);
+        when(repository.porGerenciaMensal(inicio, fim)).thenReturn(List.of(mensal));
+
+        var resposta = service.consultar(inicio, fim);
+        assertThat(resposta.encontrosNaoRealizados()).isEqualTo(3);
+        assertThat(resposta.gerenciasMensal()).hasSize(1);
+        assertThat(resposta.gerenciasMensal().getFirst().gerenciaNome()).isEqualTo("Norte");
+        assertThat(resposta.gerenciasMensal().getFirst().referencia()).isEqualTo("2026-02");
+        assertThat(resposta.gerenciasMensal().getFirst().percentualPresenca()).isEqualByComparingTo("80.00");
     }
 
     @Test void rejeitaPeriodoInvertidoOuSuperiorAVinteEQuatroMeses() {

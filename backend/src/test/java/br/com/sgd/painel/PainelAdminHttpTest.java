@@ -23,7 +23,9 @@ class PainelAdminHttpTest {
     void adminConsultaPainelVazio() throws Exception {
         mvc.perform(get("/api/v1/painel/admin").param("dataInicio", "2026-01-01").param("dataFim", "2026-06-30"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.resumo.presentes").value(0))
-            .andExpect(jsonPath("$.resumo.percentualPresenca").value(0)).andExpect(jsonPath("$.sexos.length()").value(2));
+            .andExpect(jsonPath("$.resumo.percentualPresenca").value(0)).andExpect(jsonPath("$.sexos.length()").value(2))
+            .andExpect(jsonPath("$.encontrosNaoRealizados").value(0))
+            .andExpect(jsonPath("$.gerenciasMensal").isArray());
     }
 
     @Test
