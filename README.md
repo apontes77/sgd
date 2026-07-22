@@ -35,6 +35,17 @@ pnpm run dev
 
 O deploy recomendado usa Render para o frontend estático, a API Docker e o PostgreSQL gerenciado. Consulte [Deploy no Render](docs/deploy-render.md) para provisionamento e operação e [Observabilidade](docs/observability.md) para OTLP, dashboards, alertas e proteção de dados.
 
+## Testes E2E (Playwright)
+
+Com a API local em execução (`SPRING_PROFILES_ACTIVE=local`), na pasta `frontend`:
+
+```bash
+pnpm exec playwright install chromium   # primeira vez
+pnpm run test:e2e
+```
+
+Detalhes em [frontend/e2e/README.md](frontend/e2e/README.md). O CI executa o job `e2e` com PostgreSQL e a API.
+
 ## Convenções iniciais
 
 - Alterações no banco são feitas exclusivamente em `backend/src/main/resources/db/migration/`, em novas migrações Flyway.

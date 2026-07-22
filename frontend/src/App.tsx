@@ -68,7 +68,11 @@ export default function App() {
   }
   async function logout() {
     try { await authApi.logout() }
-    finally { setPassword(''); setCurrentUser(undefined) }
+    finally {
+      setPassword('')
+      setCurrentUser(undefined)
+      window.history.replaceState({}, '', '/')
+    }
   }
   if (checkingSession) return <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}><Stack alignItems="center" spacing={2}><CircularProgress size={32} /><Typography color="text.secondary">Validando sessão...</Typography></Stack></Box>
   if (currentUser) return <AuthenticatedApp currentUser={currentUser} onLogout={() => void logout()} />

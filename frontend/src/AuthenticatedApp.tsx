@@ -13,6 +13,7 @@ import FrequencyManagement from './FrequencyManagement'
 import OrganizationManagement from './OrganizationManagement'
 import UserManagement from './UserManagement'
 import { organizationApi, userManagementClient, type Discipulado, type Perfil, type Usuario } from './api'
+import { type AppSection, navigateToSection, resolveInitialSection } from './appNavigation'
 import { BOTTOM_NAV_OFFSET, EmptyState, LoadingState, PageHeader } from './ui'
 
 const ExecutiveDashboard = lazy(() => import('./ExecutiveDashboard'))
@@ -21,7 +22,7 @@ const ManagerDashboard = lazy(() => import('./ManagerDashboard'))
 const LeaderDashboard = lazy(() => import('./LeaderDashboard'))
 const FrequencyReport = lazy(() => import('./FrequencyReport'))
 
-type Section = 'visao-executiva' | 'painel' | 'minha-gerencia' | 'meu-discipulado' | 'estrutura' | 'usuarios' | 'adolescentes' | 'frequencia' | 'relatorios'
+type Section = AppSection
 type NavGroup = 'Dashboards & BI' | 'Cadastros' | 'Operações' | 'Relatórios'
 type NavItem = { value: Section; label: string; shortLabel?: string; group: NavGroup; icon: ReactNode }
 const drawerWidth = 264
@@ -36,28 +37,50 @@ function primaryBottomItems(items: NavItem[]): NavItem[] {
 }
 
 export default function AuthenticatedApp({ currentUser, onLogout }: { currentUser: Usuario; onLogout: () => void }) {
+  const isAdmin = currentUser.perfis.includes('ADMIN')
+  const isGerente = currentUser.perfis.includes('GERENTE')
   const sections = useMemo(() => {
     const values: NavItem[] = []
-    if (currentUser.perfis.includes('ADMIN')) values.push({ value: 'visao-executiva', label: 'Visão executiva', shortLabel: 'Executiva', group: 'Dashboards & BI', icon: <InsightsRounded /> })
-    if (currentUser.perfis.includes('ADMIN')) values.push({ value: 'painel', label: 'Painel', shortLabel: 'Painel', group: 'Dashboards & BI', icon: <DashboardRounded /> })
-    if (currentUser.perfis.includes('GERENTE')) values.push({ value: 'minha-gerencia', label: 'Minha gerência', shortLabel: 'Gerência', group: 'Dashboards & BI', icon: <DashboardRounded /> })
+    if (isAdmin || isGerente) values.push({ value: 'visao-executiva', label: 'Visão executiva', shortLabel: 'Executiva', group: 'Dashboards & BI', icon: <InsightsRounded /> })
+    if (isAdmin) values.push({ value: 'painel', label: 'Painel', shortLabel: 'Painel', group: 'Dashboards & BI', icon: <DashboardRounded /> })
+    if (isGerente) values.push({ value: 'minha-gerencia', label: 'Minha gerência', shortLabel: 'Gerência', group: 'Dashboards & BI', icon: <DashboardRounded /> })
     if (currentUser.perfis.some((role) => role === 'DISCIPULADOR' || role === 'CO_LIDER')) values.push({ value: 'meu-discipulado', label: 'Meu discipulado', shortLabel: 'Discipulado', group: 'Dashboards & BI', icon: <DashboardRounded /> })
-    if (currentUser.perfis.includes('ADMIN')) values.push({ value: 'estrutura', label: 'Estrutura', group: 'Cadastros', icon: <AccountTreeRounded /> }, { value: 'usuarios', label: 'Usuários', group: 'Cadastros', icon: <PeopleAltRounded /> })
+    if (isAdmin) values.push({ value: 'estrutura', label: 'Estrutura', group: 'Cadastros', icon: <AccountTreeRounded /> }, { value: 'usuarios', label: 'Usuários', group: 'Cadastros', icon: <PeopleAltRounded /> })
     values.push({ value: 'adolescentes', label: 'Adolescentes', shortLabel: 'Adolescentes', group: 'Cadastros', icon: <GroupsRounded /> })
-    if (currentUser.perfis.some((role) => role === 'ADMIN' || role === 'DISCIPULADOR' || role === 'CO_LIDER')) values.push({ value: 'frequencia', label: currentUser.perfis.includes('ADMIN') ? 'Encontros e frequência' : 'Registrar frequência', shortLabel: 'Frequência', group: 'Operações', icon: <FactCheckRounded /> })
+    if (currentUser.perfis.some((role) => role === 'ADMIN' || role === 'DISCIPULADOR' || role === 'CO_LIDER')) values.push({ value: 'frequencia', label: isAdmin ? 'Encontros e frequência' : 'Registrar frequência', shortLabel: 'Frequência', group: 'Operações', icon: <FactCheckRounded /> })
     values.push({ value: 'relatorios', label: 'Relatórios', shortLabel: 'Relatórios', group: 'Relatórios', icon: <AssessmentRounded /> })
     return values
-  }, [currentUser.perfis])
-  const [section, setSection] = useState<Section>(sections[0].value)
+  }, [currentUser.perfis, isAdmin, isGerente])
+  const available = useMemo(() => sections.map((item) => item.value), [sections])
+  const [section, setSection] = useState<Section>(() => resolveInitialSection(available))
   const [moreOpen, setMoreOpen] = useState(false)
   const currentSection = sections.find((item) => item.value === section) ?? sections[0]
   const bottomPrimary = useMemo(() => primaryBottomItems(sections), [sections])
   const bottomPrimaryIds = useMemo(() => new Set(bottomPrimary.map((item) => item.value)), [bottomPrimary])
   const moreItems = useMemo(() => sections.filter((item) => !bottomPrimaryIds.has(item.value)), [sections, bottomPrimaryIds])
   const bottomValue = bottomPrimaryIds.has(section) ? section : 'mais'
+  const escopoExecutivo = isAdmin ? 'admin' : 'gerencia'
+  const detalheExecutivo: Section = isAdmin ? 'painel' : 'minha-gerencia'
+
+  useEffect(() => {
+    if (!available.includes(section)) {
+      const next = resolveInitialSection(available)
+      setSection(next)
+      navigateToSection(next, true)
+      return
+    }
+    navigateToSection(section, true)
+  }, [available, section])
+
+  useEffect(() => {
+    const onPopState = () => setSection(resolveInitialSection(available))
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [available])
 
   function navigate(value: Section) {
     setSection(value)
+    navigateToSection(value)
     setMoreOpen(false)
   }
 
@@ -77,7 +100,12 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
     <Box component="main" sx={{ ml: { md: `${drawerWidth}px` }, pt: { xs: '64px', md: '68px' }, pb: { xs: BOTTOM_NAV_OFFSET, md: 0 }, minHeight: '100vh' }}>
       <Box sx={{ width: '100%', maxWidth: 1600, mx: 'auto', p: { xs: 2, sm: 3, lg: 4 } }}>
         <Suspense fallback={<LoadingState label="Carregando módulo..." />}>
-          {section === 'visao-executiva' && <ExecutiveDashboard />}
+          {section === 'visao-executiva' && (
+            <ExecutiveDashboard
+              escopo={escopoExecutivo}
+              onAbrirDetalhe={() => navigate(detalheExecutivo)}
+            />
+          )}
           {section === 'painel' && <AdminDashboard />}
           {section === 'minha-gerencia' && <ManagerDashboard />}
           {section === 'meu-discipulado' && <LeaderDashboard />}

@@ -35,10 +35,11 @@ function mockViewport(width: number) {
 describe('navegação autenticada', () => {
   beforeEach(() => {
     mockViewport(1200)
+    window.history.replaceState({}, '', '/')
     sessionStorage.setItem('sgd.access-token', 'token')
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => { const url = String(input); return new Response(JSON.stringify(url.includes('/painel/admin') ? emptyDashboard : url.includes('/painel/gerencia') ? emptyManagerDashboard : url.includes('/painel/lider') ? emptyLeaderDashboard : emptyPage), { status: 200, headers: { 'Content-Type': 'application/json' } }) })
   })
-  afterEach(() => { cleanup(); vi.restoreAllMocks(); sessionStorage.clear() })
+  afterEach(() => { cleanup(); vi.restoreAllMocks(); sessionStorage.clear(); window.history.replaceState({}, '', '/') })
 
   it('oferece todos os módulos administrativos ao ADMIN', () => {
     render(<AuthenticatedApp currentUser={user(['ADMIN'])} onLogout={() => undefined} />)
@@ -60,10 +61,11 @@ describe('navegação autenticada', () => {
     expect(screen.getByRole('button', { name: 'Novo discipulado' })).toBeInTheDocument()
   })
 
-  it('oferece o painel gerencial ao GERENTE', () => {
+  it('oferece visão executiva e painel gerencial ao GERENTE', () => {
     render(<AuthenticatedApp currentUser={user(['GERENTE'])} onLogout={() => undefined} />)
+    expect(screen.getByRole('tab', { name: 'Visão executiva' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Visão executiva' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tab', { name: 'Minha gerência' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Minha gerência' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tab', { name: 'Adolescentes' })).toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Usuários' })).not.toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Frequência' })).not.toBeInTheDocument()
@@ -75,6 +77,14 @@ describe('navegação autenticada', () => {
     expect(screen.getByRole('tab', { name: 'Visão executiva' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Painel' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Minha gerência' })).toBeInTheDocument()
+  })
+
+  it('sincroniza a seção com deep-link /app/:secao', async () => {
+    window.history.pushState({}, '', '/app/adolescentes')
+    render(<AuthenticatedApp currentUser={user(['ADMIN'])} onLogout={() => undefined} />)
+    expect(screen.getByRole('tab', { name: 'Adolescentes' })).toHaveAttribute('aria-selected', 'true')
+    await userEvent.click(screen.getByRole('tab', { name: 'Relatórios' }))
+    expect(window.location.pathname).toBe('/app/relatorios')
   })
 
   it('mantém Sair na navegação lateral e remove o menu superior', async () => {
