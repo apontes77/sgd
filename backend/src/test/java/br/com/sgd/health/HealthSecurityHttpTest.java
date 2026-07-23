@@ -15,21 +15,21 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class HealthSecurityHttpTest {
-    @Autowired MockMvc mvc;
+  @Autowired MockMvc mvc;
 
-    @Test
-    void healthCheckEPublico() throws Exception {
-        mvc.perform(get("/api/health"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.status").value("UP"))
-            .andExpect(jsonPath("$.timestamp").isNotEmpty());
-    }
+  @Test
+  void healthCheckEPublico() throws Exception {
+    mvc.perform(get("/api/health"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("UP"))
+        .andExpect(jsonPath("$.timestamp").isNotEmpty());
+  }
 
-    @Test
-    void jwtInvalidoMantemRespostaProblemDetails() throws Exception {
-        mvc.perform(get("/api/v1/gerencias").header("Authorization", "Bearer token-invalido"))
-            .andExpect(status().isUnauthorized())
-            .andExpect(jsonPath("$.status").value(401))
-            .andExpect(jsonPath("$.traceId").isNotEmpty());
-    }
+  @Test
+  void jwtInvalidoMantemRespostaProblemDetails() throws Exception {
+    mvc.perform(get("/api/v1/gerencias").header("Authorization", "Bearer token-invalido"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.status").value(401))
+        .andExpect(jsonPath("$.traceId").isNotEmpty());
+  }
 }

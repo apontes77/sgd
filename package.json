@@ -1,0 +1,26 @@
+{
+  "name": "sgd",
+  "private": true,
+  "packageManager": "pnpm@11.7.0",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.2"
+  },
+  "lint-staged": {
+    "frontend/**/*.{ts,tsx,js,jsx}": [
+      "pnpm --dir frontend exec eslint --fix",
+      "pnpm --dir frontend exec prettier --write"
+    ],
+    "frontend/**/*.{json,css,html,md,yml,yaml}": [
+      "pnpm --dir frontend exec prettier --write"
+    ],
+    "backend/**/*.java": [
+      "bash -c 'cd backend && mvn -q spotless:apply'"
+    ]
+  }
+}
