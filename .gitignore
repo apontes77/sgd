@@ -5,10 +5,6 @@ backend/target/
 # Node
 frontend/node_modules/
 frontend/dist/
-frontend/test-results/
-frontend/playwright-report/
-frontend/blob-report/
-frontend/playwright/.cache/
 .pnpm-store/
 
 # Environment and IDE
