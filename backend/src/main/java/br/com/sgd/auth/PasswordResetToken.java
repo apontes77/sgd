@@ -1,6 +1,7 @@
 package br.com.sgd.auth;
 
-import br.com.sgd.user.User;
+import java.time.Instant;
+import java.util.UUID;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -8,22 +9,49 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import java.time.Instant;
-import java.util.UUID;
+
+import br.com.sgd.user.User;
 
 @Entity
 @Table(name = "tokens_redefinicao_senha")
 public class PasswordResetToken {
-    @Id private UUID id;
-    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "usuario_id", nullable = false)
-    private User usuario;
-    @Column(name = "token_hash", nullable = false, unique = true, length = 64) private String tokenHash;
-    @Column(name = "expira_em", nullable = false) private Instant expiraEm;
-    @Column(name = "usado_em") private Instant usadoEm;
-    protected PasswordResetToken() { }
-    public PasswordResetToken(User usuario, String tokenHash, Instant expiraEm) { this.id = UUID.randomUUID(); this.usuario = usuario; this.tokenHash = tokenHash; this.expiraEm = expiraEm; }
-    public User getUsuario() { return usuario; }
-    public String getTokenHash() { return tokenHash; }
-    public boolean isValid() { return usadoEm == null && expiraEm.isAfter(Instant.now()); }
-    public void use() { usadoEm = Instant.now(); }
+  @Id private UUID id;
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "usuario_id", nullable = false)
+  private User usuario;
+
+  @Column(name = "token_hash", nullable = false, unique = true, length = 64)
+  private String tokenHash;
+
+  @Column(name = "expira_em", nullable = false)
+  private Instant expiraEm;
+
+  @Column(name = "usado_em")
+  private Instant usadoEm;
+
+  protected PasswordResetToken() {}
+
+  public PasswordResetToken(User usuario, String tokenHash, Instant expiraEm) {
+    this.id = UUID.randomUUID();
+    this.usuario = usuario;
+    this.tokenHash = tokenHash;
+    this.expiraEm = expiraEm;
+  }
+
+  public User getUsuario() {
+    return usuario;
+  }
+
+  public String getTokenHash() {
+    return tokenHash;
+  }
+
+  public boolean isValid() {
+    return usadoEm == null && expiraEm.isAfter(Instant.now());
+  }
+
+  public void use() {
+    usadoEm = Instant.now();
+  }
 }

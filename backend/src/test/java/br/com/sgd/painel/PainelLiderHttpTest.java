@@ -15,17 +15,25 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class PainelLiderHttpTest {
-    @Autowired MockMvc mvc;
+  @Autowired MockMvc mvc;
 
-    @Test @WithMockUser(roles = "ADMIN")
-    void rejeitaAdminSemPerfilDeLideranca() throws Exception {
-        mvc.perform(get("/api/v1/painel/lider").param("dataInicio", "2026-01-01").param("dataFim", "2026-06-30"))
-            .andExpect(status().isForbidden());
-    }
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  void rejeitaAdminSemPerfilDeLideranca() throws Exception {
+    mvc.perform(
+            get("/api/v1/painel/lider")
+                .param("dataInicio", "2026-01-01")
+                .param("dataFim", "2026-06-30"))
+        .andExpect(status().isForbidden());
+  }
 
-    @Test @WithMockUser(roles = "GERENTE")
-    void rejeitaGerenteSemPerfilDeLideranca() throws Exception {
-        mvc.perform(get("/api/v1/painel/lider").param("dataInicio", "2026-01-01").param("dataFim", "2026-06-30"))
-            .andExpect(status().isForbidden());
-    }
+  @Test
+  @WithMockUser(roles = "GERENTE")
+  void rejeitaGerenteSemPerfilDeLideranca() throws Exception {
+    mvc.perform(
+            get("/api/v1/painel/lider")
+                .param("dataInicio", "2026-01-01")
+                .param("dataFim", "2026-06-30"))
+        .andExpect(status().isForbidden());
+  }
 }

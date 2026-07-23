@@ -9,36 +9,49 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.test.context.support.WithMockUser;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class PainelAdminHttpTest {
-    @Autowired MockMvc mvc;
+  @Autowired MockMvc mvc;
 
-    @Test
-    @WithMockUser(roles = "ADMIN")
-    void adminConsultaPainelVazio() throws Exception {
-        mvc.perform(get("/api/v1/painel/admin").param("dataInicio", "2026-01-01").param("dataFim", "2026-06-30"))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.resumo.presentes").value(0))
-            .andExpect(jsonPath("$.resumo.percentualPresenca").value(0)).andExpect(jsonPath("$.sexos.length()").value(2))
-            .andExpect(jsonPath("$.encontrosNaoRealizados").value(0))
-            .andExpect(jsonPath("$.gerenciasMensal").isArray());
-    }
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  void adminConsultaPainelVazio() throws Exception {
+    mvc.perform(
+            get("/api/v1/painel/admin")
+                .param("dataInicio", "2026-01-01")
+                .param("dataFim", "2026-06-30"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.resumo.presentes").value(0))
+        .andExpect(jsonPath("$.resumo.percentualPresenca").value(0))
+        .andExpect(jsonPath("$.sexos.length()").value(2))
+        .andExpect(jsonPath("$.encontrosNaoRealizados").value(0))
+        .andExpect(jsonPath("$.gerenciasMensal").isArray());
+  }
 
-    @Test
-    @WithMockUser(roles = "GERENTE")
-    void rejeitaUsuarioQueNaoEAdmin() throws Exception {
-        mvc.perform(get("/api/v1/painel/admin").param("dataInicio", "2026-01-01").param("dataFim", "2026-06-30"))
-            .andExpect(status().isForbidden());
-    }
+  @Test
+  @WithMockUser(roles = "GERENTE")
+  void rejeitaUsuarioQueNaoEAdmin() throws Exception {
+    mvc.perform(
+            get("/api/v1/painel/admin")
+                .param("dataInicio", "2026-01-01")
+                .param("dataFim", "2026-06-30"))
+        .andExpect(status().isForbidden());
+  }
 
-    @Test
-    @WithMockUser(roles = "ADMIN")
-    void periodoInvalidoSegueProblemDetails() throws Exception {
-        mvc.perform(get("/api/v1/painel/admin").param("dataInicio", "2026-07-01").param("dataFim", "2026-06-30"))
-            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.status").value(400)).andExpect(jsonPath("$.detail").isNotEmpty());
-    }
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  void periodoInvalidoSegueProblemDetails() throws Exception {
+    mvc.perform(
+            get("/api/v1/painel/admin")
+                .param("dataInicio", "2026-07-01")
+                .param("dataFim", "2026-06-30"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.status").value(400))
+        .andExpect(jsonPath("$.detail").isNotEmpty());
+  }
 }
