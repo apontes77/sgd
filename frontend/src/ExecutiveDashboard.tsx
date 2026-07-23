@@ -1,17 +1,50 @@
-import { Alert, Box, Stack, useMediaQuery } from '@mui/material'
+import { PrintRounded, OpenInNewRounded } from '@mui/icons-material'
+import { Alert, Box, Button, GlobalStyles, Skeleton, Stack, useMediaQuery } from '@mui/material'
 import ReactECharts from 'echarts-for-react'
 import { useEffect, useMemo, useState } from 'react'
 import { FiltroPeriodo } from './dashboardComponents'
 import { formatarMes, normalizarMeses, percentual, periodoPadrao } from './dashboardUtils'
-import { painelApi, type IndicadorGerencia, type IndicadorGerenciaMensal, type PainelAdminResponse } from './painelApi'
-import { LoadingState, PageHeader, SectionCard } from './ui'
+import {
+  painelApi,
+  type EvolucaoMensal,
+  type PainelAdminResponse,
+  type PainelGerenciaResponse,
+  type ResumoPainel,
+} from './painelApi'
+import { EmptyState, PageHeader, SectionCard } from './ui'
 
-export default function ExecutiveDashboard() {
+/** Zonas do gauge: vermelho <60, âmbar 60–80, verde >80. */
+export const GAUGE_ZONES = { alerta: 0.6, atencao: 0.8 } as const
+
+type Escopo = 'admin' | 'gerencia'
+type RankingItem = { id: number; nome: string; percentualPresenca: number }
+type HeatmapItem = { id: number; nome: string; referencia: string; percentualPresenca: number }
+
+type VisaoDados = {
+  dataInicio: string
+  dataFim: string
+  resumo: ResumoPainel
+  evolucao: EvolucaoMensal[]
+  encontrosNaoRealizados: number
+  ranking: RankingItem[]
+  heatmap: HeatmapItem[]
+  rankingLabel: string
+  heatmapLabel: string
+  detalheLabel: string
+}
+
+export default function ExecutiveDashboard({
+  escopo = 'admin',
+  onAbrirDetalhe,
+}: {
+  escopo?: Escopo
+  onAbrirDetalhe?: () => void
+}) {
   const inicial = periodoPadrao()
   const [dataInicio, setDataInicio] = useState(inicial.inicio)
   const [dataFim, setDataFim] = useState(inicial.fim)
   const [periodo, setPeriodo] = useState(inicial)
-  const [dados, setDados] = useState<PainelAdminResponse>()
+  const [dados, setDados] = useState<VisaoDados>()
   const [erro, setErro] = useState('')
   const [carregando, setCarregando] = useState(true)
 
@@ -19,46 +52,149 @@ export default function ExecutiveDashboard() {
     let ativo = true
     setCarregando(true)
     setErro('')
-    painelApi.consultar(periodo.inicio, periodo.fim)
+    const consulta = escopo === 'admin'
+      ? painelApi.consultar(periodo.inicio, periodo.fim).then(mapAdmin)
+      : painelApi.consultarGerencia(periodo.inicio, periodo.fim).then(mapGerencia)
+    consulta
       .then((response) => { if (ativo) setDados(response) })
       .catch((error: Error) => { if (ativo) { setDados(undefined); setErro(error.message) } })
       .finally(() => { if (ativo) setCarregando(false) })
     return () => { ativo = false }
-  }, [periodo])
+  }, [periodo, escopo])
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={3} className="executive-dashboard">
+      <GlobalStyles styles={{
+        '@media print': {
+          'nav, .MuiAppBar-root, .MuiDrawer-root, .MuiBottomNavigation-root, .executive-no-print': { display: 'none !important' },
+          'main': { margin: '0 !important', padding: '0 !important' },
+          'body': { background: '#fff' },
+        },
+      }} />
       <PageHeader
         title="Visão executiva"
-        description="Painel consolidado de indicadores da organização em uma única tela."
+        description={escopo === 'admin'
+          ? 'Painel consolidado de indicadores da organização em uma única tela.'
+          : 'Painel consolidado dos indicadores da sua gerência em uma única tela.'}
         eyebrow="Dashboards & BI"
+        action={(
+          <Stack className="executive-no-print" direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            {onAbrirDetalhe && (
+              <Button variant="outlined" startIcon={<OpenInNewRounded />} onClick={onAbrirDetalhe}>
+                {dados?.detalheLabel ?? 'Ver detalhe'}
+              </Button>
+            )}
+            <Button variant="contained" startIcon={<PrintRounded />} onClick={() => window.print()}>
+              Imprimir / PDF
+            </Button>
+          </Stack>
+        )}
       />
-      <FiltroPeriodo
-        dataInicio={dataInicio}
-        dataFim={dataFim}
-        onInicio={setDataInicio}
-        onFim={setDataFim}
-        onAplicar={() => setPeriodo({ inicio: dataInicio, fim: dataFim })}
-      />
-      {carregando && <LoadingState label="Carregando visão executiva..." />}
+      <Box className="executive-no-print">
+        <FiltroPeriodo
+          dataInicio={dataInicio}
+          dataFim={dataFim}
+          onInicio={setDataInicio}
+          onFim={setDataFim}
+          onAplicar={() => setPeriodo({ inicio: dataInicio, fim: dataFim })}
+        />
+      </Box>
       {erro && <Alert severity="error">{erro}</Alert>}
-      {!carregando && dados && <GradeExecutiva dados={dados} />}
+      {carregando && <GradeSkeleton />}
+      {!carregando && dados && (
+        <GradeExecutiva dados={dados} onAbrirDetalhe={onAbrirDetalhe} />
+      )}
     </Stack>
   )
 }
 
-function GradeExecutiva({ dados }: { dados: PainelAdminResponse }) {
+function mapAdmin(response: PainelAdminResponse): VisaoDados {
+  return {
+    dataInicio: response.dataInicio,
+    dataFim: response.dataFim,
+    resumo: response.resumo,
+    evolucao: response.evolucao,
+    encontrosNaoRealizados: response.encontrosNaoRealizados,
+    ranking: response.gerencias.map((item) => ({
+      id: item.id,
+      nome: item.nome,
+      percentualPresenca: item.percentualPresenca,
+    })),
+    heatmap: response.gerenciasMensal.map((item) => ({
+      id: item.gerenciaId,
+      nome: item.gerenciaNome,
+      referencia: item.referencia,
+      percentualPresenca: item.percentualPresenca,
+    })),
+    rankingLabel: 'Top gerências por presença',
+    heatmapLabel: 'Presença por gerência × mês',
+    detalheLabel: 'Abrir painel detalhado',
+  }
+}
+
+function mapGerencia(response: PainelGerenciaResponse): VisaoDados {
+  return {
+    dataInicio: response.dataInicio,
+    dataFim: response.dataFim,
+    resumo: response.resumo,
+    evolucao: response.evolucao,
+    encontrosNaoRealizados: response.encontrosNaoRealizados.length,
+    ranking: response.discipulados.map((item) => ({
+      id: item.id,
+      nome: item.nome,
+      percentualPresenca: item.resumo.percentualPresenca,
+    })),
+    heatmap: response.discipulados.flatMap((item) => item.evolucao.map((mes) => ({
+      id: item.id,
+      nome: item.nome,
+      referencia: mes.referencia,
+      percentualPresenca: mes.percentualPresenca,
+    }))),
+    rankingLabel: 'Top discipulados por presença',
+    heatmapLabel: 'Presença por discipulado × mês',
+    detalheLabel: 'Abrir minha gerência',
+  }
+}
+
+function GradeSkeleton() {
+  return (
+    <Box
+      role="status"
+      aria-label="Carregando visão executiva..."
+      sx={{
+        display: 'grid',
+        gap: 2.5,
+        gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))', xl: 'repeat(3, minmax(0, 1fr))' },
+      }}
+    >
+      {Array.from({ length: 6 }, (_, index) => (
+        <SectionCard key={index}>
+          <Stack spacing={1.5}>
+            <Skeleton variant="text" width="55%" height={28} />
+            <Skeleton variant="text" width="80%" height={18} />
+            <Skeleton variant="rounded" height={240} />
+          </Stack>
+        </SectionCard>
+      ))}
+    </Box>
+  )
+}
+
+function GradeExecutiva({ dados, onAbrirDetalhe }: { dados: VisaoDados; onAbrirDetalhe?: () => void }) {
   const meses = useMemo(
     () => normalizarMeses(dados.dataInicio, dados.dataFim, dados.evolucao),
     [dados.dataInicio, dados.dataFim, dados.evolucao],
   )
-  const topGerencias = useMemo(
-    () => [...dados.gerencias].sort((a, b) => b.percentualPresenca - a.percentualPresenca).slice(0, 8),
-    [dados.gerencias],
+  const topRanking = useMemo(
+    () => [...dados.ranking].sort((a, b) => b.percentualPresenca - a.percentualPresenca).slice(0, 8),
+    [dados.ranking],
   )
+  const semVolume = dados.resumo.encontrosRealizados === 0 && dados.encontrosNaoRealizados === 0
+  const semComposicao = dados.resumo.presentes + dados.resumo.ausentes + dados.resumo.visitantes === 0
 
   return (
     <Box
+      data-testid="grade-executiva"
       sx={{
         display: 'grid',
         gap: 2.5,
@@ -66,29 +202,47 @@ function GradeExecutiva({ dados }: { dados: PainelAdminResponse }) {
       }}
     >
       <SectionCard title="Presença geral" description="Percentual consolidado no período.">
-        <GaugePresenca valor={dados.resumo.percentualPresenca} />
+        {semComposicao
+          ? <EmptyState title="Sem registros de presença" description="Não há presentes ou ausentes no período selecionado." />
+          : <GaugePresenca valor={dados.resumo.percentualPresenca} />}
       </SectionCard>
       <SectionCard title="Volume mensal" description="Presentes, ausentes e visitantes por mês.">
-        <BarrasVolume meses={meses} />
+        {meses.every((item) => !item.possuiEncontro)
+          ? <EmptyState title="Sem volume mensal" description="Não há encontros realizados no período." />
+          : <BarrasVolume meses={meses} />}
       </SectionCard>
       <SectionCard title="Encontros por situação" description="Realizados versus não realizados.">
-        <BarrasSituacao realizados={dados.resumo.encontrosRealizados} naoRealizados={dados.encontrosNaoRealizados} />
+        {semVolume
+          ? <EmptyState title="Sem encontros no período" description="Nenhum encontro realizado ou não realizado foi encontrado." />
+          : <BarrasSituacao realizados={dados.resumo.encontrosRealizados} naoRealizados={dados.encontrosNaoRealizados} />}
       </SectionCard>
       <SectionCard title="Composição de presença" description="Distribuição de presentes, ausentes e visitantes.">
-        <RoscaComposicao
-          presentes={dados.resumo.presentes}
-          ausentes={dados.resumo.ausentes}
-          visitantes={dados.resumo.visitantes}
-        />
+        {semComposicao
+          ? <EmptyState title="Sem composição" description="Não há dados de presença, ausência ou visitantes." />
+          : (
+            <RoscaComposicao
+              presentes={dados.resumo.presentes}
+              ausentes={dados.resumo.ausentes}
+              visitantes={dados.resumo.visitantes}
+            />
+          )}
       </SectionCard>
-      <SectionCard title="Top gerências por presença" description="Ranking das gerências com maior percentual.">
-        <RankingGerencias dados={topGerencias} />
+      <SectionCard
+        title={dados.rankingLabel}
+        description={onAbrirDetalhe ? 'Clique em uma barra para abrir o detalhe.' : 'Ranking por percentual de presença.'}
+      >
+        <RankingBarras dados={topRanking} vazio={`Sem itens com registros no período.`} onSelect={onAbrirDetalhe} />
       </SectionCard>
-      <SectionCard title="Presença por gerência × mês" description="Mapa de calor da presença mensal.">
-        <HeatmapGerencias
+      <SectionCard
+        title={dados.heatmapLabel}
+        description={onAbrirDetalhe ? 'Clique em uma célula para abrir o detalhe.' : 'Mapa de calor da presença mensal.'}
+      >
+        <HeatmapSeries
           inicio={dados.dataInicio}
           fim={dados.dataFim}
-          dados={dados.gerenciasMensal}
+          dados={dados.heatmap}
+          vazio="Sem histórico mensal no período."
+          onSelect={onAbrirDetalhe}
         />
       </SectionCard>
     </Box>
@@ -115,8 +269,8 @@ function GaugePresenca({ valor }: { valor: number }) {
               lineStyle: {
                 width: 14,
                 color: [
-                  [0.6, '#C62828'],
-                  [0.8, '#B76E00'],
+                  [GAUGE_ZONES.alerta, '#C62828'],
+                  [GAUGE_ZONES.atencao, '#B76E00'],
                   [1, '#2E7D32'],
                 ],
               },
@@ -247,18 +401,13 @@ function RoscaComposicao({ presentes, ausentes, visitantes }: { presentes: numbe
   )
 }
 
-function RankingGerencias({ dados }: { dados: IndicadorGerencia[] }) {
-  if (dados.length === 0) {
-    return (
-      <Box sx={{ py: 6, textAlign: 'center', color: 'text.secondary' }}>
-        Sem gerências com registros no período.
-      </Box>
-    )
-  }
+function RankingBarras({ dados, vazio, onSelect }: { dados: RankingItem[]; vazio: string; onSelect?: () => void }) {
+  if (dados.length === 0) return <EmptyState title="Sem ranking" description={vazio} />
   const ordenados = [...dados].reverse()
   return (
-    <Box role="img" aria-label="Ranking horizontal do percentual de presença por gerência.">
+    <Box role="img" aria-label="Ranking horizontal do percentual de presença." className="executive-no-print-hint">
       <ReactECharts
+        onEvents={onSelect ? { click: () => onSelect() } : undefined}
         style={{ height: Math.min(320, Math.max(220, ordenados.length * 42)), width: '100%' }}
         option={{
           aria: { enabled: true },
@@ -278,6 +427,7 @@ function RankingGerencias({ dados }: { dados: IndicadorGerencia[] }) {
             label: { show: true, position: 'right', formatter: '{c}%' },
             itemStyle: { color: '#3451B2', borderRadius: [0, 5, 5, 0] },
             barMaxWidth: 22,
+            cursor: onSelect ? 'pointer' : 'default',
           }],
         }}
         notMerge
@@ -286,31 +436,36 @@ function RankingGerencias({ dados }: { dados: IndicadorGerencia[] }) {
   )
 }
 
-function HeatmapGerencias({ inicio, fim, dados }: { inicio: string; fim: string; dados: IndicadorGerenciaMensal[] }) {
-  const { meses, gerencias, cells } = useMemo(() => montarHeatmap(inicio, fim, dados), [inicio, fim, dados])
+function HeatmapSeries({
+  inicio, fim, dados, vazio, onSelect,
+}: {
+  inicio: string
+  fim: string
+  dados: HeatmapItem[]
+  vazio: string
+  onSelect?: () => void
+}) {
+  const { meses, nomes, cells } = useMemo(() => montarHeatmap(inicio, fim, dados), [inicio, fim, dados])
 
-  if (gerencias.length === 0 || meses.length === 0) {
-    return (
-      <Box sx={{ py: 6, textAlign: 'center', color: 'text.secondary' }}>
-        Sem histórico mensal por gerência no período.
-      </Box>
-    )
+  if (nomes.length === 0 || meses.length === 0) {
+    return <EmptyState title="Sem mapa de calor" description={vazio} />
   }
 
   return (
-    <Box role="img" aria-label="Mapa de calor da presença percentual por gerência e mês.">
+    <Box role="img" aria-label="Mapa de calor da presença percentual por item e mês.">
       <ReactECharts
-        style={{ height: Math.min(360, Math.max(240, gerencias.length * 36 + 80)), width: '100%' }}
+        onEvents={onSelect ? { click: () => onSelect() } : undefined}
+        style={{ height: Math.min(360, Math.max(240, nomes.length * 36 + 80)), width: '100%' }}
         option={{
           aria: { enabled: true },
           tooltip: {
             position: 'top',
-            formatter: (params: { value: [number, number, number | null]; data: [number, number, number | null] }) => {
+            formatter: (params: { value: [number, number, number | null] }) => {
               const [x, y, value] = params.value
               const mes = meses[x]
-              const gerencia = gerencias[y]
-              if (value == null) return `${gerencia}<br/>${formatarMes(mes)}: sem registros`
-              return `${gerencia}<br/>${formatarMes(mes)}: ${percentual(value)}`
+              const nome = nomes[y]
+              if (value == null) return `${nome}<br/>${formatarMes(mes)}: sem registros`
+              return `${nome}<br/>${formatarMes(mes)}: ${percentual(value)}`
             },
           },
           grid: { left: 8, right: 24, top: 16, bottom: 48, containLabel: true },
@@ -322,7 +477,7 @@ function HeatmapGerencias({ inicio, fim, dados }: { inicio: string; fim: string;
           },
           yAxis: {
             type: 'category',
-            data: gerencias,
+            data: nomes,
             splitArea: { show: true },
             axisLabel: { width: 100, overflow: 'truncate', fontSize: 11 },
           },
@@ -349,6 +504,7 @@ function HeatmapGerencias({ inicio, fim, dados }: { inicio: string; fim: string;
               fontSize: 10,
             },
             emphasis: { itemStyle: { shadowBlur: 8, shadowColor: 'rgba(0,0,0,.25)' } },
+            cursor: onSelect ? 'pointer' : 'default',
           }],
         }}
         notMerge
@@ -357,16 +513,16 @@ function HeatmapGerencias({ inicio, fim, dados }: { inicio: string; fim: string;
   )
 }
 
-function montarHeatmap(inicio: string, fim: string, dados: IndicadorGerenciaMensal[]) {
+function montarHeatmap(inicio: string, fim: string, dados: HeatmapItem[]) {
   const mesesBase = normalizarMeses(inicio, fim, [])
   const meses = mesesBase.map((item) => item.referencia)
-  const gerencias = [...new Set(dados.map((item) => item.gerenciaNome))]
-  const mapa = new Map(dados.map((item) => [`${item.gerenciaNome}|${item.referencia}`, item.percentualPresenca]))
+  const nomes = [...new Set(dados.map((item) => item.nome))]
+  const mapa = new Map(dados.map((item) => [`${item.nome}|${item.referencia}`, item.percentualPresenca]))
   const cells: Array<[number, number, number | null]> = []
-  gerencias.forEach((gerencia, y) => {
+  nomes.forEach((nome, y) => {
     meses.forEach((mes, x) => {
-      cells.push([x, y, mapa.has(`${gerencia}|${mes}`) ? mapa.get(`${gerencia}|${mes}`)! : null])
+      cells.push([x, y, mapa.has(`${nome}|${mes}`) ? mapa.get(`${nome}|${mes}`)! : null])
     })
   })
-  return { meses, gerencias, cells }
+  return { meses, nomes, cells }
 }
