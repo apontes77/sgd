@@ -21,10 +21,11 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: startWebServer
     ? {
-        command: 'pnpm run dev -- --host 127.0.0.1 --port 5173',
+        // Usa script dedicado: `pnpm run dev -- --host` gerava `vite -- --host` e o CI timeoutava.
+        command: 'pnpm run dev:e2e',
         url: baseURL,
         reuseExistingServer: !process.env.CI,
-        timeout: 120_000,
+        timeout: 180_000,
       }
     : undefined,
 })

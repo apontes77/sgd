@@ -1,5 +1,8 @@
 spring:
   datasource:
+    # Nome único por contexto Spring evita vazamento de dados entre classes de teste
+    # que compartilhariam o mesmo jdbc:h2:mem:sgd com DB_CLOSE_DELAY=-1.
+    generate-unique-name: true
     url: jdbc:h2:mem:sgd;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
     username: sa
     password:

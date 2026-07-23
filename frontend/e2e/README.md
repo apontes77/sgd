@@ -12,7 +12,7 @@ Smoke tests de browser contra a aplicação real (frontend + API).
 ## Executar
 
 ```bash
-# na pasta frontend — sobe o Vite automaticamente e usa o proxy /api → :8080
+# na pasta frontend — sobe o Vite (dev:e2e) automaticamente e usa o proxy /api → :8080
 pnpm run test:e2e
 ```
 
