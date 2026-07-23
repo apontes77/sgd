@@ -33,6 +33,7 @@ import {
 import type { ReactNode } from 'react'
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 
+import { type AppSection, navigateToSection, resolveInitialSection } from '@/app/appNavigation'
 import AdolescentManagement from '@/features/adolescentes/AdolescentManagement'
 import FrequencyManagement from '@/features/frequencia/FrequencyManagement'
 import { organizationApi } from '@/features/organizacao/api'
@@ -48,16 +49,7 @@ const ManagerDashboard = lazy(() => import('@/features/dashboards/ManagerDashboa
 const LeaderDashboard = lazy(() => import('@/features/dashboards/LeaderDashboard'))
 const FrequencyReport = lazy(() => import('@/features/relatorios/FrequencyReport'))
 
-type Section =
-  | 'visao-executiva'
-  | 'painel'
-  | 'minha-gerencia'
-  | 'meu-discipulado'
-  | 'estrutura'
-  | 'usuarios'
-  | 'adolescentes'
-  | 'frequencia'
-  | 'relatorios'
+type Section = AppSection
 type NavGroup = 'Dashboards & BI' | 'Cadastros' | 'Operações' | 'Relatórios'
 type NavItem = { value: Section; label: string; shortLabel?: string; group: NavGroup; icon: ReactNode }
 const drawerWidth = 264
@@ -77,9 +69,11 @@ function primaryBottomItems(items: NavItem[]): NavItem[] {
 }
 
 export default function AuthenticatedApp({ currentUser, onLogout }: { currentUser: Usuario; onLogout: () => void }) {
+  const isAdmin = currentUser.perfis.includes('ADMIN')
+  const isGerente = currentUser.perfis.includes('GERENTE')
   const sections = useMemo(() => {
     const values: NavItem[] = []
-    if (currentUser.perfis.includes('ADMIN'))
+    if (isAdmin || isGerente)
       values.push({
         value: 'visao-executiva',
         label: 'Visão executiva',
@@ -87,7 +81,7 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
         group: 'Dashboards & BI',
         icon: <InsightsRounded />,
       })
-    if (currentUser.perfis.includes('ADMIN'))
+    if (isAdmin)
       values.push({
         value: 'painel',
         label: 'Painel',
@@ -95,7 +89,7 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
         group: 'Dashboards & BI',
         icon: <DashboardRounded />,
       })
-    if (currentUser.perfis.includes('GERENTE'))
+    if (isGerente)
       values.push({
         value: 'minha-gerencia',
         label: 'Minha gerência',
@@ -111,7 +105,7 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
         group: 'Dashboards & BI',
         icon: <DashboardRounded />,
       })
-    if (currentUser.perfis.includes('ADMIN'))
+    if (isAdmin)
       values.push(
         { value: 'estrutura', label: 'Estrutura', group: 'Cadastros', icon: <AccountTreeRounded /> },
         { value: 'usuarios', label: 'Usuários', group: 'Cadastros', icon: <PeopleAltRounded /> },
@@ -126,7 +120,7 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
     if (currentUser.perfis.some((role) => role === 'ADMIN' || role === 'DISCIPULADOR' || role === 'CO_LIDER'))
       values.push({
         value: 'frequencia',
-        label: currentUser.perfis.includes('ADMIN') ? 'Encontros e frequência' : 'Registrar frequência',
+        label: isAdmin ? 'Encontros e frequência' : 'Registrar frequência',
         shortLabel: 'Frequência',
         group: 'Operações',
         icon: <FactCheckRounded />,
@@ -139,8 +133,9 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
       icon: <AssessmentRounded />,
     })
     return values
-  }, [currentUser.perfis])
-  const [section, setSection] = useState<Section>(sections[0].value)
+  }, [currentUser.perfis, isAdmin, isGerente])
+  const available = useMemo(() => sections.map((item) => item.value), [sections])
+  const [section, setSection] = useState<Section>(() => resolveInitialSection(available))
   const [moreOpen, setMoreOpen] = useState(false)
   const currentSection = sections.find((item) => item.value === section) ?? sections[0]
   const bottomPrimary = useMemo(() => primaryBottomItems(sections), [sections])
@@ -150,9 +145,28 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
     [sections, bottomPrimaryIds],
   )
   const bottomValue = bottomPrimaryIds.has(section) ? section : 'mais'
+  const escopoExecutivo = isAdmin ? 'admin' : 'gerencia'
+  const detalheExecutivo: Section = isAdmin ? 'painel' : 'minha-gerencia'
+
+  useEffect(() => {
+    if (!available.includes(section)) {
+      const next = resolveInitialSection(available)
+      setSection(next)
+      navigateToSection(next, true)
+      return
+    }
+    navigateToSection(section, true)
+  }, [available, section])
+
+  useEffect(() => {
+    const onPopState = () => setSection(resolveInitialSection(available))
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [available])
 
   function navigate(value: Section) {
     setSection(value)
+    navigateToSection(value)
     setMoreOpen(false)
   }
 
@@ -210,7 +224,9 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
       >
         <Box sx={{ width: '100%', maxWidth: 1600, mx: 'auto', p: { xs: 2, sm: 3, lg: 4 } }}>
           <Suspense fallback={<LoadingState label="Carregando módulo..." />}>
-            {section === 'visao-executiva' && <ExecutiveDashboard />}
+            {section === 'visao-executiva' && (
+              <ExecutiveDashboard escopo={escopoExecutivo} onAbrirDetalhe={() => navigate(detalheExecutivo)} />
+            )}
             {section === 'painel' && <AdminDashboard />}
             {section === 'minha-gerencia' && <ManagerDashboard />}
             {section === 'meu-discipulado' && <LeaderDashboard />}

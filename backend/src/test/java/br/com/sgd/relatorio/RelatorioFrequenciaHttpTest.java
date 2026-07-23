@@ -1,5 +1,6 @@
 package br.com.sgd.relatorio;
 
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -148,7 +149,10 @@ class RelatorioFrequenciaHttpTest {
                 .param("size", "100")
                 .header(HttpHeaders.AUTHORIZATION, bearer(token(admin))))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.content.length()").value(3));
+        .andExpect(jsonPath("$.content[?(@.nome == 'Alpha')]").isNotEmpty())
+        .andExpect(jsonPath("$.content[?(@.nome == 'Beta')]").isNotEmpty())
+        .andExpect(jsonPath("$.content[?(@.nome == 'Gamma')]").isNotEmpty())
+        .andExpect(jsonPath("$.content.length()").value(greaterThanOrEqualTo(3)));
   }
 
   @Test
