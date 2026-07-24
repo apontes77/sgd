@@ -1,4 +1,4 @@
-import { AddRounded, EditRounded, SwapHorizRounded } from '@mui/icons-material'
+import { AddRounded, DeleteForeverRounded, EditRounded, SwapHorizRounded } from '@mui/icons-material'
 import {
   Alert,
   Button,
@@ -28,16 +28,21 @@ import type { Adolescente, AdolescenteInput, DiscipuladoResumo } from '@/feature
 import { adolescentesApi } from '@/features/adolescentes/api'
 import { DataTableCard, EmptyState, FilterToolbar, FormSheet, PageHeader, StatusChip } from '@/shared/ui'
 
+const hoje = () => new Date().toISOString().slice(0, 10)
+
 const vazio: AdolescenteInput = {
   nome: '',
   dataNascimento: '',
   telefone: '',
   instagram: '',
+  responsavelNome: '',
+  responsavelTelefone: '',
+  consentimentoEm: '',
   discipuladoId: 0,
   ativo: true,
 }
 
-export default function AdolescentManagement() {
+export default function AdolescentManagement({ podeAnonimizar = false }: { podeAnonimizar?: boolean }) {
   const [items, setItems] = useState<Adolescente[]>([])
   const [discipulados, setDiscipulados] = useState<DiscipuladoResumo[]>([])
   const [filtro, setFiltro] = useState<number>(0)
@@ -46,6 +51,7 @@ export default function AdolescentManagement() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [transferindo, setTransferindo] = useState<Adolescente | null>(null)
   const [inativando, setInativando] = useState<Adolescente | null>(null)
+  const [anonimizando, setAnonimizando] = useState<Adolescente | null>(null)
   const [destino, setDestino] = useState(0)
   const [dataTransferencia, setDataTransferencia] = useState(new Date().toISOString().slice(0, 10))
   const [erro, setErro] = useState('')
@@ -71,7 +77,7 @@ export default function AdolescentManagement() {
 
   function novo() {
     setEditando(null)
-    setForm({ ...vazio, discipuladoId: filtro || discipulados[0]?.id || 0 })
+    setForm({ ...vazio, consentimentoEm: hoje(), discipuladoId: filtro || discipulados[0]?.id || 0 })
     setSucesso('')
     setDrawerOpen(true)
   }
@@ -82,6 +88,9 @@ export default function AdolescentManagement() {
       dataNascimento: a.dataNascimento,
       telefone: a.telefone ?? '',
       instagram: a.instagram ?? '',
+      responsavelNome: a.responsavelNome ?? '',
+      responsavelTelefone: a.responsavelTelefone ?? '',
+      consentimentoEm: a.consentimentoEm ?? hoje(),
       discipuladoId: a.discipuladoId,
       ativo: a.ativo,
     })
@@ -125,6 +134,9 @@ export default function AdolescentManagement() {
         dataNascimento: a.dataNascimento,
         telefone: a.telefone,
         instagram: a.instagram,
+        responsavelNome: a.responsavelNome ?? '',
+        responsavelTelefone: a.responsavelTelefone,
+        consentimentoEm: a.consentimentoEm ?? hoje(),
         discipuladoId: a.discipuladoId,
         ativo: false,
       })
@@ -133,6 +145,22 @@ export default function AdolescentManagement() {
       await carregar()
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não foi possível inativar.')
+    } finally {
+      setSalvando(false)
+    }
+  }
+  async function anonimizar() {
+    if (!anonimizando) return
+    const a = anonimizando
+    setSalvando(true)
+    setErro('')
+    try {
+      await adolescentesApi.anonimizar(a.id)
+      setAnonimizando(null)
+      setSucesso('Dados pessoais anonimizados. O histórico de frequência foi preservado.')
+      await carregar()
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não foi possível anonimizar.')
     } finally {
       setSalvando(false)
     }
@@ -242,6 +270,16 @@ export default function AdolescentManagement() {
                         Inativar
                       </Button>
                     )}
+                    {podeAnonimizar && !a.anonimizado && (
+                      <Button
+                        size="small"
+                        color="error"
+                        startIcon={<DeleteForeverRounded />}
+                        onClick={() => setAnonimizando(a)}
+                      >
+                        Excluir dados
+                      </Button>
+                    )}
                   </Stack>
                 </TableCell>
               </TableRow>
@@ -340,6 +378,22 @@ export default function AdolescentManagement() {
           <Button onClick={() => setInativando(null)}>Cancelar</Button>
           <Button color="warning" variant="contained" disabled={salvando} onClick={() => void inativar()}>
             Inativar
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={Boolean(anonimizando)} onClose={() => setAnonimizando(null)} fullWidth maxWidth="xs">
+        <DialogTitle>Excluir dados pessoais?</DialogTitle>
+        <DialogContent>
+          <Typography color="text.secondary">
+            Os dados pessoais de {anonimizando?.nome} (nome, contato e responsável) serão removidos de forma permanente
+            para atender a um pedido de exclusão. O histórico de frequência é preservado de forma anonimizada. Esta ação
+            não pode ser desfeita.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAnonimizando(null)}>Cancelar</Button>
+          <Button color="error" variant="contained" disabled={salvando} onClick={() => void anonimizar()}>
+            Excluir dados
           </Button>
         </DialogActions>
       </Dialog>

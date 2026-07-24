@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import br.com.sgd.audit.AuditLog;
+import br.com.sgd.audit.AuditLogRepository;
 import br.com.sgd.organizacao.Discipulado;
 import br.com.sgd.organizacao.DiscipuladoRepository;
 import br.com.sgd.user.Role;
@@ -27,23 +29,33 @@ public class AdolescenteService {
   private final VinculoAdolescenteRepository vinculos;
   private final DiscipuladoRepository discipulados;
   private final EscopoOrganizacionalService escopo;
+  private final AuditLogRepository auditoria;
 
   public AdolescenteService(
       AdolescenteRepository adolescentes,
       VinculoAdolescenteRepository vinculos,
       DiscipuladoRepository discipulados,
-      EscopoOrganizacionalService escopo) {
+      EscopoOrganizacionalService escopo,
+      AuditLogRepository auditoria) {
     this.adolescentes = adolescentes;
     this.vinculos = vinculos;
     this.discipulados = discipulados;
     this.escopo = escopo;
+    this.auditoria = auditoria;
   }
 
   public Adolescente criar(User usuario, DadosAdolescente dados) {
     Discipulado discipulado = discipuladoAtivo(dados.discipuladoId());
     escopo.exigirAlteracao(usuario, discipulado);
     Adolescente adolescente =
-        new Adolescente(dados.nome(), dados.dataNascimento(), dados.telefone(), dados.instagram());
+        new Adolescente(
+            dados.nome(),
+            dados.dataNascimento(),
+            dados.telefone(),
+            dados.instagram(),
+            dados.responsavelNome(),
+            dados.responsavelTelefone(),
+            dados.consentimentoEm());
     if (Boolean.FALSE.equals(dados.ativo()))
       adolescente.atualizar(
           dados.nome(), dados.dataNascimento(), dados.telefone(), dados.instagram(), false);
@@ -62,8 +74,26 @@ public class AdolescenteService {
       throw conflito("Use o endpoint de vínculos para transferir o adolescente.");
     }
     adolescente.atualizar(
-        dados.nome(), dados.dataNascimento(), dados.telefone(), dados.instagram(), dados.ativo());
+        dados.nome(),
+        dados.dataNascimento(),
+        dados.telefone(),
+        dados.instagram(),
+        dados.responsavelNome(),
+        dados.responsavelTelefone(),
+        dados.consentimentoEm(),
+        dados.ativo());
     return adolescente;
+  }
+
+  public void anonimizar(User usuario, long adolescenteId) {
+    Adolescente adolescente = buscar(adolescenteId);
+    adolescente.anonimizar();
+    auditoria.save(
+        new AuditLog(
+            usuario,
+            "ADOLESCENTE",
+            "ANONIMIZACAO_DADOS_PESSOAIS",
+            "adolescenteId=" + adolescenteId));
   }
 
   public VinculoAdolescenteDiscipulado transferir(
@@ -172,6 +202,9 @@ public class AdolescenteService {
       LocalDate dataNascimento,
       String telefone,
       String instagram,
+      String responsavelNome,
+      String responsavelTelefone,
+      LocalDate consentimentoEm,
       Long discipuladoId,
       Boolean ativo,
       LocalDate dataInicio) {}

@@ -17,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.server.ResponseStatusException;
 
+import br.com.sgd.audit.AuditLogRepository;
 import br.com.sgd.organizacao.Discipulado;
 import br.com.sgd.organizacao.DiscipuladoRepository;
 import br.com.sgd.organizacao.Gerencia;
@@ -28,6 +29,7 @@ class AdolescenteServiceTest {
   @Mock VinculoAdolescenteRepository vinculos;
   @Mock DiscipuladoRepository discipulados;
   @Mock EscopoOrganizacionalService escopo;
+  @Mock AuditLogRepository auditoria;
   @Mock User usuario;
   @Mock Discipulado origem;
   @Mock Discipulado destino;
@@ -36,7 +38,7 @@ class AdolescenteServiceTest {
 
   @BeforeEach
   void setup() {
-    service = new AdolescenteService(adolescentes, vinculos, discipulados, escopo);
+    service = new AdolescenteService(adolescentes, vinculos, discipulados, escopo, auditoria);
   }
 
   @Test
@@ -47,7 +49,16 @@ class AdolescenteServiceTest {
     when(vinculos.save(any())).thenAnswer(i -> i.getArgument(0));
     var dados =
         new AdolescenteService.DadosAdolescente(
-            " Ana ", LocalDate.of(2010, 3, 2), null, "@ana", 10L, true, null);
+            " Ana ",
+            LocalDate.of(2010, 3, 2),
+            null,
+            "@ana",
+            "Mãe da Ana",
+            null,
+            LocalDate.of(2026, 1, 1),
+            10L,
+            true,
+            null);
 
     Adolescente criado = service.criar(usuario, dados);
 
@@ -67,7 +78,16 @@ class AdolescenteServiceTest {
     when(vinculos.save(any())).thenAnswer(i -> i.getArgument(0));
     var dados =
         new AdolescenteService.DadosAdolescente(
-            "Bia", LocalDate.of(2011, 5, 4), null, null, 10L, true, LocalDate.of(2026, 3, 1));
+            "Bia",
+            LocalDate.of(2011, 5, 4),
+            null,
+            null,
+            "Pai da Bia",
+            null,
+            LocalDate.of(2026, 1, 1),
+            10L,
+            true,
+            LocalDate.of(2026, 3, 1));
 
     service.criar(usuario, dados);
 
@@ -122,11 +142,45 @@ class AdolescenteServiceTest {
     when(origem.getId()).thenReturn(10L);
     var dados =
         new AdolescenteService.DadosAdolescente(
-            "Ana", LocalDate.of(2010, 3, 2), null, null, 20L, true, null);
+            "Ana",
+            LocalDate.of(2010, 3, 2),
+            null,
+            null,
+            "Mãe da Ana",
+            null,
+            LocalDate.of(2026, 1, 1),
+            20L,
+            true,
+            null);
 
     assertThatThrownBy(() -> service.atualizar(usuario, 1L, dados))
         .isInstanceOf(ResponseStatusException.class)
         .hasMessageContaining("endpoint de vínculos");
+  }
+
+  @Test
+  void anonimizaRemovendoDadosPessoaisERegistraAuditoria() {
+    Adolescente adolescente =
+        new Adolescente(
+            "Ana",
+            LocalDate.of(2010, 3, 2),
+            "(11) 99999-0000",
+            "@ana",
+            "Mãe da Ana",
+            "(11) 98888-0000",
+            LocalDate.of(2026, 1, 1));
+    when(adolescentes.findById(1L)).thenReturn(Optional.of(adolescente));
+
+    service.anonimizar(usuario, 1L);
+
+    assertThat(adolescente.getNome()).isEqualTo("Adolescente anonimizado");
+    assertThat(adolescente.getTelefone()).isNull();
+    assertThat(adolescente.getInstagram()).isNull();
+    assertThat(adolescente.getResponsavelNome()).isNull();
+    assertThat(adolescente.getResponsavelTelefone()).isNull();
+    assertThat(adolescente.isAtivo()).isFalse();
+    assertThat(adolescente.isAnonimizado()).isTrue();
+    verify(auditoria).save(any());
   }
 
   private void configurarAtivo(Discipulado d) {

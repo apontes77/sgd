@@ -64,6 +64,13 @@ public class AdolescenteController {
         service.transferir(usuario(auth), adolescenteId, r.discipuladoId(), r.dataInicio()));
   }
 
+  @DeleteMapping("/{adolescenteId}/dados-pessoais")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  @PreAuthorize("hasRole('ADMIN')")
+  public void anonimizar(Authentication auth, @PathVariable long adolescenteId) {
+    service.anonimizar(usuario(auth), adolescenteId);
+  }
+
   private static User usuario(Authentication auth) {
     return (User) auth.getPrincipal();
   }
@@ -75,6 +82,10 @@ public class AdolescenteController {
         a.getDataNascimento(),
         a.getTelefone(),
         a.getInstagram(),
+        a.getResponsavelNome(),
+        a.getResponsavelTelefone(),
+        a.getConsentimentoEm(),
+        a.isAnonimizado(),
         discipuladoId,
         a.isAtivo());
   }
@@ -84,12 +95,24 @@ public class AdolescenteController {
       @NotNull @PastOrPresent LocalDate dataNascimento,
       @Size(max = 40) String telefone,
       @Size(max = 120) String instagram,
+      @NotBlank @Size(max = 120) String responsavelNome,
+      @Size(max = 40) String responsavelTelefone,
+      @NotNull @PastOrPresent LocalDate consentimentoEm,
       @NotNull @Positive Long discipuladoId,
       Boolean ativo,
       LocalDate dataInicio) {
     AdolescenteService.DadosAdolescente dados() {
       return new AdolescenteService.DadosAdolescente(
-          nome, dataNascimento, telefone, instagram, discipuladoId, ativo, dataInicio);
+          nome,
+          dataNascimento,
+          telefone,
+          instagram,
+          responsavelNome,
+          responsavelTelefone,
+          consentimentoEm,
+          discipuladoId,
+          ativo,
+          dataInicio);
     }
   }
 
@@ -99,6 +122,10 @@ public class AdolescenteController {
       LocalDate dataNascimento,
       String telefone,
       String instagram,
+      String responsavelNome,
+      String responsavelTelefone,
+      LocalDate consentimentoEm,
+      boolean anonimizado,
       long discipuladoId,
       boolean ativo) {}
 

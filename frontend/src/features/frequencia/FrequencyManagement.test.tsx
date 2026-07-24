@@ -153,8 +153,9 @@ describe('registro de frequência', () => {
     render(<FrequencyManagement discipuladoId={1} />)
     await userEvent.click(await screen.findByRole('button', { name: /Houve discipulado/i }))
     await userEvent.click(await screen.findByRole('button', { name: 'Adicionar visitante' }))
-    await userEvent.type(screen.getByLabelText(/Nome/), 'João Visitante')
+    await userEvent.type(screen.getAllByLabelText(/nome/i)[0], 'João Visitante')
     fireEvent.change(screen.getByLabelText(/Data de nascimento/), { target: { value: '2011-05-04' } })
+    await userEvent.type(screen.getByLabelText(/Nome do responsável/i), 'Responsável do João')
     await userEvent.click(screen.getByRole('button', { name: 'Adicionar' }))
 
     expect(await screen.findByText('João Visitante')).toBeInTheDocument()

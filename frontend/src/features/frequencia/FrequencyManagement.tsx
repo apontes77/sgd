@@ -49,7 +49,15 @@ const hoje = () => {
   // Data local do usuário; toISOString() usaria UTC e viraria "amanhã" à noite no Brasil.
   return `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}-${String(agora.getDate()).padStart(2, '0')}`
 }
-const visitanteVazio: DadosPessoaisAdolescente = { nome: '', dataNascimento: '', telefone: '', instagram: '' }
+const visitanteVazio: DadosPessoaisAdolescente = {
+  nome: '',
+  dataNascimento: '',
+  telefone: '',
+  instagram: '',
+  responsavelNome: '',
+  responsavelTelefone: '',
+  consentimentoEm: '',
+}
 
 export default function FrequencyManagement({
   discipuladoId,
@@ -257,6 +265,10 @@ export default function FrequencyManagement({
       setErro('Informe nome e data de nascimento do visitante.')
       return
     }
+    if (!visitante.responsavelNome.trim() || !visitante.consentimentoEm) {
+      setErro('Informe o responsável e a data de consentimento do visitante.')
+      return
+    }
     setSalvando(true)
     setErro('')
     try {
@@ -265,6 +277,9 @@ export default function FrequencyManagement({
         dataNascimento: visitante.dataNascimento,
         telefone: visitante.telefone || undefined,
         instagram: visitante.instagram || undefined,
+        responsavelNome: visitante.responsavelNome.trim(),
+        responsavelTelefone: visitante.responsavelTelefone || undefined,
+        consentimentoEm: visitante.consentimentoEm,
         discipuladoId,
         ativo: true,
         dataInicio: data,
@@ -508,7 +523,7 @@ export default function FrequencyManagement({
                 variant="text"
                 startIcon={<PersonAddAltRounded />}
                 onClick={() => {
-                  setVisitante(visitanteVazio)
+                  setVisitante({ ...visitanteVazio, consentimentoEm: hoje() })
                   setErro('')
                 }}
                 sx={{ alignSelf: 'flex-start' }}
@@ -678,7 +693,13 @@ export default function FrequencyManagement({
           <Button
             type="submit"
             variant="contained"
-            disabled={salvando || !visitante?.nome.trim() || !visitante?.dataNascimento}
+            disabled={
+              salvando ||
+              !visitante?.nome.trim() ||
+              !visitante?.dataNascimento ||
+              !visitante?.responsavelNome.trim() ||
+              !visitante?.consentimentoEm
+            }
           >
             Adicionar
           </Button>

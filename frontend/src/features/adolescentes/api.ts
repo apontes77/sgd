@@ -8,6 +8,10 @@ export interface Adolescente {
   dataNascimento: string
   telefone?: string
   instagram?: string
+  responsavelNome?: string
+  responsavelTelefone?: string
+  consentimentoEm?: string
+  anonimizado: boolean
   discipuladoId: number
   ativo: boolean
 }
@@ -16,6 +20,9 @@ export interface AdolescenteInput {
   dataNascimento: string
   telefone?: string
   instagram?: string
+  responsavelNome: string
+  responsavelTelefone?: string
+  consentimentoEm: string
   discipuladoId: number
   ativo?: boolean
   dataInicio?: string
@@ -51,4 +58,5 @@ export const adolescentesApi = {
       method: 'POST',
       body: JSON.stringify({ discipuladoId, dataInicio }),
     }),
+  anonimizar: (id: number) => request<void>(`/adolescentes/${id}/dados-pessoais`, { method: 'DELETE' }),
 }

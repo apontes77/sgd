@@ -232,7 +232,7 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
             {section === 'meu-discipulado' && <LeaderDashboard />}
             {section === 'estrutura' && <OrganizationManagement />}
             {section === 'usuarios' && <UserManagement client={userManagementClient} />}
-            {section === 'adolescentes' && <AdolescentManagement />}
+            {section === 'adolescentes' && <AdolescentManagement podeAnonimizar={isAdmin} />}
             {section === 'frequencia' && <FrequencyPage currentUser={currentUser} />}
             {section === 'relatorios' && <FrequencyReport />}
           </Suspense>
