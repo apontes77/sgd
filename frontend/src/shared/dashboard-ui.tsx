@@ -22,6 +22,7 @@ import {
 import ReactECharts from 'echarts-for-react'
 
 import type { EvolucaoMensal, ResumoPainel } from '@/features/dashboards/api'
+import { chartColors } from '@/shared/charts/chartTheme'
 import { formatarMes, type MesVisual, percentual } from '@/shared/dashboard-utils'
 import { AnalyticsCard, FilterToolbar, KpiCard } from '@/shared/ui'
 
@@ -186,21 +187,21 @@ export function GraficoEvolucao({ titulo, dados }: { titulo: string; dados: MesV
               type: 'bar',
               barMaxWidth: 32,
               data: dados.map((i) => valor(i, 'presentes')),
-              itemStyle: { color: '#2E7D32', borderRadius: [4, 4, 0, 0] },
+              itemStyle: { color: chartColors.success, borderRadius: [4, 4, 0, 0] },
             },
             {
               name: 'Ausentes',
               type: 'bar',
               barMaxWidth: 32,
               data: dados.map((i) => valor(i, 'ausentes')),
-              itemStyle: { color: '#C62828', borderRadius: [4, 4, 0, 0] },
+              itemStyle: { color: chartColors.error, borderRadius: [4, 4, 0, 0] },
             },
             {
               name: 'Visitantes',
               type: 'bar',
               barMaxWidth: 32,
               data: dados.map((i) => valor(i, 'visitantes')),
-              itemStyle: { color: '#0F8B8D', borderRadius: [4, 4, 0, 0] },
+              itemStyle: { color: chartColors.secondary, borderRadius: [4, 4, 0, 0] },
             },
             {
               name: 'Presença',
@@ -215,8 +216,8 @@ export function GraficoEvolucao({ titulo, dados }: { titulo: string; dados: MesV
                   ? { value: null, symbol: 'none', symbolSize: 0 }
                   : { value, symbol: 'circle', symbolSize: 8 }
               }),
-              lineStyle: { width: 3, color: '#3451B2' },
-              itemStyle: { color: '#3451B2' },
+              lineStyle: { width: 3, color: chartColors.primary },
+              itemStyle: { color: chartColors.primary },
             },
           ],
         }}
@@ -230,7 +231,7 @@ export function TabelaEvolucao({ titulo, dados }: { titulo: string; dados: MesVi
   return (
     <TableContainer>
       <Table size="small" aria-label={titulo}>
-        <caption style={{ textAlign: 'left', paddingBottom: 12, color: '#667085' }}>{titulo}</caption>
+        <caption style={{ textAlign: 'left', paddingBottom: 12, color: chartColors.textSecondary }}>{titulo}</caption>
         <TableHead>
           <TableRow>
             <TableCell scope="col">Mês</TableCell>

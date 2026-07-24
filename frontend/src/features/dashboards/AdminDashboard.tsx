@@ -15,6 +15,7 @@ import ReactECharts from 'echarts-for-react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { type IndicadorGerencia, type PainelAdminResponse, painelApi } from '@/features/dashboards/api'
+import { chartColors } from '@/shared/charts/chartTheme'
 import { FiltroPeriodo, KpisPresenca, PainelEvolucao } from '@/shared/dashboard-ui'
 import { normalizarMeses, percentual, periodoPadrao } from '@/shared/dashboard-utils'
 import { AnalyticsCard, LoadingState, PageHeader } from '@/shared/ui'
@@ -154,7 +155,7 @@ function GraficoGerencias({ dados }: { dados: IndicadorGerencia[] }) {
               type: 'bar',
               data: dados.map((item) => item.percentualPresenca),
               label: { show: true, position: 'right', formatter: '{c}%' },
-              itemStyle: { color: '#3451B2', borderRadius: [0, 5, 5, 0] },
+              itemStyle: { color: chartColors.primary, borderRadius: [0, 5, 5, 0] },
             },
           ],
         }}
@@ -248,7 +249,7 @@ function GraficoSexos({ dados }: { dados: PainelAdminResponse }) {
               type: 'bar',
               data: dados.sexos.map((item) => item.percentualPresenca),
               label: { show: true, position: 'right', formatter: '{c}%' },
-              itemStyle: { color: '#0F8B8D', borderRadius: [0, 5, 5, 0] },
+              itemStyle: { color: chartColors.secondary, borderRadius: [0, 5, 5, 0] },
             },
           ],
         }}

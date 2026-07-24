@@ -1,9 +1,10 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { RelatorioPeriodoResponse } from '@/features/relatorios/api'
 import FrequencyReport from '@/features/relatorios/FrequencyReport'
+import { render } from '@/test/test-utils'
 
 const relatorio: RelatorioPeriodoResponse = {
   dataInicio: '2026-07-21',

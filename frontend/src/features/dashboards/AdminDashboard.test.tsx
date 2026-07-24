@@ -1,8 +1,9 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import AdminDashboard from '@/features/dashboards/AdminDashboard'
+import { render } from '@/test/test-utils'
 
 vi.mock('echarts-for-react', () => ({ default: () => <div data-testid="grafico" /> }))
 const resposta = {
