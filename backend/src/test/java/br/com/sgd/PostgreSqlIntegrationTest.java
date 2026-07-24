@@ -73,8 +73,8 @@ class PostgreSqlIntegrationTest {
     List<String> versoes =
         Arrays.stream(flyway.info().applied()).map(info -> info.getVersion().getVersion()).toList();
 
-    assertThat(versoes).containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10");
-    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("10");
+    assertThat(versoes).containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11");
+    assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("11");
     assertThat(
             jdbc.queryForList(
                 "select table_name from information_schema.tables where table_schema='public'",
