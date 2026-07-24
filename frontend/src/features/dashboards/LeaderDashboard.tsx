@@ -17,6 +17,7 @@ import ReactECharts from 'echarts-for-react'
 import { useEffect, useState } from 'react'
 
 import { type DiscipuloPainel, painelApi, type PainelLiderResponse } from '@/features/dashboards/api'
+import { chartColors } from '@/shared/charts/chartTheme'
 import { FiltroPeriodo, KpisPresenca, PainelEvolucao } from '@/shared/dashboard-ui'
 import { formatarMes, normalizarMeses, percentual, periodoPadrao } from '@/shared/dashboard-utils'
 import { AnalyticsCard, EmptyState, KpiCard, LoadingState, PageHeader, SectionCard } from '@/shared/ui'
@@ -203,8 +204,8 @@ function GraficoIndividual({ nome, dados }: { nome: string; dados: MesDiscipulo[
               connectNulls: false,
               symbolSize: 9,
               data: dados.map((item) => (item.possuiRegistro ? item.percentualPresenca : null)),
-              lineStyle: { width: 3, color: '#3451B2' },
-              itemStyle: { color: '#3451B2' },
+              lineStyle: { width: 3, color: chartColors.primary },
+              itemStyle: { color: chartColors.primary },
             },
           ],
         }}

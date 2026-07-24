@@ -1,6 +1,8 @@
 import {
   AccountTreeRounded,
   AssessmentRounded,
+  Brightness4Rounded,
+  Brightness7Rounded,
   DashboardRounded,
   Diversity3Rounded,
   FactCheckRounded,
@@ -19,6 +21,7 @@ import {
   Divider,
   Drawer,
   FormControl,
+  IconButton,
   InputLabel,
   List,
   ListItemButton,
@@ -28,12 +31,16 @@ import {
   Select,
   Stack,
   Toolbar,
+  Tooltip,
   Typography,
 } from '@mui/material'
+import { alpha } from '@mui/material/styles'
+import { motion, useReducedMotion } from 'framer-motion'
 import type { ReactNode } from 'react'
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 
 import { type AppSection, navigateToSection, resolveInitialSection } from '@/app/appNavigation'
+import { useColorMode } from '@/app/useColorMode'
 import AdolescentManagement from '@/features/adolescentes/AdolescentManagement'
 import FrequencyManagement from '@/features/frequencia/FrequencyManagement'
 import { organizationApi } from '@/features/organizacao/api'
@@ -69,6 +76,8 @@ function primaryBottomItems(items: NavItem[]): NavItem[] {
 }
 
 export default function AuthenticatedApp({ currentUser, onLogout }: { currentUser: Usuario; onLogout: () => void }) {
+  const { mode, toggleMode } = useColorMode()
+  const reducedMotion = useReducedMotion()
   const isAdmin = currentUser.perfis.includes('ADMIN')
   const isGerente = currentUser.perfis.includes('GERENTE')
   const sections = useMemo(() => {
@@ -189,9 +198,9 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
           width: { md: `calc(100% - ${drawerWidth}px)` },
           ml: { md: `${drawerWidth}px` },
           borderBottom: '1px solid',
-          borderColor: 'divider',
-          bgcolor: 'rgba(255,255,255,.94)',
-          backdropFilter: 'blur(12px)',
+          borderColor: (theme) => theme.app.border.subtle,
+          bgcolor: (theme) => theme.app.surface.glass,
+          backdropFilter: 'blur(20px)',
           zIndex: (theme) => theme.zIndex.drawer - 1,
         }}
       >
@@ -202,12 +211,24 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
             </Typography>
             <Typography variant="h6">{currentSection.label}</Typography>
           </Box>
+          <Tooltip title={mode === 'light' ? 'Ativar modo escuro' : 'Ativar modo claro'}>
+            <IconButton onClick={toggleMode} color="inherit" aria-label="Alternar tema">
+              {mode === 'light' ? <Brightness4Rounded /> : <Brightness7Rounded />}
+            </IconButton>
+          </Tooltip>
         </Toolbar>
       </AppBar>
       <Box component="nav" aria-label="Navegação principal" sx={{ display: { xs: 'none', md: 'block' } }}>
         <Drawer
           variant="permanent"
-          sx={{ '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box', borderRightColor: 'divider' } }}
+          sx={{
+            '& .MuiDrawer-paper': {
+              width: drawerWidth,
+              boxSizing: 'border-box',
+              borderRightColor: (theme) => theme.app.border.subtle,
+              boxShadow: (theme) => theme.app.shadow.drawer,
+            },
+          }}
           open
         >
           {navigation}
@@ -224,17 +245,24 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
       >
         <Box sx={{ width: '100%', maxWidth: 1600, mx: 'auto', p: { xs: 2, sm: 3, lg: 4 } }}>
           <Suspense fallback={<LoadingState label="Carregando módulo..." />}>
-            {section === 'visao-executiva' && (
-              <ExecutiveDashboard escopo={escopoExecutivo} onAbrirDetalhe={() => navigate(detalheExecutivo)} />
-            )}
-            {section === 'painel' && <AdminDashboard />}
-            {section === 'minha-gerencia' && <ManagerDashboard />}
-            {section === 'meu-discipulado' && <LeaderDashboard />}
-            {section === 'estrutura' && <OrganizationManagement />}
-            {section === 'usuarios' && <UserManagement client={userManagementClient} />}
-            {section === 'adolescentes' && <AdolescentManagement podeAnonimizar={isAdmin} />}
-            {section === 'frequencia' && <FrequencyPage currentUser={currentUser} />}
-            {section === 'relatorios' && <FrequencyReport />}
+            <motion.div
+              key={section}
+              initial={reducedMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: reducedMotion ? 0 : 0.15, ease: 'easeOut' }}
+            >
+              {section === 'visao-executiva' && (
+                <ExecutiveDashboard escopo={escopoExecutivo} onAbrirDetalhe={() => navigate(detalheExecutivo)} />
+              )}
+              {section === 'painel' && <AdminDashboard />}
+              {section === 'minha-gerencia' && <ManagerDashboard />}
+              {section === 'meu-discipulado' && <LeaderDashboard />}
+              {section === 'estrutura' && <OrganizationManagement />}
+              {section === 'usuarios' && <UserManagement client={userManagementClient} />}
+              {section === 'adolescentes' && <AdolescentManagement podeAnonimizar={isAdmin} />}
+              {section === 'frequencia' && <FrequencyPage currentUser={currentUser} />}
+              {section === 'relatorios' && <FrequencyReport />}
+            </motion.div>
           </Suspense>
         </Box>
       </Box>
@@ -249,8 +277,8 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
           bottom: 0,
           zIndex: (theme) => theme.zIndex.appBar,
           borderTop: '1px solid',
-          borderColor: 'divider',
-          bgcolor: 'background.paper',
+          borderColor: (theme) => theme.app.border.subtle,
+          bgcolor: (theme) => theme.app.surface.elevated,
           pb: 'env(safe-area-inset-bottom, 0px)',
         }}
       >
@@ -282,10 +310,13 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
         ModalProps={{ keepMounted: false }}
         PaperProps={{
           sx: {
-            borderTopLeftRadius: 16,
-            borderTopRightRadius: 16,
+            borderTopLeftRadius: '16px',
+            borderTopRightRadius: '16px',
             maxHeight: '85vh',
             pb: 'env(safe-area-inset-bottom, 0px)',
+            bgcolor: (theme) => theme.app.surface.elevated,
+            borderTop: '1px solid',
+            borderColor: (theme) => theme.app.border.subtle,
           },
         }}
         sx={{ display: { xs: 'block', md: 'none' } }}
@@ -327,7 +358,7 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
               sx={{
                 width: 38,
                 height: 38,
-                bgcolor: '#EEF1FF',
+                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
                 color: 'primary.main',
                 fontSize: '.9rem',
                 fontWeight: 700,
@@ -365,7 +396,13 @@ function Navigation({
 }) {
   const groups: NavGroup[] = ['Dashboards & BI', 'Cadastros', 'Operações', 'Relatórios']
   return (
-    <Stack sx={{ height: '100%', bgcolor: 'background.paper' }}>
+    <Stack
+      sx={{
+        height: '100%',
+        bgcolor: (theme) => theme.app.surface.elevated,
+        backgroundImage: (theme) => theme.app.gradient.surface,
+      }}
+    >
       <Stack
         direction="row"
         alignItems="center"
@@ -379,7 +416,7 @@ function Navigation({
             borderRadius: 2.5,
             display: 'grid',
             placeItems: 'center',
-            color: '#fff',
+            color: 'primary.contrastText',
             bgcolor: 'primary.main',
           }}
         >
@@ -419,7 +456,11 @@ function Navigation({
                     borderRadius: 2,
                     mt: 0.4,
                     minHeight: 44,
-                    '&.Mui-selected': { bgcolor: '#EEF1FF', color: 'primary.dark', '&:hover': { bgcolor: '#E5E9FF' } },
+                    '&.Mui-selected': {
+                      bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
+                      color: 'primary.dark',
+                      '&:hover': { bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12) },
+                    },
                   }}
                 >
                   <ListItemIcon
@@ -457,7 +498,7 @@ function Navigation({
             sx={{
               width: 38,
               height: 38,
-              bgcolor: '#EEF1FF',
+              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
               color: 'primary.main',
               fontSize: '.9rem',
               fontWeight: 700,

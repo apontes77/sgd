@@ -22,6 +22,7 @@ import {
   Typography,
   useMediaQuery,
 } from '@mui/material'
+import { alpha } from '@mui/material/styles'
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { AdolescenteFormFields, type DadosPessoaisAdolescente } from '@/features/adolescentes/AdolescenteFormFields'
@@ -561,7 +562,7 @@ export default function FrequencyManagement({
                         overflow: 'hidden',
                         cursor: editavel ? 'pointer' : 'default',
                         borderColor: presente ? 'success.light' : 'divider',
-                        bgcolor: presente ? '#F1F8F2' : 'background.paper',
+                        bgcolor: presente ? (theme) => alpha(theme.palette.success.main, 0.08) : 'background.paper',
                         WebkitTapHighlightColor: 'transparent',
                       }}
                     >

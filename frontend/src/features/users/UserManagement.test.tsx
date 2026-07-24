@@ -1,9 +1,10 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import UserManagement, { type UserManagementClient } from '@/features/users/UserManagement'
 import type { Pagina, Usuario } from '@/shared/api/types'
+import { render } from '@/test/test-utils'
 
 const emptyPage: Pagina<Usuario> = { content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }
 const gerente: Usuario = { id: 7, nome: 'Maria Gestora', email: 'maria@sgd.local', ativo: true, perfis: ['GERENTE'] }

@@ -1,9 +1,10 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import App from '@/app/App'
 import { authApi } from '@/features/auth/api'
+import { render } from '@/test/test-utils'
 
 describe('recuperacao publica de senha', () => {
   beforeEach(() => {

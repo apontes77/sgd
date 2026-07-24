@@ -137,7 +137,14 @@ function PaginaRelatorio({ item, emitidoEm }: { item: RelatorioEncontro; emitido
   return (
     <Paper
       className="relatorio-frequencia-pagina"
-      sx={{ p: { xs: 2, sm: 4 }, mx: 'auto', width: '100%', maxWidth: '190mm', bgcolor: '#fff', color: '#111' }}
+      sx={{
+        p: { xs: 2, sm: 4 },
+        mx: 'auto',
+        width: '100%',
+        maxWidth: '190mm',
+        bgcolor: 'background.paper',
+        color: 'text.primary',
+      }}
     >
       <Stack spacing={2}>
         <Box textAlign="center">

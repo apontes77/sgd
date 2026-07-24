@@ -20,6 +20,7 @@ import ReactECharts from 'echarts-for-react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { type DiscipuladoPainel, painelApi, type PainelGerenciaResponse } from '@/features/dashboards/api'
+import { chartColors } from '@/shared/charts/chartTheme'
 import { FiltroPeriodo, KpisPresenca, PainelEvolucao } from '@/shared/dashboard-ui'
 import { normalizarMeses, percentual, periodoPadrao } from '@/shared/dashboard-utils'
 import { AnalyticsCard, LoadingState, PageHeader, SectionCard } from '@/shared/ui'
@@ -225,10 +226,10 @@ function GraficoComparacao({
                 itemStyle: {
                   color:
                     item.resumo.encontrosRealizados === 0
-                      ? '#78909C'
+                      ? chartColors.neutral
                       : item.resumo.percentualPresenca < REFERENCIA_INFORMATIVA
-                        ? '#B76E00'
-                        : '#2E7D32',
+                        ? chartColors.warning
+                        : chartColors.success,
                   borderRadius: [0, 5, 5, 0],
                 },
               })),

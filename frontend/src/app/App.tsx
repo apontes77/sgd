@@ -6,6 +6,7 @@ import {
   SecurityRounded,
 } from '@mui/icons-material'
 import { Alert, Box, Button, Card, CircularProgress, InputAdornment, Stack, TextField, Typography } from '@mui/material'
+import { alpha } from '@mui/material/styles'
 import type { FormEvent } from 'react'
 import { useEffect, useState } from 'react'
 
@@ -135,7 +136,7 @@ export default function App() {
           overflow: 'hidden',
           p: { md: 6, lg: 9 },
           color: '#fff',
-          background: 'linear-gradient(145deg, #243B80 0%, #3451B2 52%, #0F8B8D 140%)',
+          background: (theme) => theme.app.gradient.hero,
           alignItems: 'center',
         }}
       >
@@ -167,7 +168,7 @@ export default function App() {
               sx={{
                 width: 48,
                 height: 48,
-                borderRadius: 3,
+                borderRadius: '24px',
                 display: 'grid',
                 placeItems: 'center',
                 bgcolor: 'rgba(255,255,255,.16)',
@@ -208,8 +209,8 @@ export default function App() {
             width: '100%',
             maxWidth: 460,
             p: { xs: 3, sm: 4.5 },
-            borderRadius: 3,
-            boxShadow: '0 20px 50px rgba(36,59,128,.10)',
+            borderRadius: '24px',
+            boxShadow: (theme) => theme.app.shadow.cardHover,
           }}
         >
           <Stack spacing={3}>
@@ -223,7 +224,7 @@ export default function App() {
                     display: 'grid',
                     placeItems: 'center',
                     color: 'primary.main',
-                    bgcolor: '#EEF1FF',
+                    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
                   }}
                 >
                   <GroupsRounded />

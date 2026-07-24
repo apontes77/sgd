@@ -10,12 +10,12 @@ import {
   type PainelGerenciaResponse,
   type ResumoPainel,
 } from '@/features/dashboards/api'
+import { chartColors, GAUGE_ZONES, gaugeZoneColors } from '@/shared/charts/chartTheme'
 import { FiltroPeriodo } from '@/shared/dashboard-ui'
 import { formatarMes, normalizarMeses, percentual, periodoPadrao } from '@/shared/dashboard-utils'
 import { EmptyState, PageHeader, SectionCard } from '@/shared/ui'
 
-/** Zonas do gauge: vermelho <60, âmbar 60–80, verde >80. */
-export const GAUGE_ZONES = { alerta: 0.6, atencao: 0.8 } as const
+export { GAUGE_ZONES }
 
 type Escopo = 'admin' | 'gerencia'
 type RankingItem = { id: number; nome: string; percentualPresenca: number }
@@ -304,28 +304,24 @@ function GaugePresenca({ valor }: { valor: number }) {
               axisLine: {
                 lineStyle: {
                   width: 14,
-                  color: [
-                    [GAUGE_ZONES.alerta, '#C62828'],
-                    [GAUGE_ZONES.atencao, '#B76E00'],
-                    [1, '#2E7D32'],
-                  ],
+                  color: gaugeZoneColors(),
                 },
               },
               pointer: { length: '62%', width: 5 },
               axisTick: { show: false },
-              splitLine: { length: 10, lineStyle: { width: 2, color: '#94A3B8' } },
-              axisLabel: { distance: 18, fontSize: 11, color: '#667085' },
+              splitLine: { length: 10, lineStyle: { width: 2, color: chartColors.neutral } },
+              axisLabel: { distance: 18, fontSize: 11, color: chartColors.textSecondary },
               detail: {
                 valueAnimation: true,
                 formatter: (v: number) =>
                   `${v.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`,
                 fontSize: mobile ? 22 : 26,
                 fontWeight: 700,
-                color: '#172033',
+                color: chartColors.text,
                 offsetCenter: [0, '70%'],
               },
               data: [{ value: valor, name: 'Presença' }],
-              title: { offsetCenter: [0, '92%'], fontSize: 13, color: '#667085' },
+              title: { offsetCenter: [0, '92%'], fontSize: 13, color: chartColors.textSecondary },
             },
           ],
         }}
@@ -355,21 +351,21 @@ function BarrasVolume({ meses }: { meses: ReturnType<typeof normalizarMeses> }) 
               type: 'bar',
               barMaxWidth: 22,
               data: meses.map((item) => (item.possuiEncontro ? item.presentes : null)),
-              itemStyle: { color: '#2E7D32', borderRadius: [3, 3, 0, 0] },
+              itemStyle: { color: chartColors.success, borderRadius: [3, 3, 0, 0] },
             },
             {
               name: 'Ausentes',
               type: 'bar',
               barMaxWidth: 22,
               data: meses.map((item) => (item.possuiEncontro ? item.ausentes : null)),
-              itemStyle: { color: '#C62828', borderRadius: [3, 3, 0, 0] },
+              itemStyle: { color: chartColors.error, borderRadius: [3, 3, 0, 0] },
             },
             {
               name: 'Visitantes',
               type: 'bar',
               barMaxWidth: 22,
               data: meses.map((item) => (item.possuiEncontro ? item.visitantes : null)),
-              itemStyle: { color: '#0F8B8D', borderRadius: [3, 3, 0, 0] },
+              itemStyle: { color: chartColors.secondary, borderRadius: [3, 3, 0, 0] },
             },
           ],
         }}
@@ -395,8 +391,8 @@ function BarrasSituacao({ realizados, naoRealizados }: { realizados: number; nao
               type: 'bar',
               barMaxWidth: 64,
               data: [
-                { value: realizados, itemStyle: { color: '#2E7D32', borderRadius: [5, 5, 0, 0] } },
-                { value: naoRealizados, itemStyle: { color: '#B76E00', borderRadius: [5, 5, 0, 0] } },
+                { value: realizados, itemStyle: { color: chartColors.success, borderRadius: [5, 5, 0, 0] } },
+                { value: naoRealizados, itemStyle: { color: chartColors.warning, borderRadius: [5, 5, 0, 0] } },
               ],
               label: { show: true, position: 'top' },
             },
@@ -438,9 +434,9 @@ function RoscaComposicao({
                 fontSize: 11,
               },
               data: [
-                { name: 'Presentes', value: presentes, itemStyle: { color: '#2E7D32' } },
-                { name: 'Ausentes', value: ausentes, itemStyle: { color: '#C62828' } },
-                { name: 'Visitantes', value: visitantes, itemStyle: { color: '#0F8B8D' } },
+                { name: 'Presentes', value: presentes, itemStyle: { color: chartColors.success } },
+                { name: 'Ausentes', value: ausentes, itemStyle: { color: chartColors.error } },
+                { name: 'Visitantes', value: visitantes, itemStyle: { color: chartColors.secondary } },
               ],
             },
           ],
@@ -480,7 +476,7 @@ function RankingBarras({ dados, vazio, onSelect }: { dados: RankingItem[]; vazio
               type: 'bar',
               data: ordenados.map((item) => item.percentualPresenca),
               label: { show: true, position: 'right', formatter: '{c}%' },
-              itemStyle: { color: '#3451B2', borderRadius: [0, 5, 5, 0] },
+              itemStyle: { color: chartColors.primary, borderRadius: [0, 5, 5, 0] },
               barMaxWidth: 22,
               cursor: onSelect ? 'pointer' : 'default',
             },
@@ -548,7 +544,7 @@ function HeatmapSeries({
             orient: 'horizontal',
             left: 'center',
             bottom: 0,
-            inRange: { color: ['#FDECEC', '#FFF4DD', '#EAF6EC', '#2E7D32'] },
+            inRange: { color: chartColors.heatmap },
             text: ['100%', '0%'],
             textStyle: { fontSize: 11 },
           },

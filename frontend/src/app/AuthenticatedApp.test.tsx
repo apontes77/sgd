@@ -1,9 +1,10 @@
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import AuthenticatedApp from '@/app/AuthenticatedApp'
 import type { Usuario } from '@/shared/api/types'
+import { render } from '@/test/test-utils'
 
 const emptyPage = { content: [], page: 0, size: 100, totalElements: 0, totalPages: 0 }
 const emptyDashboard = {
