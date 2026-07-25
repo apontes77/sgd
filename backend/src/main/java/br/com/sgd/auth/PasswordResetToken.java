@@ -15,6 +15,9 @@ import br.com.sgd.user.User;
 @Entity
 @Table(name = "tokens_redefinicao_senha")
 public class PasswordResetToken {
+  public static final String TIPO_REDEFINICAO = "REDEFINICAO";
+  public static final String TIPO_DEFINICAO_INICIAL = "DEFINICAO_INICIAL";
+
   @Id private UUID id;
 
   @ManyToOne(fetch = FetchType.LAZY)
@@ -23,6 +26,12 @@ public class PasswordResetToken {
 
   @Column(name = "token_hash", nullable = false, unique = true, length = 64)
   private String tokenHash;
+
+  @Column(nullable = false, length = 30)
+  private String tipo;
+
+  @Column(name = "criado_em", nullable = false)
+  private Instant criadoEm;
 
   @Column(name = "expira_em", nullable = false)
   private Instant expiraEm;
@@ -33,9 +42,15 @@ public class PasswordResetToken {
   protected PasswordResetToken() {}
 
   public PasswordResetToken(User usuario, String tokenHash, Instant expiraEm) {
+    this(usuario, tokenHash, expiraEm, TIPO_REDEFINICAO);
+  }
+
+  public PasswordResetToken(User usuario, String tokenHash, Instant expiraEm, String tipo) {
     this.id = UUID.randomUUID();
     this.usuario = usuario;
     this.tokenHash = tokenHash;
+    this.tipo = tipo;
+    this.criadoEm = Instant.now();
     this.expiraEm = expiraEm;
   }
 
@@ -45,6 +60,10 @@ public class PasswordResetToken {
 
   public String getTokenHash() {
     return tokenHash;
+  }
+
+  public String getTipo() {
+    return tipo;
   }
 
   public boolean isValid() {

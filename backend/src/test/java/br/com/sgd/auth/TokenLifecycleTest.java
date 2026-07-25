@@ -28,6 +28,7 @@ class TokenLifecycleTest {
         .isFalse();
     PasswordResetToken token = new PasswordResetToken(user, "valid", Instant.now().plusSeconds(60));
     assertThat(token.isValid()).isTrue();
+    assertThat(token.getTipo()).isEqualTo(PasswordResetToken.TIPO_REDEFINICAO);
     token.use();
     assertThat(token.isValid()).isFalse();
   }
