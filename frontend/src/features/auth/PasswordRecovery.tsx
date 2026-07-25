@@ -3,6 +3,8 @@ import { Alert, Button, CircularProgress, Paper, Stack, TextField, Typography } 
 import type { FormEvent } from 'react'
 import { useState } from 'react'
 
+import { ApiError } from '@/shared/api/httpClient'
+
 export interface PasswordRecoveryClient {
   request(email: string): Promise<void>
   reset(token: string, newPassword: string): Promise<void>
@@ -25,6 +27,7 @@ export function ForgotPassword({ client, onBack }: { client: PasswordRecoveryCli
   async function submit(event: FormEvent) {
     event.preventDefault()
     setError('')
+    setSent(false)
     setLoading(true)
     try {
       await client.request(email)
@@ -48,7 +51,7 @@ export function ForgotPassword({ client, onBack }: { client: PasswordRecoveryCli
             Informe o e-mail da sua conta para receber as instruções de redefinição.
           </Typography>
         </Stack>
-        {sent && <Alert severity="success">Se o e-mail estiver cadastrado e ativo, você receberá as instruções.</Alert>}
+        {sent && <Alert severity="success">Enviamos as instruções para o seu e-mail.</Alert>}
         {error && <Alert severity="error">{error}</Alert>}
         <TextField
           required
@@ -57,7 +60,11 @@ export function ForgotPassword({ client, onBack }: { client: PasswordRecoveryCli
           label="E-mail"
           autoComplete="email"
           value={email}
-          onChange={(event) => setEmail(event.target.value)}
+          onChange={(event) => {
+            setEmail(event.target.value)
+            setSent(false)
+            setError('')
+          }}
         />
         <Button
           type="submit"
@@ -74,6 +81,15 @@ export function ForgotPassword({ client, onBack }: { client: PasswordRecoveryCli
       </Stack>
     </Paper>
   )
+}
+
+function resetErrorMessage(reason: unknown): string {
+  if (reason instanceof ApiError) {
+    if (reason.status === 401) return 'Token inválido ou expirado.'
+    return reason.message
+  }
+  if (reason instanceof Error) return reason.message
+  return 'Não foi possível redefinir a senha.'
 }
 
 export function ResetPassword({
@@ -102,7 +118,7 @@ export function ResetPassword({
       await client.reset(token, password)
       onSuccess()
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Token inválido ou expirado.')
+      setError(resetErrorMessage(reason))
     } finally {
       setLoading(false)
     }

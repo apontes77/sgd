@@ -141,13 +141,13 @@ Google e Microsoft são os provedores previstos para login OAuth. Identidades ex
 
 O frontend implementa as telas públicas sem adicionar um roteador: a navegação usa History/URL API e reconhece `/esqueci-senha` e `/redefinir-senha?token=...`.
 
-### DEC-016 — O fluxo não revela a existência de contas
+### DEC-016 — Feedback explícito na recuperação de senha
 
-**Status:** Implementada.
+**Status:** Superseded (antes: resposta neutra que não revelava existência de contas).
 
-A solicitação de recuperação retorna uma resposta neutra para e-mail inexistente, usuário inativo e falha de entrega. Tokens são aleatórios, persistidos somente como hash, têm validade configurável, são de uso único e invalidam solicitações anteriores do mesmo usuário.
+A solicitação de recuperação distingue e-mail inexistente (`404`), conta inativa (`403`) e falha de entrega SMTP (`503`), com mensagens explícitas na UI. Em sucesso, a tela confirma o envio das instruções. Tokens continuam aleatórios, persistidos somente como hash, com validade configurável, uso único e invalidação das solicitações anteriores do mesmo usuário.
 
-Após a troca de senha, todos os refresh tokens do usuário são revogados e a operação é auditada.
+Após a troca de senha, todos os refresh tokens do usuário são revogados, a operação é auditada e o login exibe confirmação de sucesso.
 
 ### DEC-017 — Produção envia e-mail por SMTP e falha cedo sem configuração básica
 

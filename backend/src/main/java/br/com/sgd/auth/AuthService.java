@@ -89,28 +89,27 @@ public class AuthService {
   }
 
   public void requestPasswordReset(String email) {
-    users
-        .findByEmailIgnoreCase(email)
-        .filter(User::isAtivo)
-        .ifPresent(
-            user -> {
-              String rawToken = randomToken();
-              resetTokens.invalidateAllByUserId(user.getId(), Instant.now());
-              resetTokens.save(
-                  new PasswordResetToken(
-                      user,
-                      hash(rawToken),
-                      Instant.now().plus(properties.passwordResetMinutes(), ChronoUnit.MINUTES)));
-              audit.save(new AuditLog(user, "USUARIO", "SOLICITACAO_REDEFINICAO_SENHA", "{}"));
-              try {
-                passwordResetNotifier.notify(user, rawToken);
-              } catch (MailException exception) {
-                LOGGER.error(
-                    "Nao foi possivel enviar o e-mail de redefinicao para o usuario {}",
-                    user.getId(),
-                    exception);
-              }
-            });
+    User user = users.findByEmailIgnoreCase(email).orElseThrow(AccountNotFoundException::new);
+    if (!user.isAtivo()) {
+      throw new AccountInactiveException();
+    }
+    String rawToken = randomToken();
+    resetTokens.invalidateAllByUserId(user.getId(), Instant.now());
+    resetTokens.save(
+        new PasswordResetToken(
+            user,
+            hash(rawToken),
+            Instant.now().plus(properties.passwordResetMinutes(), ChronoUnit.MINUTES)));
+    audit.save(new AuditLog(user, "USUARIO", "SOLICITACAO_REDEFINICAO_SENHA", "{}"));
+    try {
+      passwordResetNotifier.notify(user, rawToken);
+    } catch (MailException exception) {
+      LOGGER.error(
+          "Nao foi possivel enviar o e-mail de redefinicao para o usuario {}",
+          user.getId(),
+          exception);
+      throw new PasswordResetDeliveryException(exception);
+    }
   }
 
   public void resetPassword(String rawToken, String newPassword) {
@@ -172,4 +171,14 @@ public class AuthService {
   public static class InvalidCredentialsException extends RuntimeException {}
 
   public static class InvalidTokenException extends RuntimeException {}
+
+  public static class AccountNotFoundException extends RuntimeException {}
+
+  public static class AccountInactiveException extends RuntimeException {}
+
+  public static class PasswordResetDeliveryException extends RuntimeException {
+    public PasswordResetDeliveryException(Throwable cause) {
+      super(cause);
+    }
+  }
 }

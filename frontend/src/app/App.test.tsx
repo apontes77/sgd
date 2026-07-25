@@ -40,9 +40,31 @@ describe('recuperacao publica de senha', () => {
 
     expect(authApi.redefinirSenha).toHaveBeenCalledWith('token-da-url', 'senha-nova-com-12')
     expect(window.location.pathname).toBe('/')
-    expect(window.location.search).toBe('')
+    expect(window.location.search).toBe('?senhaRedefinida=1')
     expect(sessionStorage.getItem('sgd.access-token')).toBeNull()
     expect(sessionStorage.getItem('sgd.refresh-token')).toBeNull()
     expect(await screen.findByRole('heading', { name: 'Bem-vindo de volta' })).toBeInTheDocument()
+    expect(screen.getByText('Senha redefinida com sucesso. Faça login.')).toBeInTheDocument()
+  })
+
+  it('mostra erro quando o e-mail de recuperacao nao esta cadastrado', async () => {
+    vi.spyOn(authApi, 'solicitarRedefinicaoSenha').mockRejectedValue(new Error('E-mail não cadastrado.'))
+    render(<App />)
+    await userEvent.click(screen.getByRole('button', { name: 'Esqueci minha senha' }))
+    await userEvent.type(screen.getByLabelText(/E-mail/), 'ausente@example.com')
+    await userEvent.click(screen.getByRole('button', { name: 'Solicitar redefinição' }))
+
+    expect(await screen.findByText('E-mail não cadastrado.')).toBeInTheDocument()
+    expect(screen.queryByText('Enviamos as instruções para o seu e-mail.')).not.toBeInTheDocument()
+  })
+
+  it('mostra sucesso quando a solicitacao de recuperacao e aceita', async () => {
+    vi.spyOn(authApi, 'solicitarRedefinicaoSenha').mockResolvedValue()
+    render(<App />)
+    await userEvent.click(screen.getByRole('button', { name: 'Esqueci minha senha' }))
+    await userEvent.type(screen.getByLabelText(/E-mail/), 'user@example.com')
+    await userEvent.click(screen.getByRole('button', { name: 'Solicitar redefinição' }))
+
+    expect(await screen.findByText('Enviamos as instruções para o seu e-mail.')).toBeInTheDocument()
   })
 })

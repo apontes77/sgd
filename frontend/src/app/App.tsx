@@ -18,18 +18,24 @@ import type { Usuario } from '@/shared/api/types'
 
 type PublicView = 'login' | 'forgot' | 'reset'
 
-function initialPublicState(): { view: PublicView; token: string } {
+function initialPublicState(): { view: PublicView; token: string; passwordResetSuccess: boolean } {
   const url = new URL(window.location.href)
   const token = url.searchParams.get('token') ?? ''
-  if (url.pathname.endsWith('/redefinir-senha') && token) return { view: 'reset', token }
-  if (url.pathname.endsWith('/esqueci-senha')) return { view: 'forgot', token: '' }
-  return { view: 'login', token: '' }
+  const passwordResetSuccess = url.searchParams.get('senhaRedefinida') === '1'
+  if (url.pathname.endsWith('/redefinir-senha') && token) {
+    return { view: 'reset', token, passwordResetSuccess: false }
+  }
+  if (url.pathname.endsWith('/esqueci-senha')) {
+    return { view: 'forgot', token: '', passwordResetSuccess: false }
+  }
+  return { view: 'login', token: '', passwordResetSuccess }
 }
 
 export default function App() {
   const initial = initialPublicState()
   const [publicView, setPublicView] = useState<PublicView>(initial.view)
   const [resetToken, setResetToken] = useState(initial.token)
+  const [passwordResetSuccess, setPasswordResetSuccess] = useState(initial.passwordResetSuccess)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -41,18 +47,28 @@ export default function App() {
     reset: authApi.redefinirSenha,
   }
 
-  function navigatePublic(view: PublicView, token = '') {
+  function navigatePublic(view: PublicView, token = '', options: { passwordResetSuccess?: boolean } = {}) {
     const path = view === 'forgot' ? '/esqueci-senha' : view === 'reset' ? '/redefinir-senha' : '/'
     const url = new URL(path, window.location.origin)
     if (view === 'reset' && token) url.searchParams.set('token', token)
+    const showResetSuccess = view === 'login' && Boolean(options.passwordResetSuccess)
+    if (showResetSuccess) url.searchParams.set('senhaRedefinida', '1')
     window.history.pushState({}, '', url)
     setPublicView(view)
     setResetToken(token)
+    setPasswordResetSuccess(showResetSuccess)
     setError('')
   }
   function finishPasswordReset() {
     authApi.logoutLocal()
-    navigatePublic('login')
+    navigatePublic('login', '', { passwordResetSuccess: true })
+  }
+  function clearPasswordResetSuccess() {
+    if (!passwordResetSuccess) return
+    setPasswordResetSuccess(false)
+    const url = new URL(window.location.href)
+    url.searchParams.delete('senhaRedefinida')
+    window.history.replaceState({}, '', url)
   }
   useEffect(() => {
     const expire = () => {
@@ -73,6 +89,7 @@ export default function App() {
       const state = initialPublicState()
       setPublicView(state.view)
       setResetToken(state.token)
+      setPasswordResetSuccess(state.passwordResetSuccess)
       setError('')
     }
     window.addEventListener('popstate', navigateFromHistory)
@@ -81,6 +98,7 @@ export default function App() {
   async function login(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError('')
+    clearPasswordResetSuccess()
     setLoading(true)
     try {
       const user = await authApi.login(email, password)
@@ -240,6 +258,7 @@ export default function App() {
                 Entre com suas credenciais para acessar o sistema.
               </Typography>
             </Box>
+            {passwordResetSuccess && <Alert severity="success">Senha redefinida com sucesso. Faça login.</Alert>}
             {error && <Alert severity="error">{error}</Alert>}
             <Stack spacing={2}>
               <TextField
@@ -249,7 +268,10 @@ export default function App() {
                 label="E-mail"
                 autoComplete="email"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) => {
+                  setEmail(event.target.value)
+                  clearPasswordResetSuccess()
+                }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -265,7 +287,10 @@ export default function App() {
                 label="Senha"
                 autoComplete="current-password"
                 value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                onChange={(event) => {
+                  setPassword(event.target.value)
+                  clearPasswordResetSuccess()
+                }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">

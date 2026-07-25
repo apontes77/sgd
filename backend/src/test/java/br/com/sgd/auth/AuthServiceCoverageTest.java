@@ -156,13 +156,17 @@ class AuthServiceCoverageTest {
   }
 
   @Test
-  void resetRequestDoesNotRevealMissingOrInactiveAccount() {
+  void resetRequestRejectsMissingAndInactiveAccount() {
     when(users.findByEmailIgnoreCase("missing@example.com")).thenReturn(Optional.empty());
-    service.requestPasswordReset("missing@example.com");
+    assertThatThrownBy(() -> service.requestPasswordReset("missing@example.com"))
+        .isInstanceOf(AuthService.AccountNotFoundException.class);
+
     User inactive = mock(User.class);
     when(inactive.isAtivo()).thenReturn(false);
     when(users.findByEmailIgnoreCase("inactive@example.com")).thenReturn(Optional.of(inactive));
-    service.requestPasswordReset("inactive@example.com");
+    assertThatThrownBy(() -> service.requestPasswordReset("inactive@example.com"))
+        .isInstanceOf(AuthService.AccountInactiveException.class);
+
     verifyNoInteractions(resetTokens, notifier);
   }
 

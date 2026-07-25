@@ -1,5 +1,6 @@
 package br.com.sgd.auth;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -92,14 +93,15 @@ class AuthServiceTest {
   }
 
   @Test
-  void passwordResetRequestRemainsNeutralWhenEmailDeliveryFails() {
+  void passwordResetRequestPropagatesEmailDeliveryFailure() {
     User user = mock(User.class);
     when(user.getId()).thenReturn(42L);
     when(user.isAtivo()).thenReturn(true);
     when(users.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.of(user));
     doThrow(new MailSendException("smtp unavailable")).when(notifier).notify(eq(user), anyString());
 
-    service.requestPasswordReset("user@example.com");
+    assertThatThrownBy(() -> service.requestPasswordReset("user@example.com"))
+        .isInstanceOf(AuthService.PasswordResetDeliveryException.class);
 
     verify(resetTokens).save(any(PasswordResetToken.class));
   }

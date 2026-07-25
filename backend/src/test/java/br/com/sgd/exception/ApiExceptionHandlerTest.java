@@ -26,9 +26,22 @@ class ApiExceptionHandlerTest {
         401,
         "Credenciais ou token");
     assertProblem(
-        handler.handleUnauthorized(new AuthService.InvalidTokenException()),
+        handler.handleInvalidToken(new AuthService.InvalidTokenException()),
         401,
-        "Credenciais ou token");
+        "Token inválido ou expirado");
+    assertProblem(
+        handler.handleAccountNotFound(new AuthService.AccountNotFoundException()),
+        404,
+        "E-mail não cadastrado");
+    assertProblem(
+        handler.handleAccountInactive(new AuthService.AccountInactiveException()),
+        403,
+        "conta está inativa");
+    assertProblem(
+        handler.handlePasswordResetDelivery(
+            new AuthService.PasswordResetDeliveryException(new RuntimeException("smtp"))),
+        503,
+        "Não foi possível enviar o e-mail");
     assertProblem(
         handler.handleInvalidOAuth(new OAuthIdentityService.InvalidOAuthIdentityException()),
         401,

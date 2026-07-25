@@ -34,12 +34,35 @@ public class ApiExceptionHandler {
     return response(HttpStatus.BAD_REQUEST, "Parâmetro inválido.");
   }
 
-  @ExceptionHandler({
-    AuthService.InvalidCredentialsException.class,
-    AuthService.InvalidTokenException.class
-  })
-  public ResponseEntity<Map<String, Object>> handleUnauthorized(RuntimeException exception) {
+  @ExceptionHandler(AuthService.InvalidCredentialsException.class)
+  public ResponseEntity<Map<String, Object>> handleUnauthorized(
+      AuthService.InvalidCredentialsException exception) {
     return response(HttpStatus.UNAUTHORIZED, "Credenciais ou token inválidos.");
+  }
+
+  @ExceptionHandler(AuthService.InvalidTokenException.class)
+  public ResponseEntity<Map<String, Object>> handleInvalidToken(
+      AuthService.InvalidTokenException exception) {
+    return response(HttpStatus.UNAUTHORIZED, "Token inválido ou expirado.");
+  }
+
+  @ExceptionHandler(AuthService.AccountNotFoundException.class)
+  public ResponseEntity<Map<String, Object>> handleAccountNotFound(
+      AuthService.AccountNotFoundException exception) {
+    return response(HttpStatus.NOT_FOUND, "E-mail não cadastrado.");
+  }
+
+  @ExceptionHandler(AuthService.AccountInactiveException.class)
+  public ResponseEntity<Map<String, Object>> handleAccountInactive(
+      AuthService.AccountInactiveException exception) {
+    return response(HttpStatus.FORBIDDEN, "Esta conta está inativa.");
+  }
+
+  @ExceptionHandler(AuthService.PasswordResetDeliveryException.class)
+  public ResponseEntity<Map<String, Object>> handlePasswordResetDelivery(
+      AuthService.PasswordResetDeliveryException exception) {
+    return response(
+        HttpStatus.SERVICE_UNAVAILABLE, "Não foi possível enviar o e-mail. Tente novamente.");
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
