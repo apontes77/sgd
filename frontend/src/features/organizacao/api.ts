@@ -4,9 +4,11 @@ import type {
   CriarUsuarioRequest,
   Discipulado,
   DiscipuladoRequest,
+  FaixaEtaria,
   Gerencia,
   GerenciaRequest,
   Pagina,
+  SexoOrganizacional,
   Usuario,
 } from '@/shared/api/types'
 
@@ -15,11 +17,13 @@ export type {
   CriarUsuarioRequest,
   Discipulado,
   DiscipuladoRequest,
+  FaixaEtaria,
   Gerencia,
   GerenciaRequest,
   Pagina,
   Perfil,
   SexoDiscipulado,
+  SexoOrganizacional,
   Usuario,
 } from '@/shared/api/types'
 
@@ -33,7 +37,12 @@ export const organizationApi = {
     request<Usuario>('/usuarios', { method: 'POST', body: JSON.stringify(body) }),
   atualizarUsuario: (id: number, body: AtualizarUsuarioRequest) =>
     request<Usuario>(`/usuarios/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
-  listarGerencias: () => request<Pagina<Gerencia>>('/gerencias?page=0&size=100'),
+  listarGerencias: (filtros?: { sexo?: SexoOrganizacional | ''; faixaEtaria?: FaixaEtaria | '' }) => {
+    const params = new URLSearchParams({ page: '0', size: '100' })
+    if (filtros?.sexo) params.set('sexo', filtros.sexo)
+    if (filtros?.faixaEtaria) params.set('faixaEtaria', filtros.faixaEtaria)
+    return request<Pagina<Gerencia>>(`/gerencias?${params}`)
+  },
   criarGerencia: (body: GerenciaRequest) =>
     request<Gerencia>('/gerencias', { method: 'POST', body: JSON.stringify(body) }),
   atualizarGerencia: (id: number, body: GerenciaRequest) =>

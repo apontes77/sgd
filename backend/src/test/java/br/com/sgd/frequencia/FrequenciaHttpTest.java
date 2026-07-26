@@ -26,6 +26,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import br.com.sgd.organizacao.Discipulado;
 import br.com.sgd.organizacao.DiscipuladoRepository;
+import br.com.sgd.organizacao.FaixaEtaria;
 import br.com.sgd.organizacao.Gerencia;
 import br.com.sgd.organizacao.GerenciaRepository;
 import br.com.sgd.organizacao.Sexo;
@@ -64,13 +65,17 @@ class FrequenciaHttpTest {
     outroDiscipulador = usuario("Outro", "outro-" + sufixo, Role.DISCIPULADOR);
     coLider = usuario("Co-líder", "colider-" + sufixo, Role.CO_LIDER);
     gerente = usuario("Gerente", "gerente-" + sufixo, Role.GERENTE);
-    Gerencia gerencia = gerencias.saveAndFlush(new Gerencia("Gerência", gerente));
-    proprio = new Discipulado("Próprio", Sexo.MASCULINO, gerencia, discipulador);
+    Gerencia gerencia =
+        gerencias.saveAndFlush(
+            new Gerencia("Gerência", Sexo.MASCULINO, Set.of(FaixaEtaria.DE_15_MAIS), gerente));
+    proprio =
+        new Discipulado("Próprio", Sexo.MASCULINO, FaixaEtaria.DE_15_MAIS, gerencia, discipulador);
     proprio.replaceCoLideres(Set.of(coLider));
     proprio = discipulados.saveAndFlush(proprio);
     alheio =
         discipulados.saveAndFlush(
-            new Discipulado("Alheio", Sexo.FEMININO, gerencia, outroDiscipulador));
+            new Discipulado(
+                "Alheio", Sexo.FEMININO, FaixaEtaria.DE_15_MAIS, gerencia, outroDiscipulador));
   }
 
   @Test

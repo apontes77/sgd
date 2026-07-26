@@ -50,9 +50,11 @@ class DiscipuladoServiceTest {
     when(discipulados.save(any(Discipulado.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
-    Discipulado criado = service.create("  Discipulado Norte  ", Sexo.MASCULINO, 1L, 2L);
+    Discipulado criado =
+        service.create("  Discipulado Norte  ", Sexo.MASCULINO, FaixaEtaria.DE_11_A_13, 1L, 2L);
 
     assertThat(criado.getNome()).isEqualTo("Discipulado Norte");
+    assertThat(criado.getFaixaEtaria()).isEqualTo(FaixaEtaria.DE_11_A_13);
     assertThat(criado.getGerencia()).isSameAs(gerencia);
     assertThat(criado.getDiscipulador()).isSameAs(discipulador);
     verify(discipulados).save(criado);
@@ -66,7 +68,9 @@ class DiscipuladoServiceTest {
     when(discipulador.getPerfis()).thenReturn(Set.of(Role.CO_LIDER));
     when(usuarios.findById(2L)).thenReturn(Optional.of(discipulador));
 
-    assertThatThrownBy(() -> service.create("Discipulado Norte", Sexo.MASCULINO, 1L, 2L))
+    assertThatThrownBy(
+            () ->
+                service.create("Discipulado Norte", Sexo.MASCULINO, FaixaEtaria.DE_11_A_13, 1L, 2L))
         .isInstanceOf(DiscipuladoService.DiscipuladorInvalidoException.class);
 
     verify(discipulados, never()).save(any());
@@ -77,10 +81,11 @@ class DiscipuladoServiceTest {
     Discipulado discipulado = discipuladoExistente();
     when(discipulados.findById(7L)).thenReturn(Optional.of(discipulado));
 
-    Discipulado atualizado = service.update(7L, "Novo nome", null, null, null, null);
+    Discipulado atualizado = service.update(7L, "Novo nome", null, null, null, null, null);
 
     assertThat(atualizado.getDiscipulador()).isSameAs(discipulador);
     assertThat(atualizado.getNome()).isEqualTo("Novo nome");
+    assertThat(atualizado.getFaixaEtaria()).isEqualTo(FaixaEtaria.DE_11_A_13);
   }
 
   @Test
@@ -132,7 +137,8 @@ class DiscipuladoServiceTest {
   }
 
   private Discipulado discipuladoExistente() {
-    return new Discipulado("Discipulado Norte", Sexo.MASCULINO, gerencia, discipulador);
+    return new Discipulado(
+        "Discipulado Norte", Sexo.MASCULINO, FaixaEtaria.DE_11_A_13, gerencia, discipulador);
   }
 
   private void configurarCoLider(User coLider, long id) {

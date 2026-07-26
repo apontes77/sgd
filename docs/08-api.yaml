@@ -101,7 +101,11 @@ paths:
     get:
       tags: [Gerências]
       summary: Lista gerências visíveis ao solicitante
-      parameters: [ { $ref: '#/components/parameters/Pagina' }, { $ref: '#/components/parameters/TamanhoPagina' } ]
+      parameters:
+        - { $ref: '#/components/parameters/Pagina' }
+        - { $ref: '#/components/parameters/TamanhoPagina' }
+        - { name: sexo, in: query, schema: { type: string, enum: [MASCULINO, FEMININO] } }
+        - { name: faixaEtaria, in: query, schema: { $ref: '#/components/schemas/FaixaEtaria' } }
       responses: { '200': { $ref: '#/components/responses/PaginaGerencias' } }
     post:
       tags: [Gerências]
@@ -283,6 +287,7 @@ paths:
       parameters:
         - { name: dataInicio, in: query, required: true, schema: { type: string, format: date } }
         - { name: dataFim, in: query, required: true, schema: { type: string, format: date } }
+        - { name: discipuladoId, in: query, required: false, schema: { type: integer, format: int64 }, description: Filtra o relatório para um discipulado do escopo do usuário. }
       responses:
         '200': { description: Relatórios dos encontros do período (realizados e não realizados), content: { application/json: { schema: { $ref: '#/components/schemas/RelatorioFrequenciaPeriodoResponse' } } } }
         '400': { description: Período ausente, invertido ou superior a 12 meses, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
@@ -296,6 +301,7 @@ paths:
       description: Endpoint compatível para consulta de um único dia; delega ao mesmo serviço de período com início e fim iguais.
       parameters:
         - { name: data, in: query, required: true, schema: { type: string, format: date } }
+        - { name: discipuladoId, in: query, required: false, schema: { type: integer, format: int64 }, description: Filtra o relatório para um discipulado do escopo do usuário. }
       responses:
         '200': { description: Relatórios dos encontros da data (realizados e não realizados); a lista pode ser vazia, content: { application/json: { schema: { $ref: '#/components/schemas/RelatorioFrequenciaDiariaResponse' } } } }
         '400': { description: Data ausente ou inválida, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
@@ -346,11 +352,12 @@ components:
     Usuario: { type: object, required: [id, nome, email, ativo, perfis], properties: { id: { type: integer, format: int64 }, nome: { type: string }, email: { type: string, format: email }, ativo: { type: boolean }, perfis: { type: array, items: { $ref: '#/components/schemas/Perfil' } } } }
     CriarUsuarioRequest: { type: object, required: [nome, email, senha, perfis], properties: { nome: { type: string, minLength: 1, maxLength: 120 }, email: { type: string, format: email }, senha: { type: string, format: password, minLength: 12 }, perfis: { type: array, minItems: 1, items: { $ref: '#/components/schemas/Perfil' } } } }
     AtualizarUsuarioRequest: { type: object, properties: { nome: { type: string, minLength: 1, maxLength: 120 }, perfis: { type: array, minItems: 1, items: { $ref: '#/components/schemas/Perfil' } }, ativo: { type: boolean } } }
-    GerenciaRequest: { type: object, required: [nome, gerenteId], properties: { nome: { type: string, minLength: 1, maxLength: 120 }, gerenteId: { type: integer, format: int64 } } }
-    AtualizarGerenciaRequest: { type: object, minProperties: 1, properties: { nome: { type: string, minLength: 1, maxLength: 120 }, gerenteId: { type: integer, format: int64 }, ativo: { type: boolean } } }
+    FaixaEtaria: { type: string, enum: [DE_09_A_11, DE_11_A_13, DE_13_A_15, DE_15_MAIS] }
+    GerenciaRequest: { type: object, required: [nome, sexo, faixasEtarias, gerenteId], properties: { nome: { type: string, minLength: 1, maxLength: 120 }, sexo: { type: string, enum: [MASCULINO, FEMININO] }, faixasEtarias: { type: array, minItems: 1, uniqueItems: true, items: { $ref: '#/components/schemas/FaixaEtaria' } }, gerenteId: { type: integer, format: int64 } } }
+    AtualizarGerenciaRequest: { type: object, minProperties: 1, properties: { nome: { type: string, minLength: 1, maxLength: 120 }, sexo: { type: string, enum: [MASCULINO, FEMININO] }, faixasEtarias: { type: array, minItems: 1, uniqueItems: true, items: { $ref: '#/components/schemas/FaixaEtaria' } }, gerenteId: { type: integer, format: int64 }, ativo: { type: boolean } } }
     Gerencia: { allOf: [ { $ref: '#/components/schemas/GerenciaRequest' }, { type: object, required: [id], properties: { id: { type: integer, format: int64 } } } ] }
-    DiscipuladoRequest: { type: object, required: [nome, sexo, gerenciaId, discipuladorId], properties: { nome: { type: string, minLength: 1, maxLength: 120 }, sexo: { type: string, enum: [MASCULINO, FEMININO] }, gerenciaId: { type: integer, format: int64 }, discipuladorId: { type: integer, format: int64 }, ativo: { type: boolean } } }
-    AtualizarDiscipuladoRequest: { type: object, minProperties: 1, properties: { nome: { type: string, minLength: 1, maxLength: 120 }, sexo: { type: string, enum: [MASCULINO, FEMININO] }, gerenciaId: { type: integer, format: int64 }, discipuladorId: { type: integer, format: int64 }, ativo: { type: boolean } } }
+    DiscipuladoRequest: { type: object, required: [nome, sexo, faixaEtaria, gerenciaId, discipuladorId], properties: { nome: { type: string, minLength: 1, maxLength: 120 }, sexo: { type: string, enum: [MASCULINO, FEMININO] }, faixaEtaria: { $ref: '#/components/schemas/FaixaEtaria' }, gerenciaId: { type: integer, format: int64 }, discipuladorId: { type: integer, format: int64 }, ativo: { type: boolean } } }
+    AtualizarDiscipuladoRequest: { type: object, minProperties: 1, properties: { nome: { type: string, minLength: 1, maxLength: 120 }, sexo: { type: string, enum: [MASCULINO, FEMININO] }, faixaEtaria: { $ref: '#/components/schemas/FaixaEtaria' }, gerenciaId: { type: integer, format: int64 }, discipuladorId: { type: integer, format: int64 }, ativo: { type: boolean } } }
     Discipulado: { allOf: [ { $ref: '#/components/schemas/DiscipuladoRequest' }, { type: object, required: [id, coLideres], properties: { id: { type: integer, format: int64 }, coLideres: { type: array, maxItems: 2, items: { $ref: '#/components/schemas/Usuario' } } } } ] }
     AdolescenteRequest: { type: object, required: [nome, dataNascimento, categoria, responsavelNome, consentimentoEm, discipuladoId], properties: { nome: { type: string, minLength: 1, maxLength: 120 }, dataNascimento: { type: string, format: date }, telefone: { type: string }, instagram: { type: string }, responsavelNome: { type: string }, responsavelTelefone: { type: string }, consentimentoEm: { type: string, format: date }, categoria: { type: string, enum: [DISCIPULO, VISITANTE, DISCIPULO_GOE] }, telefoneMae: { type: string }, telefonePai: { type: string }, estrutura: { type: string, maxLength: 120 }, motivoAfastamento: { type: string, maxLength: 500, description: Obrigatório quando categoria for DISCIPULO_GOE. }, discipuladoId: { type: integer, format: int64 }, ativo: { type: boolean }, dataInicio: { type: string, format: date, description: Data de início do vínculo com o discipulado. Padrão é a data atual; usada ao registrar um visitante em uma data anterior. } } }
     Adolescente: { allOf: [ { $ref: '#/components/schemas/AdolescenteRequest' }, { type: object, required: [id, anonimizado], properties: { id: { type: integer, format: int64 }, discipuladoNome: { type: string }, anonimizado: { type: boolean } } } ] }

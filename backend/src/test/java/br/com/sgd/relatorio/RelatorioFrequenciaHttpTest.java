@@ -42,6 +42,7 @@ import br.com.sgd.frequencia.Visitante;
 import br.com.sgd.frequencia.VisitanteRepository;
 import br.com.sgd.organizacao.Discipulado;
 import br.com.sgd.organizacao.DiscipuladoRepository;
+import br.com.sgd.organizacao.FaixaEtaria;
 import br.com.sgd.organizacao.Gerencia;
 import br.com.sgd.organizacao.GerenciaRepository;
 import br.com.sgd.organizacao.Sexo;
@@ -89,15 +90,25 @@ class RelatorioFrequenciaHttpTest {
         usuario("Perfil acumulado", "acumulado-" + sufixo, Role.GERENTE, Role.CO_LIDER);
     User liderBeta = usuario("Líder Beta", "beta-" + sufixo, Role.DISCIPULADOR);
     User liderGamma = usuario("Líder Gamma", "gamma-" + sufixo, Role.DISCIPULADOR);
-    Gerencia centro = gerencias.saveAndFlush(new Gerencia("Centro", gerenteCentro));
-    Gerencia norte = gerencias.saveAndFlush(new Gerencia("Norte", perfilAcumulado));
-    alpha = new Discipulado("Alpha", Sexo.MASCULINO, centro, liderAlpha);
+    Gerencia centro =
+        gerencias.saveAndFlush(
+            new Gerencia(
+                "Centro",
+                Sexo.MASCULINO,
+                Set.of(FaixaEtaria.DE_15_MAIS, FaixaEtaria.DE_13_A_15),
+                gerenteCentro));
+    Gerencia norte =
+        gerencias.saveAndFlush(
+            new Gerencia("Norte", Sexo.FEMININO, Set.of(FaixaEtaria.DE_11_A_13), perfilAcumulado));
+    alpha = new Discipulado("Alpha", Sexo.MASCULINO, FaixaEtaria.DE_15_MAIS, centro, liderAlpha);
     alpha.replaceCoLideres(Set.of(coLiderAlpha, perfilAcumulado));
     alpha = discipulados.saveAndFlush(alpha);
     Discipulado beta =
-        discipulados.saveAndFlush(new Discipulado("Beta", Sexo.FEMININO, centro, liderBeta));
+        discipulados.saveAndFlush(
+            new Discipulado("Beta", Sexo.FEMININO, FaixaEtaria.DE_15_MAIS, centro, liderBeta));
     Discipulado gamma =
-        discipulados.saveAndFlush(new Discipulado("Gamma", Sexo.MASCULINO, norte, liderGamma));
+        discipulados.saveAndFlush(
+            new Discipulado("Gamma", Sexo.MASCULINO, FaixaEtaria.DE_11_A_13, norte, liderGamma));
 
     Encontro alphaPrincipal = encontro(alpha, SituacaoEncontro.REALIZADO);
     encontro(alpha, DATA.minusDays(1), SituacaoEncontro.REALIZADO);
@@ -206,6 +217,40 @@ class RelatorioFrequenciaHttpTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.relatorios.length()").value(3))
         .andExpect(jsonPath("$.relatorios[2].discipulado.nome").value("Gamma"));
+  }
+
+  @Test
+  void gerenteFiltraRelatorioPorDiscipuladoDoEscopo() throws Exception {
+    String tokenGerente = token(gerenteCentro);
+    mvc.perform(
+            get("/api/v1/relatorios/frequencia")
+                .param("dataInicio", DATA.toString())
+                .param("dataFim", DATA.toString())
+                .param("discipuladoId", String.valueOf(alpha.getId()))
+                .header(HttpHeaders.AUTHORIZATION, bearer(tokenGerente)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.relatorios.length()").value(1))
+        .andExpect(jsonPath("$.relatorios[0].discipulado.nome").value("Alpha"));
+    mvc.perform(
+            get("/api/v1/relatorios/frequencia")
+                .param("dataInicio", DATA.toString())
+                .param("dataFim", DATA.toString())
+                .param("discipuladoId", "999999")
+                .header(HttpHeaders.AUTHORIZATION, bearer(tokenGerente)))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void administradorFiltraRelatorioPorDiscipulado() throws Exception {
+    mvc.perform(
+            get("/api/v1/relatorios/frequencia")
+                .param("dataInicio", DATA.toString())
+                .param("dataFim", DATA.toString())
+                .param("discipuladoId", String.valueOf(alpha.getId()))
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(admin))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.relatorios.length()").value(1))
+        .andExpect(jsonPath("$.relatorios[0].discipulado.nome").value("Alpha"));
   }
 
   @Test

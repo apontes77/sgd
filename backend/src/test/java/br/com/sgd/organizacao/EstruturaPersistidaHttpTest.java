@@ -40,11 +40,13 @@ class EstruturaPersistidaHttpTest {
     long gerenciaId =
         criar(
             "/api/v1/gerencias",
-            "{\"nome\":\"Gerência Persistida\",\"gerenteId\":" + gerenteId + "}");
+            "{\"nome\":\"Gerência Persistida\",\"sexo\":\"MASCULINO\",\"faixasEtarias\":[\"DE_15_MAIS\",\"DE_11_A_13\"],\"gerenteId\":"
+                + gerenteId
+                + "}");
     long discipuladoId =
         criar(
             "/api/v1/discipulados",
-            "{\"nome\":\"Discipulado Persistido\",\"sexo\":\"MASCULINO\",\"gerenciaId\":"
+            "{\"nome\":\"Discipulado Persistido\",\"sexo\":\"MASCULINO\",\"faixaEtaria\":\"DE_11_A_13\",\"gerenciaId\":"
                 + gerenciaId
                 + ",\"discipuladorId\":"
                 + discipuladorId

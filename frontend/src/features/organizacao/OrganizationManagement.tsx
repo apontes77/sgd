@@ -9,11 +9,13 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   FormControl,
   FormControlLabel,
   InputLabel,
   List,
   ListItem,
+  ListItemButton,
   ListItemText,
   MenuItem,
   Paper,
@@ -34,9 +36,11 @@ import type {
   CriarUsuarioRequest,
   Discipulado,
   DiscipuladoRequest,
+  FaixaEtaria,
   Gerencia,
   GerenciaRequest,
   Perfil,
+  SexoOrganizacional,
   Usuario,
 } from './api'
 
@@ -49,8 +53,21 @@ const roleLabel: Record<Perfil, string> = {
   CO_LIDER: 'Co-líder',
 }
 
+const faixaEtariaLabel: Record<FaixaEtaria, string> = {
+  DE_09_A_11: '09 a 11',
+  DE_11_A_13: '11 a 13',
+  DE_13_A_15: '13 a 15',
+  DE_15_MAIS: '15+',
+}
+
+const faixasEtarias: FaixaEtaria[] = ['DE_09_A_11', 'DE_11_A_13', 'DE_13_A_15', 'DE_15_MAIS']
+
 function userName(users: Usuario[], id: number) {
   return users.find((user) => user.id === id)?.nome ?? `Usuário #${id}`
+}
+
+function formatFaixas(faixas: FaixaEtaria[]) {
+  return faixas.map((faixa) => faixaEtariaLabel[faixa]).join(', ')
 }
 
 export default function OrganizationManagement() {
@@ -64,6 +81,11 @@ export default function OrganizationManagement() {
   const [saving, setSaving] = useState(false)
   const [pendingDiscipuladoId, setPendingDiscipuladoId] = useState<number>()
   const [pendingDeactivate, setPendingDeactivate] = useState<Discipulado>()
+  const [filtroGerenciaSexo, setFiltroGerenciaSexo] = useState<SexoOrganizacional | ''>('')
+  const [filtroGerenciaFaixa, setFiltroGerenciaFaixa] = useState<FaixaEtaria | ''>('')
+  const [filtroDiscipuladoSexo, setFiltroDiscipuladoSexo] = useState<SexoOrganizacional | ''>('')
+  const [filtroDiscipuladoFaixa, setFiltroDiscipuladoFaixa] = useState<FaixaEtaria | ''>('')
+  const [gerenciaSelecionadaId, setGerenciaSelecionadaId] = useState<number>()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -87,6 +109,42 @@ export default function OrganizationManagement() {
   useEffect(() => {
     void load()
   }, [load])
+
+  const gerenciasFiltradas = useMemo(
+    () =>
+      gerencias.filter((item) => {
+        if (filtroGerenciaSexo && item.sexo !== filtroGerenciaSexo) return false
+        if (filtroGerenciaFaixa && !item.faixasEtarias.includes(filtroGerenciaFaixa)) return false
+        return true
+      }),
+    [filtroGerenciaFaixa, filtroGerenciaSexo, gerencias],
+  )
+
+  const gerenciaSelecionada = useMemo(
+    () => gerenciasFiltradas.find((item) => item.id === gerenciaSelecionadaId),
+    [gerenciaSelecionadaId, gerenciasFiltradas],
+  )
+
+  const discipuladosDaGerencia = useMemo(
+    () => (gerenciaSelecionada ? discipulados.filter((item) => item.gerenciaId === gerenciaSelecionada.id) : []),
+    [discipulados, gerenciaSelecionada],
+  )
+
+  const discipuladosFiltrados = useMemo(
+    () =>
+      discipulados.filter((item) => {
+        if (filtroDiscipuladoSexo && item.sexo !== filtroDiscipuladoSexo) return false
+        if (filtroDiscipuladoFaixa && item.faixaEtaria !== filtroDiscipuladoFaixa) return false
+        return true
+      }),
+    [discipulados, filtroDiscipuladoFaixa, filtroDiscipuladoSexo],
+  )
+
+  useEffect(() => {
+    if (gerenciaSelecionadaId != null && !gerenciaSelecionada) {
+      setGerenciaSelecionadaId(undefined)
+    }
+  }, [gerenciaSelecionada, gerenciaSelecionadaId])
 
   const gerentes = useMemo(
     () =>
@@ -160,6 +218,7 @@ export default function OrganizationManagement() {
       await organizationApi.atualizarDiscipulado(item.id, {
         nome: item.nome,
         sexo: item.sexo,
+        faixaEtaria: item.faixaEtaria,
         gerenciaId: item.gerenciaId,
         discipuladorId: item.discipuladorId,
         ativo: false,
@@ -211,15 +270,62 @@ export default function OrganizationManagement() {
             <LoadingState label="Carregando estrutura..." />
           </Box>
         ) : tab === 0 ? (
-          <GerenciaList items={gerencias} users={users} onEdit={(item) => setModal({ kind: 'gerencia', item })} />
+          <Stack>
+            <GerenciaList
+              items={gerenciasFiltradas}
+              users={users}
+              selectedId={gerenciaSelecionada?.id}
+              filtroSexo={filtroGerenciaSexo}
+              filtroFaixa={filtroGerenciaFaixa}
+              onFiltroSexo={setFiltroGerenciaSexo}
+              onFiltroFaixa={setFiltroGerenciaFaixa}
+              onSelect={(item) => setGerenciaSelecionadaId((atual) => (atual === item.id ? undefined : item.id))}
+              onEdit={(item) => setModal({ kind: 'gerencia', item })}
+            />
+            <Divider />
+            <Box sx={{ minHeight: 220, bgcolor: 'action.hover' }}>
+              {gerenciaSelecionada ? (
+                <>
+                  <Box sx={{ px: 2, pt: 2, pb: 1 }}>
+                    <Typography variant="subtitle1" fontWeight={600}>
+                      Discipulados de {gerenciaSelecionada.nome}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Gerente: {userName(users, gerenciaSelecionada.gerenteId)}
+                    </Typography>
+                  </Box>
+                  <DiscipuladoList
+                    items={discipuladosDaGerencia}
+                    users={users}
+                    gerencias={gerencias}
+                    emptyLabel="Nenhum discipulado nesta gerência."
+                    onEdit={(item) => setModal({ kind: 'discipulado', item })}
+                    onDeactivate={setPendingDeactivate}
+                  />
+                </>
+              ) : (
+                <EmptyState label="Selecione uma gerência para ver os discipulados sob sua responsabilidade." />
+              )}
+            </Box>
+          </Stack>
         ) : (
-          <DiscipuladoList
-            items={discipulados}
-            users={users}
-            gerencias={gerencias}
-            onEdit={(item) => setModal({ kind: 'discipulado', item })}
-            onDeactivate={setPendingDeactivate}
-          />
+          <Box>
+            <OrganizacaoFiltros
+              idPrefix="discipulado"
+              filtroSexo={filtroDiscipuladoSexo}
+              filtroFaixa={filtroDiscipuladoFaixa}
+              onFiltroSexo={setFiltroDiscipuladoSexo}
+              onFiltroFaixa={setFiltroDiscipuladoFaixa}
+            />
+            <DiscipuladoList
+              items={discipuladosFiltrados}
+              users={users}
+              gerencias={gerencias}
+              emptyLabel="Nenhum discipulado encontrado."
+              onEdit={(item) => setModal({ kind: 'discipulado', item })}
+              onDeactivate={setPendingDeactivate}
+            />
+          </Box>
         )}
       </Paper>
       {modal?.kind === 'gerencia' && (
@@ -265,27 +371,120 @@ export default function OrganizationManagement() {
   )
 }
 
+function OrganizacaoFiltros({
+  idPrefix,
+  filtroSexo,
+  filtroFaixa,
+  onFiltroSexo,
+  onFiltroFaixa,
+}: {
+  idPrefix: string
+  filtroSexo: SexoOrganizacional | ''
+  filtroFaixa: FaixaEtaria | ''
+  onFiltroSexo: (value: SexoOrganizacional | '') => void
+  onFiltroFaixa: (value: FaixaEtaria | '') => void
+}) {
+  return (
+    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ p: 2 }}>
+      <FormControl size="small" sx={{ minWidth: 160 }}>
+        <InputLabel id={`${idPrefix}-filtro-sexo-label`}>Sexo</InputLabel>
+        <Select
+          labelId={`${idPrefix}-filtro-sexo-label`}
+          label="Sexo"
+          value={filtroSexo}
+          onChange={(event) => onFiltroSexo(event.target.value as SexoOrganizacional | '')}
+        >
+          <MenuItem value="">Todos</MenuItem>
+          <MenuItem value="MASCULINO">Masculino</MenuItem>
+          <MenuItem value="FEMININO">Feminino</MenuItem>
+        </Select>
+      </FormControl>
+      <FormControl size="small" sx={{ minWidth: 180 }}>
+        <InputLabel id={`${idPrefix}-filtro-faixa-label`}>Faixa etária</InputLabel>
+        <Select
+          labelId={`${idPrefix}-filtro-faixa-label`}
+          label="Faixa etária"
+          value={filtroFaixa}
+          onChange={(event) => onFiltroFaixa(event.target.value as FaixaEtaria | '')}
+        >
+          <MenuItem value="">Todas</MenuItem>
+          {faixasEtarias.map((faixa) => (
+            <MenuItem key={faixa} value={faixa}>
+              {faixaEtariaLabel[faixa]}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+    </Stack>
+  )
+}
+
 function GerenciaList({
   items,
   users,
+  selectedId,
+  filtroSexo,
+  filtroFaixa,
+  onFiltroSexo,
+  onFiltroFaixa,
+  onSelect,
   onEdit,
 }: {
   items: Gerencia[]
   users: Usuario[]
+  selectedId?: number
+  filtroSexo: SexoOrganizacional | ''
+  filtroFaixa: FaixaEtaria | ''
+  onFiltroSexo: (value: SexoOrganizacional | '') => void
+  onFiltroFaixa: (value: FaixaEtaria | '') => void
+  onSelect: (item: Gerencia) => void
   onEdit: (item: Gerencia) => void
 }) {
   return (
-    <List disablePadding>
-      {items.length === 0 ? (
-        <EmptyState label="Nenhuma gerência cadastrada." />
-      ) : (
-        items.map((item) => (
-          <ListItem key={item.id} divider secondaryAction={<Button onClick={() => onEdit(item)}>Editar</Button>}>
-            <ListItemText primary={item.nome} secondary={`Gerente: ${userName(users, item.gerenteId)}`} />
-          </ListItem>
-        ))
-      )}
-    </List>
+    <Box>
+      <OrganizacaoFiltros
+        idPrefix="gerencia"
+        filtroSexo={filtroSexo}
+        filtroFaixa={filtroFaixa}
+        onFiltroSexo={onFiltroSexo}
+        onFiltroFaixa={onFiltroFaixa}
+      />
+      <List disablePadding>
+        {items.length === 0 ? (
+          <EmptyState label="Nenhuma gerência encontrada." />
+        ) : (
+          items.map((item) => (
+            <ListItem
+              key={item.id}
+              disablePadding
+              divider
+              secondaryAction={
+                <Button
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onEdit(item)
+                  }}
+                >
+                  Editar
+                </Button>
+              }
+            >
+              <ListItemButton selected={selectedId === item.id} onClick={() => onSelect(item)}>
+                <ListItemText
+                  primary={
+                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                      <span>{item.nome}</span>
+                      <Chip size="small" label={item.sexo === 'MASCULINO' ? 'Masculino' : 'Feminino'} />
+                    </Stack>
+                  }
+                  secondary={`Gerente: ${userName(users, item.gerenteId)} · Faixas: ${formatFaixas(item.faixasEtarias)}`}
+                />
+              </ListItemButton>
+            </ListItem>
+          ))
+        )}
+      </List>
+    </Box>
   )
 }
 
@@ -293,19 +492,21 @@ function DiscipuladoList({
   items,
   users,
   gerencias,
+  emptyLabel = 'Nenhum discipulado cadastrado.',
   onEdit,
   onDeactivate,
 }: {
   items: Discipulado[]
   users: Usuario[]
   gerencias: Gerencia[]
+  emptyLabel?: string
   onEdit: (item: Discipulado) => void
   onDeactivate: (item: Discipulado) => void
 }) {
   return (
     <List disablePadding>
       {items.length === 0 ? (
-        <EmptyState label="Nenhum discipulado cadastrado." />
+        <EmptyState label={emptyLabel} />
       ) : (
         items.map((item) => (
           <ListItem
@@ -325,11 +526,17 @@ function DiscipuladoList({
           >
             <ListItemText
               primary={
-                <Stack direction="row" spacing={1} alignItems="center">
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
                   <span>{item.nome}</span>
                   <Chip
                     size="small"
                     label={item.sexo === 'MASCULINO' ? 'Masculino' : 'Feminino'}
+                    color={item.ativo === false ? 'default' : 'primary'}
+                  />
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    label={faixaEtariaLabel[item.faixaEtaria] ?? item.faixaEtaria}
                     color={item.ativo === false ? 'default' : 'primary'}
                   />
                 </Stack>
@@ -380,11 +587,19 @@ function GerenciaDialog({
   onSave: (body: GerenciaRequest) => void
 }) {
   const [nome, setNome] = useState(item?.nome ?? '')
+  const [sexo, setSexo] = useState<SexoOrganizacional>(item?.sexo ?? 'MASCULINO')
+  const [faixasSelecionadas, setFaixasSelecionadas] = useState<FaixaEtaria[]>(item?.faixasEtarias ?? ['DE_15_MAIS'])
   const [gerenteId, setGerenteId] = useState(String(item?.gerenteId ?? ''))
   const [creatingUser, setCreatingUser] = useState(false)
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    onSave({ nome, gerenteId: Number(gerenteId) })
+    if (faixasSelecionadas.length === 0) return
+    onSave({ nome, sexo, faixasEtarias: faixasSelecionadas, gerenteId: Number(gerenteId) })
+  }
+  function toggleFaixa(faixa: FaixaEtaria) {
+    setFaixasSelecionadas((atuais) =>
+      atuais.includes(faixa) ? atuais.filter((item) => item !== faixa) : [...atuais, faixa],
+    )
   }
   return (
     <>
@@ -400,6 +615,37 @@ function GerenciaDialog({
               onChange={(event) => setNome(event.target.value)}
               inputProps={{ maxLength: 120 }}
             />
+            <FormControl required>
+              <InputLabel id="gerencia-sexo-label">Sexo</InputLabel>
+              <Select
+                labelId="gerencia-sexo-label"
+                label="Sexo"
+                value={sexo}
+                onChange={(event) => setSexo(event.target.value as SexoOrganizacional)}
+              >
+                <MenuItem value="MASCULINO">Masculino</MenuItem>
+                <MenuItem value="FEMININO">Feminino</MenuItem>
+              </Select>
+            </FormControl>
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                Faixas etárias *
+              </Typography>
+              {faixasEtarias.map((faixa) => (
+                <FormControlLabel
+                  key={faixa}
+                  control={
+                    <Checkbox checked={faixasSelecionadas.includes(faixa)} onChange={() => toggleFaixa(faixa)} />
+                  }
+                  label={faixaEtariaLabel[faixa]}
+                />
+              ))}
+              {faixasSelecionadas.length === 0 && (
+                <Typography variant="caption" color="error">
+                  Selecione ao menos uma faixa etária.
+                </Typography>
+              )}
+            </Box>
             <UserSelect required label="Gerente" value={gerenteId} users={users} onChange={setGerenteId} />
             <Button type="button" onClick={() => setCreatingUser(true)}>
               Cadastrar novo gerente
@@ -408,7 +654,7 @@ function GerenciaDialog({
         </DialogContent>
         <DialogActions>
           <Button onClick={onClose}>Cancelar</Button>
-          <Button type="submit" variant="contained" disabled={saving}>
+          <Button type="submit" variant="contained" disabled={saving || faixasSelecionadas.length === 0}>
             {saving ? 'Salvando...' : 'Salvar'}
           </Button>
         </DialogActions>
@@ -449,6 +695,7 @@ function DiscipuladoDialog({
 }) {
   const [nome, setNome] = useState(item?.nome ?? '')
   const [sexo, setSexo] = useState(item?.sexo ?? 'MASCULINO')
+  const [faixaEtaria, setFaixaEtaria] = useState<FaixaEtaria>(item?.faixaEtaria ?? 'DE_15_MAIS')
   const [gerenciaId, setGerenciaId] = useState(String(item?.gerenciaId ?? ''))
   const [discipuladorId, setDiscipuladorId] = useState(String(item?.discipuladorId ?? ''))
   const [coLiderIds, setCoLiderIds] = useState<number[]>(item?.coLideres.map((user) => user.id) ?? [])
@@ -459,6 +706,7 @@ function DiscipuladoDialog({
       {
         nome,
         sexo,
+        faixaEtaria,
         gerenciaId: Number(gerenciaId),
         discipuladorId: Number(discipuladorId),
         ativo: item?.ativo ?? true,
@@ -495,6 +743,21 @@ function DiscipuladoDialog({
               >
                 <MenuItem value="MASCULINO">Masculino</MenuItem>
                 <MenuItem value="FEMININO">Feminino</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl required>
+              <InputLabel id="discipulado-faixa-label">Faixa etária</InputLabel>
+              <Select
+                labelId="discipulado-faixa-label"
+                label="Faixa etária"
+                value={faixaEtaria}
+                onChange={(event) => setFaixaEtaria(event.target.value as FaixaEtaria)}
+              >
+                {faixasEtarias.map((faixa) => (
+                  <MenuItem key={faixa} value={faixa}>
+                    {faixaEtariaLabel[faixa]}
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
             <FormControl required>

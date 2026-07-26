@@ -225,19 +225,28 @@ class PostgreSqlIntegrationTest {
   }
 
   private long gerencia(String nome, long usuario) {
-    return jdbc.queryForObject(
-        "insert into gerencias(nome,gerente_id) values (?,?) returning id",
-        Long.class,
-        nome,
-        usuario);
+    Long id =
+        jdbc.queryForObject(
+            "insert into gerencias(nome,sexo,gerente_id) values (?,?,?) returning id",
+            Long.class,
+            nome,
+            "MASCULINO",
+            usuario);
+    jdbc.update(
+        "insert into gerencia_faixas_etarias(gerencia_id, faixa_etaria) values (?, ?)",
+        id,
+        "DE_15_MAIS");
+    return id;
   }
 
   private long discipulado(String nome, String sexo, long gerencia, long usuario) {
     return jdbc.queryForObject(
-        "insert into discipulados(nome,sexo,gerencia_id,discipulador_id) values (?,?,?,?) returning id",
+        "insert into discipulados(nome,sexo,faixa_etaria,gerencia_id,discipulador_id)"
+            + " values (?,?,?,?,?) returning id",
         Long.class,
         nome,
         sexo,
+        "DE_15_MAIS",
         gerencia,
         usuario);
   }

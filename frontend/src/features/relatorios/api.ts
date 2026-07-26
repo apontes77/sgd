@@ -48,8 +48,14 @@ export interface RelatorioPeriodoResponse {
   relatorios: RelatorioEncontro[]
 }
 export const relatorioApi = {
-  consultarFrequenciaDiaria: (data: string) =>
-    request<RelatorioDiarioResponse>(`/relatorios/frequencia-diaria?${new URLSearchParams({ data })}`),
-  consultarFrequencia: (dataInicio: string, dataFim: string) =>
-    request<RelatorioPeriodoResponse>(`/relatorios/frequencia?${new URLSearchParams({ dataInicio, dataFim })}`),
+  consultarFrequenciaDiaria: (data: string, discipuladoId?: number) => {
+    const params = new URLSearchParams({ data })
+    if (discipuladoId != null) params.set('discipuladoId', String(discipuladoId))
+    return request<RelatorioDiarioResponse>(`/relatorios/frequencia-diaria?${params}`)
+  },
+  consultarFrequencia: (dataInicio: string, dataFim: string, discipuladoId?: number) => {
+    const params = new URLSearchParams({ dataInicio, dataFim })
+    if (discipuladoId != null) params.set('discipuladoId', String(discipuladoId))
+    return request<RelatorioPeriodoResponse>(`/relatorios/frequencia?${params}`)
+  },
 }

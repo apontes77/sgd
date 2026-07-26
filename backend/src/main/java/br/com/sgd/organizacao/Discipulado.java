@@ -35,6 +35,10 @@ public class Discipulado {
   @Column(nullable = false, length = 10)
   private Sexo sexo;
 
+  @Enumerated(EnumType.STRING)
+  @Column(name = "faixa_etaria", nullable = false, length = 20)
+  private FaixaEtaria faixaEtaria;
+
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @JoinColumn(name = "gerencia_id", nullable = false)
   private Gerencia gerencia;
@@ -61,13 +65,17 @@ public class Discipulado {
 
   protected Discipulado() {}
 
-  public Discipulado(String nome, Sexo sexo, Gerencia gerencia, User discipulador) {
+  public Discipulado(
+      String nome, Sexo sexo, FaixaEtaria faixaEtaria, Gerencia gerencia, User discipulador) {
     this.nome = normalizarNome(nome);
     if (sexo == null) throw new IllegalArgumentException("O sexo do discipulado é obrigatório.");
+    if (faixaEtaria == null)
+      throw new IllegalArgumentException("A faixa etária do discipulado é obrigatória.");
     if (gerencia == null)
       throw new IllegalArgumentException("A gerência do discipulado é obrigatória.");
     if (discipulador == null) throw new IllegalArgumentException("O discipulador é obrigatório.");
     this.sexo = sexo;
+    this.faixaEtaria = faixaEtaria;
     this.gerencia = gerencia;
     this.discipulador = discipulador;
   }
@@ -82,6 +90,10 @@ public class Discipulado {
 
   public Sexo getSexo() {
     return sexo;
+  }
+
+  public FaixaEtaria getFaixaEtaria() {
+    return faixaEtaria;
   }
 
   public Gerencia getGerencia() {
@@ -108,9 +120,16 @@ public class Discipulado {
     return atualizadoEm;
   }
 
-  public void update(String nome, Sexo sexo, Gerencia gerencia, User discipulador, Boolean ativo) {
+  public void update(
+      String nome,
+      Sexo sexo,
+      FaixaEtaria faixaEtaria,
+      Gerencia gerencia,
+      User discipulador,
+      Boolean ativo) {
     if (nome != null) this.nome = normalizarNome(nome);
     if (sexo != null) this.sexo = sexo;
+    if (faixaEtaria != null) this.faixaEtaria = faixaEtaria;
     if (gerencia != null) this.gerencia = gerencia;
     if (discipulador != null) this.discipulador = discipulador;
     if (ativo != null) this.ativo = ativo;

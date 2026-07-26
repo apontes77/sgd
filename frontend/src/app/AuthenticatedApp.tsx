@@ -268,7 +268,7 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
                 />
               )}
               {section === 'frequencia' && <FrequencyPage currentUser={currentUser} />}
-              {section === 'relatorios' && <FrequencyReport />}
+              {section === 'relatorios' && <FrequencyReport currentUser={currentUser} />}
             </motion.div>
           </Suspense>
         </Box>

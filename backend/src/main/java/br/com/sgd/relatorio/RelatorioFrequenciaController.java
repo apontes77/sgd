@@ -25,15 +25,17 @@ public class RelatorioFrequenciaController {
   @GetMapping("/frequencia-diaria")
   public RelatorioFrequenciaService.RelatorioDiarioResponse consultar(
       @AuthenticationPrincipal User usuario,
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data) {
-    return service.consultar(usuario, data);
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data,
+      @RequestParam(required = false) Long discipuladoId) {
+    return service.consultar(usuario, data, discipuladoId);
   }
 
   @GetMapping("/frequencia")
   public RelatorioFrequenciaService.RelatorioPeriodoResponse consultarPeriodo(
       @AuthenticationPrincipal User usuario,
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
-      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim) {
-    return service.consultarPeriodo(usuario, dataInicio, dataFim);
+      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,
+      @RequestParam(required = false) Long discipuladoId) {
+    return service.consultarPeriodo(usuario, dataInicio, dataFim, discipuladoId);
   }
 }

@@ -16,15 +16,23 @@ export interface Pagina<T> {
   totalPages: number
 }
 
+export type FaixaEtaria = 'DE_09_A_11' | 'DE_11_A_13' | 'DE_13_A_15' | 'DE_15_MAIS'
+
+export type SexoOrganizacional = 'MASCULINO' | 'FEMININO'
+
 export interface Gerencia {
   id: number
   nome: string
+  sexo: SexoOrganizacional
+  faixasEtarias: FaixaEtaria[]
   gerenteId: number
   ativo?: boolean
 }
 
 export interface GerenciaRequest {
   nome: string
+  sexo: SexoOrganizacional
+  faixasEtarias: FaixaEtaria[]
   gerenteId: number
 }
 
@@ -41,12 +49,13 @@ export interface AtualizarUsuarioRequest {
   ativo?: boolean
 }
 
-export type SexoDiscipulado = 'MASCULINO' | 'FEMININO'
+export type SexoDiscipulado = SexoOrganizacional
 
 export interface Discipulado {
   id: number
   nome: string
   sexo: SexoDiscipulado
+  faixaEtaria: FaixaEtaria
   gerenciaId: number
   discipuladorId: number
   ativo?: boolean
@@ -56,6 +65,7 @@ export interface Discipulado {
 export interface DiscipuladoRequest {
   nome: string
   sexo: SexoDiscipulado
+  faixaEtaria: FaixaEtaria
   gerenciaId: number
   discipuladorId: number
   ativo?: boolean

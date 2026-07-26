@@ -30,20 +30,28 @@ public class DiscipuladoService {
     this.usuarios = usuarios;
   }
 
-  public Discipulado create(String nome, Sexo sexo, long gerenciaId, long discipuladorId) {
+  public Discipulado create(
+      String nome, Sexo sexo, FaixaEtaria faixaEtaria, long gerenciaId, long discipuladorId) {
     return discipulados.save(
-        new Discipulado(nome, sexo, gerenciaAtiva(gerenciaId), discipuladorAtivo(discipuladorId)));
+        new Discipulado(
+            nome, sexo, faixaEtaria, gerenciaAtiva(gerenciaId), discipuladorAtivo(discipuladorId)));
   }
 
   public Discipulado update(
-      long id, String nome, Sexo sexo, Long gerenciaId, Long discipuladorId, Boolean ativo) {
+      long id,
+      String nome,
+      Sexo sexo,
+      FaixaEtaria faixaEtaria,
+      Long gerenciaId,
+      Long discipuladorId,
+      Boolean ativo) {
     Discipulado discipulado = findById(id);
     Gerencia gerencia = gerenciaId == null ? null : gerenciaAtiva(gerenciaId);
     User discipulador = discipuladorId == null ? null : discipuladorAtivo(discipuladorId);
     if (Boolean.TRUE.equals(ativo) && gerencia == null && !discipulado.getGerencia().isAtivo()) {
       throw new GerenciaInativaException();
     }
-    discipulado.update(nome, sexo, gerencia, discipulador, ativo);
+    discipulado.update(nome, sexo, faixaEtaria, gerencia, discipulador, ativo);
     return discipulado;
   }
 

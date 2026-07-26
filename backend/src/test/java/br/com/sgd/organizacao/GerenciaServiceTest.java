@@ -43,12 +43,20 @@ class GerenciaServiceTest {
     when(usuarios.findById(10L)).thenReturn(Optional.of(gerente));
     when(gerencias.save(any(Gerencia.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-    Gerencia criada = service.create("  Gerência Central  ", 10L);
+    Gerencia criada =
+        service.create(
+            "  Gerência Central  ",
+            Sexo.MASCULINO,
+            Set.of(FaixaEtaria.DE_15_MAIS, FaixaEtaria.DE_13_A_15),
+            10L);
 
     ArgumentCaptor<Gerencia> captor = ArgumentCaptor.forClass(Gerencia.class);
     verify(gerencias).save(captor.capture());
     assertThat(criada).isSameAs(captor.getValue());
     assertThat(criada.getNome()).isEqualTo("Gerência Central");
+    assertThat(criada.getSexo()).isEqualTo(Sexo.MASCULINO);
+    assertThat(criada.getFaixasEtarias())
+        .containsExactlyInAnyOrder(FaixaEtaria.DE_15_MAIS, FaixaEtaria.DE_13_A_15);
     assertThat(criada.getGerente()).isSameAs(gerente);
   }
 
@@ -57,7 +65,10 @@ class GerenciaServiceTest {
     when(gerente.isAtivo()).thenReturn(false);
     when(usuarios.findById(10L)).thenReturn(Optional.of(gerente));
 
-    assertThatThrownBy(() -> service.create("Gerência Central", 10L))
+    assertThatThrownBy(
+            () ->
+                service.create(
+                    "Gerência Central", Sexo.MASCULINO, Set.of(FaixaEtaria.DE_15_MAIS), 10L))
         .isInstanceOf(GerenciaService.GerenteInvalidoException.class);
 
     verify(gerencias, never()).save(any());
@@ -67,7 +78,10 @@ class GerenciaServiceTest {
   void rejeitaGerenteInexistente() {
     when(usuarios.findById(99L)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> service.create("Gerência Central", 99L))
+    assertThatThrownBy(
+            () ->
+                service.create(
+                    "Gerência Central", Sexo.MASCULINO, Set.of(FaixaEtaria.DE_15_MAIS), 99L))
         .isInstanceOf(GerenciaService.UsuarioOrganizacionalNotFoundException.class);
 
     verify(gerencias, never()).save(any());
@@ -75,12 +89,15 @@ class GerenciaServiceTest {
 
   @Test
   void mantemOGerenteAtualQuandoAtualizacaoParcialNaoInformaOutro() {
-    Gerencia existente = new Gerencia("Gerência Central", gerente);
+    Gerencia existente =
+        new Gerencia("Gerência Central", Sexo.MASCULINO, Set.of(FaixaEtaria.DE_15_MAIS), gerente);
     when(gerencias.findById(1L)).thenReturn(Optional.of(existente));
 
-    Gerencia atualizada = service.update(1L, "Novo nome", null, null);
+    Gerencia atualizada = service.update(1L, "Novo nome", null, null, null, null);
 
     assertThat(atualizada.getGerente()).isSameAs(gerente);
     assertThat(atualizada.getNome()).isEqualTo("Novo nome");
+    assertThat(atualizada.getSexo()).isEqualTo(Sexo.MASCULINO);
+    assertThat(atualizada.getFaixasEtarias()).containsExactly(FaixaEtaria.DE_15_MAIS);
   }
 }

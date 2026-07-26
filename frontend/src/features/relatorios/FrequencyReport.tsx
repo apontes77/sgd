@@ -4,8 +4,12 @@ import {
   Box,
   Button,
   Chip,
+  FormControl,
   GlobalStyles,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   Table,
   TableBody,
@@ -17,18 +21,40 @@ import {
   Typography,
 } from '@mui/material'
 import type { FormEvent } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
+import { organizationApi } from '@/features/organizacao/api'
 import { relatorioApi, type RelatorioEncontro, type RelatorioPeriodoResponse } from '@/features/relatorios/api'
+import type { Discipulado, Usuario } from '@/shared/api/types'
 import { FilterToolbar, PageHeader } from '@/shared/ui'
 
-export default function FrequencyReport() {
-  const hoje = dataAtual(),
-    [dataInicio, setDataInicio] = useState(hoje),
-    [dataFim, setDataFim] = useState(hoje),
-    [dados, setDados] = useState<RelatorioPeriodoResponse>(),
-    [erro, setErro] = useState(''),
-    [carregando, setCarregando] = useState(false)
+export default function FrequencyReport({ currentUser }: { currentUser: Usuario }) {
+  const podeFiltrarDiscipulado = currentUser.perfis.includes('GERENTE') || currentUser.perfis.includes('ADMIN')
+  const hoje = dataAtual()
+  const [dataInicio, setDataInicio] = useState(hoje)
+  const [dataFim, setDataFim] = useState(hoje)
+  const [discipuladoId, setDiscipuladoId] = useState('')
+  const [discipulados, setDiscipulados] = useState<Discipulado[]>([])
+  const [dados, setDados] = useState<RelatorioPeriodoResponse>()
+  const [erro, setErro] = useState('')
+  const [carregando, setCarregando] = useState(false)
+
+  useEffect(() => {
+    if (!podeFiltrarDiscipulado) return
+    let ativo = true
+    void organizationApi
+      .listarDiscipulados()
+      .then((pagina) => {
+        if (ativo) setDiscipulados(pagina.content)
+      })
+      .catch(() => {
+        if (ativo) setDiscipulados([])
+      })
+    return () => {
+      ativo = false
+    }
+  }, [podeFiltrarDiscipulado])
+
   async function consultar(event: FormEvent) {
     event.preventDefault()
     setErro('')
@@ -44,7 +70,8 @@ export default function FrequencyReport() {
     }
     setCarregando(true)
     try {
-      setDados(await relatorioApi.consultarFrequencia(dataInicio, dataFim))
+      const filtroDiscipulado = discipuladoId ? Number(discipuladoId) : undefined
+      setDados(await relatorioApi.consultarFrequencia(dataInicio, dataFim, filtroDiscipulado))
     } catch (e) {
       setDados(undefined)
       setErro(e instanceof Error ? e.message : 'Não foi possível consultar o relatório.')
@@ -81,7 +108,13 @@ export default function FrequencyReport() {
         eyebrow="Análises"
       />
       <FilterToolbar component="form" onSubmit={consultar}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1.5}
+          alignItems={{ sm: 'center' }}
+          flexWrap="wrap"
+          useFlexGap
+        >
           <TextField
             required
             type="date"
@@ -98,6 +131,24 @@ export default function FrequencyReport() {
             onChange={(e) => setDataFim(e.target.value)}
             slotProps={{ inputLabel: { shrink: true } }}
           />
+          {podeFiltrarDiscipulado && (
+            <FormControl sx={{ minWidth: 220 }}>
+              <InputLabel id="relatorio-discipulado-label">Discipulado</InputLabel>
+              <Select
+                labelId="relatorio-discipulado-label"
+                label="Discipulado"
+                value={discipuladoId}
+                onChange={(event) => setDiscipuladoId(event.target.value)}
+              >
+                <MenuItem value="">Todos</MenuItem>
+                {discipulados.map((item) => (
+                  <MenuItem key={item.id} value={String(item.id)}>
+                    {item.nome}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
           <Button type="submit" variant="contained" startIcon={<SearchRounded />} disabled={carregando}>
             {carregando ? 'Consultando...' : 'Consultar'}
           </Button>

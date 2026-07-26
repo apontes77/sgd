@@ -4,7 +4,24 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { RelatorioPeriodoResponse } from '@/features/relatorios/api'
 import FrequencyReport from '@/features/relatorios/FrequencyReport'
+import type { Usuario } from '@/shared/api/types'
 import { render } from '@/test/test-utils'
+
+const adminUser: Usuario = {
+  id: 1,
+  nome: 'Admin',
+  email: 'admin@sgd.local',
+  ativo: true,
+  perfis: ['ADMIN'],
+}
+
+const gerenteUser: Usuario = {
+  id: 2,
+  nome: 'Gerente',
+  email: 'gerente@sgd.local',
+  ativo: true,
+  perfis: ['GERENTE'],
+}
 
 const relatorio: RelatorioPeriodoResponse = {
   dataInicio: '2026-07-21',
@@ -68,17 +85,31 @@ describe('relatório diário de frequência', () => {
   })
 
   it('consulta a data, renderiza uma página por encontro e imprime o resultado', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify(relatorio), {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/discipulados')) {
+        return new Response(
+          JSON.stringify({
+            content: [],
+            page: 0,
+            size: 100,
+            totalElements: 0,
+            totalPages: 0,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        )
+      }
+      return new Response(JSON.stringify(relatorio), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
-      }),
-    )
+      })
+    })
     const printMock = vi.spyOn(window, 'print').mockImplementation(() => undefined)
-    render(<FrequencyReport />)
+    render(<FrequencyReport currentUser={adminUser} />)
 
     const imprimir = screen.getByRole('button', { name: 'Imprimir / salvar como PDF' })
     expect(imprimir).toBeDisabled()
+    expect(await screen.findByLabelText(/^Discipulado/)).toBeInTheDocument()
     const dataInicial = screen.getByLabelText(/^Data inicial/)
     const dataFinal = screen.getByLabelText(/^Data final/)
     await userEvent.clear(dataInicial)
@@ -112,17 +143,82 @@ describe('relatório diário de frequência', () => {
   })
 
   it('informa quando não há encontros e mantém a impressão desabilitada', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ ...relatorio, relatorios: [] }), {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/discipulados')) {
+        return new Response(
+          JSON.stringify({
+            content: [],
+            page: 0,
+            size: 100,
+            totalElements: 0,
+            totalPages: 0,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        )
+      }
+      return new Response(JSON.stringify({ ...relatorio, relatorios: [] }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
-      }),
-    )
-    render(<FrequencyReport />)
+      })
+    })
+    render(<FrequencyReport currentUser={adminUser} />)
 
     await userEvent.click(screen.getByRole('button', { name: 'Consultar' }))
 
     expect(await screen.findByText(/Não há registros de frequência no seu escopo/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Imprimir / salvar como PDF' })).toBeDisabled()
+  })
+
+  it('permite ao gerente filtrar o relatório por discipulado', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/discipulados')) {
+        return new Response(
+          JSON.stringify({
+            content: [
+              {
+                id: 2,
+                nome: 'Alpha',
+                sexo: 'MASCULINO',
+                faixaEtaria: 'DE_15_MAIS',
+                gerenciaId: 1,
+                discipuladorId: 3,
+                coLideres: [],
+              },
+              {
+                id: 7,
+                nome: 'Beta',
+                sexo: 'FEMININO',
+                faixaEtaria: 'DE_13_A_15',
+                gerenciaId: 1,
+                discipuladorId: 8,
+                coLideres: [],
+              },
+            ],
+            page: 0,
+            size: 100,
+            totalElements: 2,
+            totalPages: 1,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        )
+      }
+      return new Response(JSON.stringify({ ...relatorio, relatorios: [relatorio.relatorios[0]] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    render(<FrequencyReport currentUser={gerenteUser} />)
+
+    expect(await screen.findByLabelText(/^Discipulado/)).toBeInTheDocument()
+    await userEvent.click(screen.getByLabelText(/^Discipulado/))
+    await userEvent.click(await screen.findByRole('option', { name: 'Alpha' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Consultar' }))
+
+    expect(await screen.findByRole('table', { name: 'Frequência do Alpha em 21/07/2026' })).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/v1/relatorios/frequencia?'), expect.anything())
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('discipuladoId=2'))).toBe(true)
   })
 })

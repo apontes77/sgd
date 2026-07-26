@@ -50,15 +50,16 @@ public class RelatorioFrequenciaService {
     this.clock = clock;
   }
 
-  public RelatorioDiarioResponse consultar(User usuario, LocalDate data) {
+  public RelatorioDiarioResponse consultar(User usuario, LocalDate data, Long discipuladoId) {
     if (data == null)
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "A data do relatório é obrigatória.");
-    RelatorioPeriodoResponse periodo = consultarPeriodo(usuario, data, data);
+    RelatorioPeriodoResponse periodo = consultarPeriodo(usuario, data, data, discipuladoId);
     return new RelatorioDiarioResponse(data, periodo.emitidoEm(), periodo.relatorios());
   }
 
-  public RelatorioPeriodoResponse consultarPeriodo(User usuario, LocalDate inicio, LocalDate fim) {
+  public RelatorioPeriodoResponse consultarPeriodo(
+      User usuario, LocalDate inicio, LocalDate fim, Long discipuladoId) {
     if (inicio == null || fim == null)
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "As datas inicial e final s\u00e3o obrigat\u00f3rias.");
@@ -71,14 +72,31 @@ public class RelatorioFrequenciaService {
           "O per\u00edodo do relat\u00f3rio deve ser de no m\u00e1ximo 12 meses.");
     boolean administrador = usuario.getPerfis().contains(Role.ADMIN);
     Escopo escopo = administrador ? new Escopo(Set.of()) : escopoRestrito(usuario);
+    Set<Long> idsConsulta = resolverDiscipuladosConsulta(administrador, escopo, discipuladoId);
     List<Encontro> encontrados =
-        administrador
+        idsConsulta == null
             ? encontros.noPeriodo(inicio, fim)
-            : escopo.discipuladoIds().isEmpty()
+            : idsConsulta.isEmpty()
                 ? List.of()
-                : encontros.noPeriodoDoEscopo(inicio, fim, escopo.discipuladoIds());
+                : encontros.noPeriodoDoEscopo(inicio, fim, idsConsulta);
     return new RelatorioPeriodoResponse(
         inicio, fim, clock.instant(), montarRelatorios(encontrados));
+  }
+
+  private Set<Long> resolverDiscipuladosConsulta(
+      boolean administrador, Escopo escopo, Long discipuladoId) {
+    if (discipuladoId == null) {
+      return administrador ? null : escopo.discipuladoIds();
+    }
+    if (administrador) {
+      if (!discipulados.existsById(discipuladoId))
+        throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Discipulado não encontrado.");
+      return Set.of(discipuladoId);
+    }
+    if (!escopo.discipuladoIds().contains(discipuladoId))
+      throw new ResponseStatusException(
+          HttpStatus.FORBIDDEN, "O discipulado informado está fora do seu escopo.");
+    return Set.of(discipuladoId);
   }
 
   private Escopo escopoRestrito(User usuario) {

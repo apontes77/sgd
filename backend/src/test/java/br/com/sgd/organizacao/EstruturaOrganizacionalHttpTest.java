@@ -52,7 +52,8 @@ class EstruturaOrganizacionalHttpTest {
             post("/api/v1/gerencias")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"nome\":\"Central\",\"gerenteId\":1}"))
+                .content(
+                    "{\"nome\":\"Central\",\"sexo\":\"MASCULINO\",\"faixasEtarias\":[\"DE_15_MAIS\"],\"gerenteId\":1}"))
         .andExpect(status().isUnauthorized());
   }
 
@@ -63,7 +64,8 @@ class EstruturaOrganizacionalHttpTest {
             post("/api/v1/gerencias")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"nome\":\"Central\",\"gerenteId\":1}"))
+                .content(
+                    "{\"nome\":\"Central\",\"sexo\":\"MASCULINO\",\"faixasEtarias\":[\"DE_15_MAIS\"],\"gerenteId\":1}"))
         .andExpect(status().isForbidden());
   }
 
@@ -76,9 +78,14 @@ class EstruturaOrganizacionalHttpTest {
             post("/api/v1/gerencias")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"nome\":\"Gerência Central\",\"gerenteId\":" + gerenteId + "}"))
+                .content(
+                    "{\"nome\":\"Gerência Central\",\"sexo\":\"MASCULINO\",\"faixasEtarias\":[\"DE_15_MAIS\",\"DE_13_A_15\"],\"gerenteId\":"
+                        + gerenteId
+                        + "}"))
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.nome").value("Gerência Central"))
+        .andExpect(jsonPath("$.sexo").value("MASCULINO"))
+        .andExpect(jsonPath("$.faixasEtarias.length()").value(2))
         .andExpect(jsonPath("$.gerenteId").value(gerenteId));
   }
 
@@ -89,13 +96,15 @@ class EstruturaOrganizacionalHttpTest {
     long gerenciaId =
         idDaResposta(
             post("/api/v1/gerencias"),
-            "{\"nome\":\"Gerência Norte\",\"gerenteId\":" + gerenteId + "}");
+            "{\"nome\":\"Gerência Norte\",\"sexo\":\"FEMININO\",\"faixasEtarias\":[\"DE_11_A_13\"],\"gerenteId\":"
+                + gerenteId
+                + "}");
     long discipuladorId = criarUsuario("Discipulador", "discipulador@sgd.local", "DISCIPULADOR");
     long coLiderId = criarUsuario("Co-líder", "colider@sgd.local", "CO_LIDER");
     long discipuladoId =
         idDaResposta(
             post("/api/v1/discipulados"),
-            "{\"nome\":\"Discipulado Norte\",\"sexo\":\"MASCULINO\",\"gerenciaId\":"
+            "{\"nome\":\"Discipulado Norte\",\"sexo\":\"MASCULINO\",\"faixaEtaria\":\"DE_09_A_11\",\"gerenciaId\":"
                 + gerenciaId
                 + ",\"discipuladorId\":"
                 + discipuladorId
@@ -108,6 +117,7 @@ class EstruturaOrganizacionalHttpTest {
                 .content("{\"usuarioIds\":[" + coLiderId + "]}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.gerenciaId").value(gerenciaId))
+        .andExpect(jsonPath("$.faixaEtaria").value("DE_09_A_11"))
         .andExpect(jsonPath("$.discipuladorId").value(discipuladorId))
         .andExpect(jsonPath("$.coLideres[0].id").value(coLiderId));
   }
@@ -121,7 +131,10 @@ class EstruturaOrganizacionalHttpTest {
             post("/api/v1/gerencias")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"nome\":\"Central\",\"gerenteId\":" + usuarioId + "}"))
+                .content(
+                    "{\"nome\":\"Central\",\"sexo\":\"MASCULINO\",\"faixasEtarias\":[\"DE_15_MAIS\"],\"gerenteId\":"
+                        + usuarioId
+                        + "}"))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.status").value(409))
         .andExpect(jsonPath("$.detail").isNotEmpty())
@@ -136,13 +149,15 @@ class EstruturaOrganizacionalHttpTest {
     long gerenciaId =
         idDaResposta(
             post("/api/v1/gerencias"),
-            "{\"nome\":\"Gerencia original\",\"gerenteId\":" + gerenteId + "}");
+            "{\"nome\":\"Gerencia original\",\"sexo\":\"MASCULINO\",\"faixasEtarias\":[\"DE_15_MAIS\"],\"gerenteId\":"
+                + gerenteId
+                + "}");
     long discipuladorId =
         criarUsuario("Discipulador", "discipulador-patch-" + sufixo + "@sgd.local", "DISCIPULADOR");
     long discipuladoId =
         idDaResposta(
             post("/api/v1/discipulados"),
-            "{\"nome\":\"Discipulado original\",\"sexo\":\"MASCULINO\",\"gerenciaId\":"
+            "{\"nome\":\"Discipulado original\",\"sexo\":\"MASCULINO\",\"faixaEtaria\":\"DE_15_MAIS\",\"gerenciaId\":"
                 + gerenciaId
                 + ",\"discipuladorId\":"
                 + discipuladorId
@@ -152,20 +167,52 @@ class EstruturaOrganizacionalHttpTest {
             patch("/api/v1/gerencias/{id}", gerenciaId)
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"nome\":\"Gerencia atualizada\"}"))
+                .content(
+                    "{\"nome\":\"Gerencia atualizada\",\"sexo\":\"FEMININO\",\"faixasEtarias\":[\"DE_11_A_13\",\"DE_13_A_15\"]}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.nome").value("Gerencia atualizada"))
+        .andExpect(jsonPath("$.sexo").value("FEMININO"))
+        .andExpect(jsonPath("$.faixasEtarias.length()").value(2))
         .andExpect(jsonPath("$.gerenteId").value(gerenteId));
 
     mvc.perform(
             patch("/api/v1/discipulados/{id}", discipuladoId)
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"nome\":\"Discipulado atualizado\",\"sexo\":\"FEMININO\"}"))
+                .content(
+                    "{\"nome\":\"Discipulado atualizado\",\"sexo\":\"FEMININO\",\"faixaEtaria\":\"DE_09_A_11\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.nome").value("Discipulado atualizado"))
         .andExpect(jsonPath("$.sexo").value("FEMININO"))
+        .andExpect(jsonPath("$.faixaEtaria").value("DE_09_A_11"))
         .andExpect(jsonPath("$.gerenciaId").value(gerenciaId));
+  }
+
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  void filtraGerenciasPorSexoEFaixaEtaria() throws Exception {
+    String sufixo = java.util.UUID.randomUUID().toString();
+    long gerenteMasculino =
+        criarUsuario("Gerente M", "gerente-m-" + sufixo + "@sgd.local", "GERENTE");
+    long gerenteFeminino =
+        criarUsuario("Gerente F", "gerente-f-" + sufixo + "@sgd.local", "GERENTE");
+    long gerenciaMasculina =
+        idDaResposta(
+            post("/api/v1/gerencias"),
+            "{\"nome\":\"Gerencia M\",\"sexo\":\"MASCULINO\",\"faixasEtarias\":[\"DE_09_A_11\",\"DE_11_A_13\"],\"gerenteId\":"
+                + gerenteMasculino
+                + "}");
+    idDaResposta(
+        post("/api/v1/gerencias"),
+        "{\"nome\":\"Gerencia F\",\"sexo\":\"FEMININO\",\"faixasEtarias\":[\"DE_15_MAIS\"],\"gerenteId\":"
+            + gerenteFeminino
+            + "}");
+
+    mvc.perform(
+            get("/api/v1/gerencias").param("sexo", "MASCULINO").param("faixaEtaria", "DE_11_A_13"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[?(@.id == " + gerenciaMasculina + ")]").isNotEmpty())
+        .andExpect(jsonPath("$.content[?(@.sexo == 'FEMININO')]").isEmpty());
   }
 
   private long criarUsuario(String nome, String email, String perfil) throws Exception {

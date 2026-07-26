@@ -1,11 +1,13 @@
 package br.com.sgd.organizacao;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -36,23 +38,29 @@ public class OrganizacaoController {
 
   @GetMapping("/gerencias")
   public PaginaResponse<GerenciaResponse> listarGerencias(
+      @RequestParam(required = false) Sexo sexo,
+      @RequestParam(required = false) FaixaEtaria faixaEtaria,
       @RequestParam(defaultValue = "0") @Min(0) int page,
       @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-    return PaginaResponse.of(gerencias.list(PageRequest.of(page, size)).map(GerenciaResponse::of));
+    return PaginaResponse.of(
+        gerencias.list(sexo, faixaEtaria, PageRequest.of(page, size)).map(GerenciaResponse::of));
   }
 
   @PostMapping("/gerencias")
   @ResponseStatus(HttpStatus.CREATED)
   @PreAuthorize("hasRole('ADMIN')")
   public GerenciaResponse criarGerencia(@Valid @RequestBody GerenciaRequest r) {
-    return GerenciaResponse.of(gerencias.create(r.nome(), r.gerenteId()));
+    return GerenciaResponse.of(
+        gerencias.create(r.nome(), r.sexo(), r.faixasEtarias(), r.gerenteId()));
   }
 
   @PatchMapping("/gerencias/{gerenciaId}")
   @PreAuthorize("hasRole('ADMIN')")
   public GerenciaResponse atualizarGerencia(
       @PathVariable long gerenciaId, @Valid @RequestBody AtualizarGerenciaRequest r) {
-    return GerenciaResponse.of(gerencias.update(gerenciaId, r.nome(), r.gerenteId(), r.ativo()));
+    return GerenciaResponse.of(
+        gerencias.update(
+            gerenciaId, r.nome(), r.sexo(), r.faixasEtarias(), r.gerenteId(), r.ativo()));
   }
 
   @GetMapping("/discipulados")
@@ -82,7 +90,8 @@ public class OrganizacaoController {
   @PreAuthorize("hasRole('ADMIN')")
   public DiscipuladoResponse criarDiscipulado(@Valid @RequestBody DiscipuladoRequest r) {
     return DiscipuladoResponse.of(
-        discipulados.create(r.nome(), r.sexo(), r.gerenciaId(), r.discipuladorId()));
+        discipulados.create(
+            r.nome(), r.sexo(), r.faixaEtaria(), r.gerenciaId(), r.discipuladorId()));
   }
 
   @PatchMapping("/discipulados/{discipuladoId}")
@@ -91,7 +100,13 @@ public class OrganizacaoController {
       @PathVariable long discipuladoId, @Valid @RequestBody AtualizarDiscipuladoRequest r) {
     return DiscipuladoResponse.of(
         discipulados.update(
-            discipuladoId, r.nome(), r.sexo(), r.gerenciaId(), r.discipuladorId(), r.ativo()));
+            discipuladoId,
+            r.nome(),
+            r.sexo(),
+            r.faixaEtaria(),
+            r.gerenciaId(),
+            r.discipuladorId(),
+            r.ativo()));
   }
 
   @PutMapping("/discipulados/{discipuladoId}/co-lideres")
@@ -101,9 +116,14 @@ public class OrganizacaoController {
     return DiscipuladoResponse.of(discipulados.replaceCoLideres(discipuladoId, r.usuarioIds()));
   }
 
-  public record GerenciaRequest(@NotBlank String nome, @NotNull Long gerenteId) {}
+  public record GerenciaRequest(
+      @NotBlank String nome,
+      @NotNull Sexo sexo,
+      @NotEmpty Set<FaixaEtaria> faixasEtarias,
+      @NotNull Long gerenteId) {}
 
-  public record AtualizarGerenciaRequest(String nome, Long gerenteId, Boolean ativo) {}
+  public record AtualizarGerenciaRequest(
+      String nome, Sexo sexo, Set<FaixaEtaria> faixasEtarias, Long gerenteId, Boolean ativo) {}
 
   private static User usuario(Authentication auth) {
     if (auth.getPrincipal() instanceof User usuario) return usuario;
@@ -119,17 +139,35 @@ public class OrganizacaoController {
   public record DiscipuladoRequest(
       @NotBlank String nome,
       @NotNull Sexo sexo,
+      @NotNull FaixaEtaria faixaEtaria,
       @NotNull Long gerenciaId,
       @NotNull Long discipuladorId) {}
 
   public record AtualizarDiscipuladoRequest(
-      String nome, Sexo sexo, Long gerenciaId, Long discipuladorId, Boolean ativo) {}
+      String nome,
+      Sexo sexo,
+      FaixaEtaria faixaEtaria,
+      Long gerenciaId,
+      Long discipuladorId,
+      Boolean ativo) {}
 
   public record CoLideresRequest(@NotNull @Size(max = 2) List<Long> usuarioIds) {}
 
-  public record GerenciaResponse(Long id, String nome, Long gerenteId, boolean ativo) {
+  public record GerenciaResponse(
+      Long id,
+      String nome,
+      Sexo sexo,
+      Set<FaixaEtaria> faixasEtarias,
+      Long gerenteId,
+      boolean ativo) {
     static GerenciaResponse of(Gerencia g) {
-      return new GerenciaResponse(g.getId(), g.getNome(), g.getGerente().getId(), g.isAtivo());
+      return new GerenciaResponse(
+          g.getId(),
+          g.getNome(),
+          g.getSexo(),
+          new LinkedHashSet<>(g.getFaixasEtarias()),
+          g.getGerente().getId(),
+          g.isAtivo());
     }
   }
 
@@ -137,6 +175,7 @@ public class OrganizacaoController {
       Long id,
       String nome,
       Sexo sexo,
+      FaixaEtaria faixaEtaria,
       boolean ativo,
       Long gerenciaId,
       Long discipuladorId,
@@ -146,6 +185,7 @@ public class OrganizacaoController {
           d.getId(),
           d.getNome(),
           d.getSexo(),
+          d.getFaixaEtaria(),
           d.isAtivo(),
           d.getGerencia().getId(),
           d.getDiscipulador().getId(),
