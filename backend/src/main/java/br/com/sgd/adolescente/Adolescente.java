@@ -23,12 +23,6 @@ public class Adolescente {
   @Column(length = 120)
   private String instagram;
 
-  @Column(name = "responsavel_nome", length = 120)
-  private String responsavelNome;
-
-  @Column(name = "responsavel_telefone", length = 40)
-  private String responsavelTelefone;
-
   @Column(name = "consentimento_em")
   private LocalDate consentimentoEm;
 
@@ -36,17 +30,7 @@ public class Adolescente {
   @Column(nullable = false, length = 20)
   private CategoriaAdolescente categoria = CategoriaAdolescente.DISCIPULO;
 
-  @Column(name = "nome_mae", length = 120)
-  private String nomeMae;
-
-  @Column(name = "telefone_mae", length = 40)
-  private String telefoneMae;
-
-  @Column(name = "nome_pai", length = 120)
-  private String nomePai;
-
-  @Column(name = "telefone_pai", length = 40)
-  private String telefonePai;
+  @Embedded private ContatosAdolescente contatos;
 
   @Column(length = 120)
   private String estrutura;
@@ -68,95 +52,30 @@ public class Adolescente {
 
   protected Adolescente() {}
 
-  public Adolescente(String nome, LocalDate dataNascimento, String telefone, String instagram) {
-    if (nome == null || nome.isBlank())
-      throw new IllegalArgumentException("O nome do adolescente é obrigatório.");
-    if (dataNascimento == null || dataNascimento.isAfter(LocalDate.now()))
-      throw new IllegalArgumentException("A data de nascimento é inválida.");
-    this.nome = nome.trim();
-    this.dataNascimento = dataNascimento;
-    this.telefone = TelefoneValidator.validarOpcional(telefone, "telefone do adolescente");
-    this.instagram = normalizar(instagram);
+  public Adolescente(DadosCadastroAdolescente dados, Boolean ativo) {
+    atualizarDados(dados);
+    if (ativo != null) this.ativo = ativo;
   }
 
-  public Adolescente(
-      String nome,
-      LocalDate dataNascimento,
-      String telefone,
-      String instagram,
-      String responsavelNome,
-      String responsavelTelefone,
-      LocalDate consentimentoEm) {
-    this(nome, dataNascimento, telefone, instagram);
-    atualizar(
-        nome,
-        dataNascimento,
-        telefone,
-        instagram,
-        responsavelNome,
-        responsavelTelefone,
-        consentimentoEm,
-        CategoriaAdolescente.DISCIPULO,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        true);
-  }
-
+  /** Atualiza apenas os dados básicos, preservando contatos, consentimento e categoria atuais. */
   public void atualizar(
       String nome, LocalDate dataNascimento, String telefone, String instagram, Boolean ativo) {
     atualizar(
-        nome,
-        dataNascimento,
-        telefone,
-        instagram,
-        this.responsavelNome,
-        this.responsavelTelefone,
-        this.consentimentoEm,
-        this.categoria,
-        this.nomeMae,
-        this.telefoneMae,
-        this.nomePai,
-        this.telefonePai,
-        this.estrutura,
-        this.motivoAfastamento,
+        new DadosCadastroAdolescente(
+            nome,
+            dataNascimento,
+            telefone,
+            instagram,
+            consentimentoEm,
+            categoria,
+            estrutura,
+            motivoAfastamento,
+            contatos),
         ativo);
   }
 
-  public void atualizar(
-      String nome,
-      LocalDate dataNascimento,
-      String telefone,
-      String instagram,
-      String responsavelNome,
-      String responsavelTelefone,
-      LocalDate consentimentoEm,
-      CategoriaAdolescente categoria,
-      String nomeMae,
-      String telefoneMae,
-      String nomePai,
-      String telefonePai,
-      String estrutura,
-      String motivoAfastamento,
-      Boolean ativo) {
-    atualizarDados(
-        nome,
-        dataNascimento,
-        telefone,
-        instagram,
-        responsavelNome,
-        responsavelTelefone,
-        consentimentoEm,
-        categoria,
-        nomeMae,
-        telefoneMae,
-        nomePai,
-        telefonePai,
-        estrutura,
-        motivoAfastamento);
+  public void atualizar(DadosCadastroAdolescente dados, Boolean ativo) {
+    atualizarDados(dados);
     if (ativo != null) this.ativo = ativo;
     atualizadoEm = Instant.now();
   }
@@ -170,12 +89,7 @@ public class Adolescente {
     this.nome = "Adolescente anonimizado";
     this.telefone = null;
     this.instagram = null;
-    this.responsavelNome = null;
-    this.responsavelTelefone = null;
-    this.nomeMae = null;
-    this.telefoneMae = null;
-    this.nomePai = null;
-    this.telefonePai = null;
+    this.contatos = null;
     this.estrutura = null;
     this.motivoAfastamento = null;
     this.categoria = CategoriaAdolescente.DISCIPULO;
@@ -184,79 +98,36 @@ public class Adolescente {
     this.atualizadoEm = Instant.now();
   }
 
-  private void atualizarDados(
-      String nome,
-      LocalDate dataNascimento,
-      String telefone,
-      String instagram,
-      String responsavelNome,
-      String responsavelTelefone,
-      LocalDate consentimentoEm,
-      CategoriaAdolescente categoria,
-      String nomeMae,
-      String telefoneMae,
-      String nomePai,
-      String telefonePai,
-      String estrutura,
-      String motivoAfastamento) {
-    if (nome == null || nome.isBlank())
+  private void atualizarDados(DadosCadastroAdolescente dados) {
+    if (dados.nome() == null || dados.nome().isBlank())
       throw new IllegalArgumentException("O nome do adolescente é obrigatório.");
-    if (dataNascimento == null || dataNascimento.isAfter(LocalDate.now()))
+    if (dados.dataNascimento() == null || dados.dataNascimento().isAfter(LocalDate.now()))
       throw new IllegalArgumentException("A data de nascimento é inválida.");
-    if (categoria == null)
+    if (dados.categoria() == null)
       throw new IllegalArgumentException("A categoria do adolescente é obrigatória.");
-    String motivo = normalizar(motivoAfastamento);
-    if (categoria == CategoriaAdolescente.DISCIPULO_GOE) {
-      if (motivo == null)
-        throw new IllegalArgumentException(
-            "O motivo do afastamento é obrigatório para discípulo GOE.");
-    } else {
-      motivo = null;
-    }
-
-    String tel = TelefoneValidator.validarOpcional(telefone, "telefone do adolescente");
-    String telMae = TelefoneValidator.validarOpcional(telefoneMae, "telefone da mãe");
-    String telPai = TelefoneValidator.validarOpcional(telefonePai, "telefone do pai");
-    String telResp =
-        TelefoneValidator.validarOpcional(responsavelTelefone, "telefone do responsável");
-    String mae = normalizar(nomeMae);
-    String pai = normalizar(nomePai);
-    String resp = normalizar(responsavelNome);
-
-    validarParContato(mae, telMae, "da mãe");
-    validarParContato(pai, telPai, "do pai");
-    validarParContato(resp, telResp, "do responsável");
-
-    boolean maeOk = mae != null && telMae != null;
-    boolean paiOk = pai != null && telPai != null;
-    boolean respOk = resp != null && telResp != null;
-    if (!maeOk && !paiOk && !respOk) {
+    if (dados.contatos() == null)
       throw new IllegalArgumentException(
           "Informe nome e telefone da mãe, ou do pai, ou do responsável.");
-    }
 
-    this.nome = nome.trim();
-    this.dataNascimento = dataNascimento;
-    this.telefone = tel;
-    this.instagram = normalizar(instagram);
-    this.responsavelNome = resp;
-    this.responsavelTelefone = telResp;
-    this.consentimentoEm = consentimentoEm;
-    this.categoria = categoria;
-    this.nomeMae = mae;
-    this.telefoneMae = telMae;
-    this.nomePai = pai;
-    this.telefonePai = telPai;
-    this.estrutura = normalizar(estrutura);
-    this.motivoAfastamento = motivo;
+    this.nome = dados.nome().trim();
+    this.dataNascimento = dados.dataNascimento();
+    this.telefone = TelefoneValidator.validarOpcional(dados.telefone(), "telefone do adolescente");
+    this.instagram = normalizar(dados.instagram());
+    this.consentimentoEm = dados.consentimentoEm();
+    this.categoria = dados.categoria();
+    this.contatos = dados.contatos();
+    this.estrutura = normalizar(dados.estrutura());
+    this.motivoAfastamento = motivoExigidoPelaCategoria(dados);
   }
 
-  private static void validarParContato(String nomeContato, String telefone, String complemento) {
-    boolean temNome = nomeContato != null;
-    boolean temTel = telefone != null;
-    if (temNome != temTel) {
-      throw new IllegalArgumentException("Informe nome e telefone " + complemento + ".");
-    }
+  /** O motivo do afastamento só faz sentido para discípulo GOE, então é limpo nas demais. */
+  private static String motivoExigidoPelaCategoria(DadosCadastroAdolescente dados) {
+    String motivo = normalizar(dados.motivoAfastamento());
+    if (dados.categoria() != CategoriaAdolescente.DISCIPULO_GOE) return null;
+    if (motivo == null)
+      throw new IllegalArgumentException(
+          "O motivo do afastamento é obrigatório para discípulo GOE.");
+    return motivo;
   }
 
   private static String normalizar(String valor) {
@@ -284,11 +155,11 @@ public class Adolescente {
   }
 
   public String getResponsavelNome() {
-    return responsavelNome;
+    return contatos == null ? null : contatos.getResponsavelNome();
   }
 
   public String getResponsavelTelefone() {
-    return responsavelTelefone;
+    return contatos == null ? null : contatos.getResponsavelTelefone();
   }
 
   public LocalDate getConsentimentoEm() {
@@ -300,19 +171,19 @@ public class Adolescente {
   }
 
   public String getNomeMae() {
-    return nomeMae;
+    return contatos == null ? null : contatos.getNomeMae();
   }
 
   public String getTelefoneMae() {
-    return telefoneMae;
+    return contatos == null ? null : contatos.getTelefoneMae();
   }
 
   public String getNomePai() {
-    return nomePai;
+    return contatos == null ? null : contatos.getNomePai();
   }
 
   public String getTelefonePai() {
-    return telefonePai;
+    return contatos == null ? null : contatos.getTelefonePai();
   }
 
   public String getEstrutura() {

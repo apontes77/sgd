@@ -27,6 +27,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import br.com.sgd.adolescente.Adolescente;
 import br.com.sgd.adolescente.AdolescenteRepository;
+import br.com.sgd.adolescente.CategoriaAdolescente;
+import br.com.sgd.adolescente.ContatosAdolescente;
+import br.com.sgd.adolescente.DadosCadastroAdolescente;
 import br.com.sgd.adolescente.VinculoAdolescenteDiscipulado;
 import br.com.sgd.adolescente.VinculoAdolescenteRepository;
 import br.com.sgd.frequencia.Encontro;
@@ -103,24 +106,20 @@ class RelatorioFrequenciaHttpTest {
     encontro(gamma, SituacaoEncontro.REALIZADO);
     Adolescente bia =
         adolescentes.saveAndFlush(
-            new Adolescente(
+            adolescente(
                 "Bia",
                 LocalDate.of(2010, 2, 1),
                 "(11) 98888-2222",
-                null,
                 "Responsável Bia",
-                "(11) 90000-2222",
-                LocalDate.of(2026, 1, 1)));
+                "(11) 90000-2222"));
     Adolescente ana =
         adolescentes.saveAndFlush(
-            new Adolescente(
+            adolescente(
                 "Ana",
                 LocalDate.of(2010, 1, 1),
                 "(11) 97777-1111",
-                null,
                 "Responsável Ana",
-                "(11) 90000-1111",
-                LocalDate.of(2026, 1, 1)));
+                "(11) 90000-1111"));
     frequencias.saveAndFlush(
         new Frequencia(alphaPrincipal, bia, SituacaoFrequencia.PRESENTE, AGORA));
     frequencias.saveAndFlush(
@@ -285,6 +284,26 @@ class RelatorioFrequenciaHttpTest {
         get("/api/v1/relatorios/frequencia-diaria")
             .param("data", DATA.toString())
             .header(HttpHeaders.AUTHORIZATION, bearer(token)));
+  }
+
+  private static Adolescente adolescente(
+      String nome,
+      LocalDate nascimento,
+      String telefone,
+      String responsavelNome,
+      String responsavelTelefone) {
+    return new Adolescente(
+        new DadosCadastroAdolescente(
+            nome,
+            nascimento,
+            telefone,
+            null,
+            LocalDate.of(2026, 1, 1),
+            CategoriaAdolescente.DISCIPULO,
+            null,
+            null,
+            ContatosAdolescente.de(null, null, null, null, responsavelNome, responsavelTelefone)),
+        true);
   }
 
   private Encontro encontro(Discipulado discipulado, SituacaoEncontro situacao) {

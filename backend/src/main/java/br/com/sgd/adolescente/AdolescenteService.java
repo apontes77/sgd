@@ -57,25 +57,11 @@ public class AdolescenteService {
   public Adolescente criar(User usuario, DadosAdolescente dados) {
     Discipulado discipulado = discipuladoAtivo(dados.discipuladoId());
     escopo.exigirAlteracao(usuario, discipulado);
+    CategoriaAdolescente categoria =
+        dados.categoria() == null ? CategoriaAdolescente.DISCIPULO : dados.categoria();
     Adolescente adolescente =
-        new Adolescente(dados.nome(), dados.dataNascimento(), dados.telefone(), dados.instagram());
-    adolescente.atualizar(
-        dados.nome(),
-        dados.dataNascimento(),
-        dados.telefone(),
-        dados.instagram(),
-        dados.responsavelNome(),
-        dados.responsavelTelefone(),
-        dados.consentimentoEm(),
-        dados.categoria() == null ? CategoriaAdolescente.DISCIPULO : dados.categoria(),
-        dados.nomeMae(),
-        dados.telefoneMae(),
-        dados.nomePai(),
-        dados.telefonePai(),
-        dados.estrutura(),
-        dados.motivoAfastamento(),
-        dados.ativo() == null || dados.ativo());
-    adolescente = adolescentes.save(adolescente);
+        adolescentes.save(
+            new Adolescente(cadastro(dados, categoria), dados.ativo() == null || dados.ativo()));
     LocalDate inicioVinculo =
         dados.dataInicio() == null ? LocalDate.now(ZONA_NEGOCIO) : dados.dataInicio();
     vinculos.save(new VinculoAdolescenteDiscipulado(adolescente, discipulado, inicioVinculo));
@@ -89,23 +75,30 @@ public class AdolescenteService {
     if (!atual.getDiscipulado().getId().equals(dados.discipuladoId())) {
       throw conflito("Use o endpoint de vínculos para transferir o adolescente.");
     }
-    adolescente.atualizar(
+    CategoriaAdolescente categoria =
+        dados.categoria() == null ? adolescente.getCategoria() : dados.categoria();
+    adolescente.atualizar(cadastro(dados, categoria), dados.ativo());
+    return adolescente;
+  }
+
+  private static DadosCadastroAdolescente cadastro(
+      DadosAdolescente dados, CategoriaAdolescente categoria) {
+    return new DadosCadastroAdolescente(
         dados.nome(),
         dados.dataNascimento(),
         dados.telefone(),
         dados.instagram(),
-        dados.responsavelNome(),
-        dados.responsavelTelefone(),
         dados.consentimentoEm(),
-        dados.categoria() == null ? adolescente.getCategoria() : dados.categoria(),
-        dados.nomeMae(),
-        dados.telefoneMae(),
-        dados.nomePai(),
-        dados.telefonePai(),
+        categoria,
         dados.estrutura(),
         dados.motivoAfastamento(),
-        dados.ativo());
-    return adolescente;
+        ContatosAdolescente.de(
+            dados.nomeMae(),
+            dados.telefoneMae(),
+            dados.nomePai(),
+            dados.telefonePai(),
+            dados.responsavelNome(),
+            dados.responsavelTelefone()));
   }
 
   public void anonimizar(User usuario, long adolescenteId) {

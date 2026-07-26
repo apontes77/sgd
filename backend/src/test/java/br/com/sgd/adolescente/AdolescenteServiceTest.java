@@ -149,7 +149,7 @@ class AdolescenteServiceTest {
 
   @Test
   void transfereEncerrandoAnteriorSemApagarHistorico() {
-    Adolescente adolescente = new Adolescente("Ana", LocalDate.of(2010, 3, 2), null, null);
+    Adolescente adolescente = adolescenteComResponsavel();
     var anterior = new VinculoAdolescenteDiscipulado(adolescente, origem, LocalDate.of(2026, 1, 1));
     configurarAtivo(destino);
     when(adolescentes.findById(1L)).thenReturn(Optional.of(adolescente));
@@ -170,7 +170,7 @@ class AdolescenteServiceTest {
 
   @Test
   void rejeitaTransferenciaNaDataInicialOuParaOMesmoDiscipulado() {
-    Adolescente adolescente = new Adolescente("Ana", LocalDate.of(2010, 3, 2), null, null);
+    Adolescente adolescente = adolescenteComResponsavel();
     var anterior = new VinculoAdolescenteDiscipulado(adolescente, origem, LocalDate.of(2026, 1, 1));
     configurarAtivo(destino);
     when(adolescentes.findById(1L)).thenReturn(Optional.of(adolescente));
@@ -186,7 +186,7 @@ class AdolescenteServiceTest {
 
   @Test
   void atualizarNaoPermiteTrocarDiscipuladoSemEndpointDeTransferencia() {
-    Adolescente adolescente = new Adolescente("Ana", LocalDate.of(2010, 3, 2), null, null);
+    Adolescente adolescente = adolescenteComResponsavel();
     var atual = new VinculoAdolescenteDiscipulado(adolescente, origem, LocalDate.of(2026, 1, 1));
     when(adolescentes.findById(1L)).thenReturn(Optional.of(adolescente));
     when(vinculos.findByAdolescenteIdAndAtivoTrue(1L)).thenReturn(Optional.of(atual));
@@ -217,29 +217,18 @@ class AdolescenteServiceTest {
   void anonimizaRemovendoDadosPessoaisERegistraAuditoria() {
     Adolescente adolescente =
         new Adolescente(
-            "Ana",
-            LocalDate.of(2010, 3, 2),
-            "(11) 99999-0000",
-            "@ana",
-            "Mãe da Ana",
-            "(11) 98888-0000",
-            LocalDate.of(2026, 1, 1));
-    adolescente.atualizar(
-        "Ana",
-        LocalDate.of(2010, 3, 2),
-        "(11) 99999-0000",
-        "@ana",
-        null,
-        null,
-        LocalDate.of(2026, 1, 1),
-        CategoriaAdolescente.DISCIPULO_GOE,
-        "Mãe da Ana",
-        "(11) 98888-0000",
-        "Pai da Ana",
-        "(11) 97777-0000",
-        "Núcleo A",
-        "Mudou de cidade",
-        true);
+            new DadosCadastroAdolescente(
+                "Ana",
+                LocalDate.of(2010, 3, 2),
+                "(11) 99999-0000",
+                "@ana",
+                LocalDate.of(2026, 1, 1),
+                CategoriaAdolescente.DISCIPULO_GOE,
+                "Núcleo A",
+                "Mudou de cidade",
+                ContatosAdolescente.de(
+                    "Mãe da Ana", "(11) 98888-0000", "Pai da Ana", "(11) 97777-0000", null, null)),
+            true);
     when(adolescentes.findById(1L)).thenReturn(Optional.of(adolescente));
 
     service.anonimizar(usuario, 1L);
@@ -257,6 +246,21 @@ class AdolescenteServiceTest {
     assertThat(adolescente.isAtivo()).isFalse();
     assertThat(adolescente.isAnonimizado()).isTrue();
     verify(auditoria).save(any());
+  }
+
+  private static Adolescente adolescenteComResponsavel() {
+    return new Adolescente(
+        new DadosCadastroAdolescente(
+            "Ana",
+            LocalDate.of(2010, 3, 2),
+            null,
+            null,
+            LocalDate.of(2026, 1, 1),
+            CategoriaAdolescente.DISCIPULO,
+            null,
+            null,
+            ContatosAdolescente.de(null, null, null, null, "Mãe da Ana", "(11) 98888-0000")),
+        true);
   }
 
   private AdolescenteService.DadosAdolescente dadosBasicos(
