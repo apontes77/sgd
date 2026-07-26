@@ -10,6 +10,7 @@ export interface Encontro {
   situacao: SituacaoEncontro
   justificativa: string | null
   criadoEm: string
+  chamadaSalvaEm: string | null
 }
 export interface Frequencia {
   id: number

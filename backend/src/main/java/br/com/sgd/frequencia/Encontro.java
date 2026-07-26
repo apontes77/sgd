@@ -38,6 +38,9 @@ public class Encontro {
   @Column(name = "atualizado_em", nullable = false)
   private Instant atualizadoEm = Instant.now();
 
+  @Column(name = "chamada_salva_em")
+  private Instant chamadaSalvaEm;
+
   protected Encontro() {}
 
   public Encontro(
@@ -69,6 +72,14 @@ public class Encontro {
     this.atualizadoEm = agora;
   }
 
+  /** Define a âncora da janela de 3h apenas no primeiro salvamento da chamada. */
+  public void marcarChamadaSalva(Instant agora) {
+    if (chamadaSalvaEm == null) {
+      chamadaSalvaEm = agora;
+      atualizadoEm = agora;
+    }
+  }
+
   public Long getId() {
     return id;
   }
@@ -91,5 +102,9 @@ public class Encontro {
 
   public Instant getCriadoEm() {
     return criadoEm;
+  }
+
+  public Instant getChamadaSalvaEm() {
+    return chamadaSalvaEm;
   }
 }

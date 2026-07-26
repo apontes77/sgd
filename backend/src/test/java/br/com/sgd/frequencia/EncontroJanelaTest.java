@@ -8,12 +8,18 @@ import org.junit.jupiter.api.Test;
 
 class EncontroJanelaTest {
   @Test
-  void encontroMantemInstanteQueDefineAJanela() {
-    var instante = Instant.parse("2026-07-12T00:00:00Z");
+  void encontroMantemInstanteDeCriacaoEAncoraJanelaNaChamada() {
+    var criado = Instant.parse("2026-07-12T00:00:00Z");
+    var chamada = Instant.parse("2026-07-12T02:00:00Z");
     var encontro =
         new Encontro(
-            nullSafeDiscipulado(), LocalDate.of(2026, 7, 11), SituacaoEncontro.REALIZADO, instante);
-    assertEquals(instante, encontro.getCriadoEm());
+            nullSafeDiscipulado(), LocalDate.of(2026, 7, 11), SituacaoEncontro.REALIZADO, criado);
+    assertEquals(criado, encontro.getCriadoEm());
+    assertEquals(null, encontro.getChamadaSalvaEm());
+    encontro.marcarChamadaSalva(chamada);
+    assertEquals(chamada, encontro.getChamadaSalvaEm());
+    encontro.marcarChamadaSalva(chamada.plusSeconds(60));
+    assertEquals(chamada, encontro.getChamadaSalvaEm());
   }
 
   private static br.com.sgd.organizacao.Discipulado nullSafeDiscipulado() {

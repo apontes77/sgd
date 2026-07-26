@@ -250,8 +250,9 @@ class FrequenciaHttpTest {
 
     // Discipulador: encontro de hoje, visitante com dataInicio na data do encontro, chamada salva
     // com o visitante.
-    long encontroId = criarEncontro(tokenDiscipulador, proprio.getId(), "2026-07-17", 201);
-    long visitanteId = criarVisitante(tokenDiscipulador, "Visitante Um", "2026-07-17");
+    String hoje = java.time.LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo")).toString();
+    long encontroId = criarEncontro(tokenDiscipulador, proprio.getId(), hoje, 201);
+    long visitanteId = criarVisitante(tokenDiscipulador, "Visitante Um", hoje);
     salvarChamada(
         tokenDiscipulador,
         encontroId,

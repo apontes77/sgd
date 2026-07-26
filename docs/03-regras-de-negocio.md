@@ -24,11 +24,15 @@ RN008 - O líder pode registrar presença.
 
 RN009 - O co-líder pode registrar presença.
 
-RN010 - A frequência pode ser alterada em até três horas.
+RN010 - Após o primeiro salvamento da chamada de um encontro realizado, a frequência pode ser alterada em até três horas a partir desse instante.
 
-RN011 - Após três horas somente administradores podem alterar.
+RN011 - Após três horas do primeiro salvamento da chamada, somente administradores podem alterar a frequência.
 
 RN012 - O sistema deve registrar auditoria das alterações.
+
+RN046 - Encontros com data de sexta-feira podem ser lançados (criação do encontro, primeiro salvamento da chamada ou marcação de não realizado) até o domingo subsequente às 23:59:59 no fuso `America/Sao_Paulo`. Após esse prazo, discipulador e co-líder não podem mais lançar aquela sexta; administradores podem.
+
+RN047 - Se, após o domingo subsequente, um discipulado ativo não tiver chamada salva nem encontro não realizado para aquela sexta, o sistema registra automaticamente o encontro como `NAO_REALIZADO` com a justificativa `discipulador ou colider não registraram a frequência`. Encontros `REALIZADO` sem chamada salva são convertidos para essa situação.
 
 ---
 

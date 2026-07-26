@@ -220,13 +220,51 @@ class EncontroServiceTest {
   }
 
   @Test
-  void aplicaJanelaDeTresHorasSomenteParaNaoAdministrador() {
-    Encontro antigo = encontro(AGORA.minusSeconds(3 * 3600 + 1));
+  void aplicaJanelaDeTresHorasAPartirDaChamadaSalvaSomenteParaNaoAdministrador() {
+    Encontro antigo = encontro(AGORA.minusSeconds(60));
+    antigo.marcarChamadaSalva(AGORA.minusSeconds(3 * 3600 + 1));
     assertThatThrownBy(() -> service.exigirEditavel(usuario(Role.DISCIPULADOR), antigo))
         .isInstanceOf(ResponseStatusException.class)
         .hasMessageContaining("três horas");
 
     service.exigirEditavel(usuario(Role.ADMIN), antigo);
+  }
+
+  @Test
+  void permitePrimeiroSalvamentoDaChamadaEnquantoPrazoDaSextaEstiverAberto() {
+    Encontro semChamada = encontro(AGORA.minusSeconds(10 * 3600));
+    service.exigirEditavel(usuario(Role.DISCIPULADOR), semChamada);
+  }
+
+  @Test
+  void rejeitaCriacaoDeSextaAposDomingoParaNaoAdministrador() throws Exception {
+    EncontroService atrasado =
+        new EncontroService(
+            encontros,
+            frequencias,
+            visitantes,
+            vinculos,
+            discipulados,
+            escopo,
+            auditoria,
+            json,
+            Clock.fixed(Instant.parse("2026-07-20T03:00:00Z"), ZoneOffset.UTC));
+    when(discipulados.findById(10L)).thenReturn(Optional.of(discipulado));
+    when(discipulado.isAtivo()).thenReturn(true);
+
+    assertThatThrownBy(
+            () ->
+                atrasado.criar(
+                    usuario(Role.DISCIPULADOR),
+                    10L,
+                    LocalDate.of(2026, 7, 17),
+                    SituacaoEncontro.REALIZADO))
+        .isInstanceOf(ResponseStatusException.class)
+        .hasMessageContaining("prazo");
+
+    when(encontros.save(any())).thenAnswer(i -> withId(i.getArgument(0), 1L));
+    when(json.writeValueAsString(any())).thenReturn("{}");
+    atrasado.criar(usuario(Role.ADMIN), 10L, LocalDate.of(2026, 7, 17), SituacaoEncontro.REALIZADO);
   }
 
   @Test

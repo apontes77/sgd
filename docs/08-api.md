@@ -55,7 +55,7 @@ Os acessos são cumulativos: `GERENTE + DISCIPULADOR` recebe “Minha gerência�
 - Um encontro é `REALIZADO` ou `NAO_REALIZADO`; há no máximo um encontro por discipulado/data. A não realização exige justificativa, pode ser registrada por `ADMIN` ou pelo `DISCIPULADOR` do próprio grupo e somente `ADMIN` pode revertê-la.
 - Há uma única frequência por adolescente e encontro.
 - A chamada usa os vínculos ativos atuais sem comparar a data de início do vínculo com a data do encontro; participantes anteriormente registrados permanecem disponíveis para preservar o histórico.
-- Discipulador e co-líder alteram frequência por até três horas; após isso, somente `ADMIN` pode fazê-lo. Todas as alterações são auditadas.
+- Discipulador e co-líder podem lançar a frequência de uma sexta até o domingo subsequente (23:59, `America/Sao_Paulo`). A janela de três horas para editar a chamada começa no primeiro `PUT /encontros/{id}/frequencias` (`chamadaSalvaEm`); após isso, somente `ADMIN` pode alterar. Sem lançamento até o prazo, o sistema fecha a sexta como `NAO_REALIZADO` com justificativa automática. Todas as alterações são auditadas.
 - Discipulador e co-líder registram encontros realizados, chamadas e visitantes somente nos discipulados em que exercem liderança; o `DISCIPULADOR` também informa a não realização e sua justificativa no próprio grupo. `ADMIN` pode executar essas ações em qualquer discipulado ativo.
 - Gerentes visualizam no painel as não realizações e justificativas dos discipulados da própria gerência, sem permissão de alteração.
 - Discipulador e co-líder cadastram, atualizam e inativam adolescentes somente no próprio discipulado; somente `ADMIN` transfere adolescentes entre grupos.

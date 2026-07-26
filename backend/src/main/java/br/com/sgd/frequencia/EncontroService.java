@@ -64,6 +64,7 @@ public class EncontroService {
     var d = discipulado(discipuladoId);
     escopo.exigirAlteracao(ator, d);
     if (!d.isAtivo()) conflito("O discipulado está inativo.");
+    exigirPrazoLancamento(ator, data);
     if (encontros.existsByDiscipuladoIdAndData(discipuladoId, data))
       conflito("Já existe um encontro registrado para este discipulado nesta data.");
     if (situacao == SituacaoEncontro.NAO_REALIZADO) exigirRegistroNaoRealizado(ator);
@@ -86,6 +87,8 @@ public class EncontroService {
     var e = encontro(id);
     escopo.exigirAlteracao(ator, e.getDiscipulado());
     var novaData = data == null ? e.getData() : data;
+    exigirPrazoLancamento(ator, novaData);
+    if (!novaData.equals(e.getData())) exigirPrazoLancamento(ator, e.getData());
     if (encontros.existsByDiscipuladoIdAndDataAndIdNot(e.getDiscipulado().getId(), novaData, id))
       conflito("Já existe um encontro registrado para este discipulado nesta data.");
     var novaSituacao = situacao == null ? e.getSituacao() : situacao;
@@ -161,11 +164,20 @@ public class EncontroService {
           "Somente administradores podem corrigir um encontro não realizado para realizado.");
   }
 
+  private void exigirPrazoLancamento(User ator, LocalDate data) {
+    if (ator.getPerfis().contains(Role.ADMIN)) return;
+    if (!PrazoLancamentoFrequencia.estaDentroDoPrazo(data, clock.instant()))
+      throw new ResponseStatusException(
+          HttpStatus.FORBIDDEN,
+          "O prazo para lançar a frequência desta sexta encerrou no domingo subsequente.");
+  }
+
   private static Map<String, Object> estado(Encontro e) {
     var estado = new LinkedHashMap<String, Object>();
     estado.put("data", e.getData());
     estado.put("situacao", e.getSituacao());
     estado.put("justificativa", e.getJustificativa());
+    estado.put("chamadaSalvaEm", e.getChamadaSalvaEm());
     return estado;
   }
 
@@ -173,10 +185,18 @@ public class EncontroService {
     escopo.exigirAlteracao(ator, e.getDiscipulado());
     if (e.getSituacao() == SituacaoEncontro.NAO_REALIZADO)
       conflito("Não é possível registrar dados em um discipulado marcado como não realizado.");
-    if (!ator.getPerfis().contains(br.com.sgd.user.Role.ADMIN)
-        && clock.instant().isAfter(e.getCriadoEm().plus(Duration.ofHours(3))))
+    if (ator.getPerfis().contains(Role.ADMIN)) return;
+    var agora = clock.instant();
+    if (e.getChamadaSalvaEm() != null) {
+      if (agora.isAfter(e.getChamadaSalvaEm().plus(Duration.ofHours(3))))
+        throw new ResponseStatusException(
+            HttpStatus.FORBIDDEN, "A janela de três horas para alteração terminou.");
+      return;
+    }
+    if (!PrazoLancamentoFrequencia.estaDentroDoPrazo(e.getData(), agora))
       throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN, "A janela de três horas para alteração terminou.");
+          HttpStatus.FORBIDDEN,
+          "O prazo para lançar a frequência desta sexta encerrou no domingo subsequente.");
   }
 
   List<br.com.sgd.adolescente.VinculoAdolescenteDiscipulado> participantesAtuais(Encontro e) {

@@ -33,6 +33,7 @@ import {
   frequenciaApi,
   type SituacaoFrequencia,
 } from '@/features/frequencia/api'
+import { dentroDoPrazoLancamento, ehSexta } from '@/features/frequencia/prazoLancamento'
 import { ApiError } from '@/shared/api/httpClient'
 import { BOTTOM_NAV_OFFSET, EmptyState, SectionCard } from '@/shared/ui'
 import { contatoMinimoValido, mensagemTelefoneInvalido, telefoneValido } from '@/shared/validation/telefone'
@@ -89,14 +90,18 @@ export default function FrequencyManagement({
   const [visitante, setVisitante] = useState<DadosPessoaisAdolescente>()
   const requisicao = useRef(0)
 
-  const editavel = useMemo(
-    () =>
-      Boolean(
-        selecionado &&
-        selecionado.situacao === 'REALIZADO' &&
-        (podeAdministrar || Date.now() <= new Date(selecionado.criadoEm).getTime() + 3 * 60 * 60 * 1000),
-      ),
-    [selecionado, podeAdministrar],
+  const prazoAberto = useMemo(() => podeAdministrar || dentroDoPrazoLancamento(data), [podeAdministrar, data])
+  const editavel = useMemo(() => {
+    if (!selecionado || selecionado.situacao !== 'REALIZADO') return false
+    if (podeAdministrar) return true
+    if (selecionado.chamadaSalvaEm) {
+      return Date.now() <= new Date(selecionado.chamadaSalvaEm).getTime() + 3 * 60 * 60 * 1000
+    }
+    return dentroDoPrazoLancamento(selecionado.data)
+  }, [selecionado, podeAdministrar])
+  const podeEditarNaoRealizado = useMemo(
+    () => Boolean(podeAdministrar || (podeRegistrarNaoRealizacao && prazoAberto)),
+    [podeAdministrar, podeRegistrarNaoRealizacao, prazoAberto],
   )
   const presentes = useMemo(
     () => participantes.filter((a) => chamada[a.id] === 'PRESENTE').length,
@@ -215,6 +220,9 @@ export default function FrequencyManagement({
       await frequenciaApi.salvarChamada(
         selecionado.id,
         participantes.map((a) => ({ adolescenteId: a.id, situacao: chamada[a.id] ?? 'AUSENTE' })),
+      )
+      setSelecionado((atual) =>
+        atual ? { ...atual, chamadaSalvaEm: atual.chamadaSalvaEm ?? new Date().toISOString() } : atual,
       )
       setAlterado(false)
       setSucesso('Frequência salva.')
@@ -368,7 +376,14 @@ export default function FrequencyManagement({
         />
       </SectionCard>
 
-      {!carregando && !selecionado && intencao === 'escolha' && (
+      {!carregando && !selecionado && !prazoAberto && ehSexta(data) && (
+        <Alert severity="warning">
+          O prazo para lançar a frequência desta sexta encerrou no domingo subsequente. Sem registro, o encontro é
+          marcado automaticamente como não realizado.
+        </Alert>
+      )}
+
+      {!carregando && !selecionado && prazoAberto && intencao === 'escolha' && (
         <SectionCard
           title={`O que aconteceu em ${dataFormatada}?`}
           description="Informe se o discipulado ocorreu nesta data."
@@ -417,7 +432,7 @@ export default function FrequencyManagement({
         </SectionCard>
       )}
 
-      {!carregando && !selecionado && intencao === 'justificando' && (
+      {!carregando && !selecionado && prazoAberto && intencao === 'justificando' && (
         <SectionCard title="Por que não houve discipulado?" description="A justificativa é obrigatória.">
           <Stack spacing={2}>
             <TextField
@@ -465,7 +480,7 @@ export default function FrequencyManagement({
             <Alert severity="warning">
               <strong>Justificativa:</strong> {selecionado.justificativa}
             </Alert>
-            {podeRegistrarNaoRealizacao && (
+            {podeEditarNaoRealizado && (
               <>
                 <TextField
                   fullWidth
@@ -511,7 +526,11 @@ export default function FrequencyManagement({
         >
           <Stack spacing={2.5}>
             {!editavel && (
-              <Alert severity="info">Frequência em modo somente leitura: a janela de três horas foi encerrada.</Alert>
+              <Alert severity="info">
+                {selecionado.chamadaSalvaEm
+                  ? 'Frequência em modo somente leitura: a janela de três horas foi encerrada.'
+                  : 'Frequência em modo somente leitura: o prazo de lançamento desta sexta encerrou no domingo subsequente.'}
+              </Alert>
             )}
 
             <Stack

@@ -133,6 +133,7 @@ class ChamadaServiceTest {
 
     assertThat(salvas).hasSize(2);
     assertThat(historica.getSituacao()).isEqualTo(SituacaoFrequencia.AUSENTE);
+    verify(encontro).marcarChamadaSalva(AGORA);
     verify(encontros).auditar(eq(ator), eq("FREQUENCIA"), eq("SUBSTITUIR_CHAMADA"), any());
     verify(adolescentes).promoverVisitanteSeElegivel(ator, 1L);
     verify(adolescentes, never()).promoverVisitanteSeElegivel(ator, 2L);

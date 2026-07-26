@@ -14,6 +14,7 @@ const encontro = {
   situacao: 'REALIZADO',
   justificativa: null,
   criadoEm: new Date().toISOString(),
+  chamadaSalvaEm: null as string | null,
 }
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -91,6 +92,23 @@ describe('registro de frequência', () => {
     render(<FrequencyManagement discipuladoId={1} podeRegistrarNaoRealizacao />)
     expect(await screen.findByRole('button', { name: /^Houve discipulado/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^Não houve discipulado/ })).toBeInTheDocument()
+  })
+
+  it('após o prazo da sexta, bloqueia lançamento para não-admin', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/adolescentes?'))
+        return json({ content: [], page: 0, size: 100, totalElements: 0, totalPages: 0 })
+      if (url.includes('/encontros?')) return json([])
+      throw new Error(`Requisição inesperada: ${url}`)
+    })
+
+    render(<FrequencyManagement discipuladoId={1} />)
+    const campo = await screen.findByLabelText('Data')
+    fireEvent.change(campo, { target: { value: '2026-07-17' } })
+
+    expect(await screen.findByText(/prazo para lançar a frequência desta sexta encerrou/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Houve discipulado/i })).not.toBeInTheDocument()
   })
 
   it('sem permissão de não realização, oculta "Não houve discipulado"', async () => {

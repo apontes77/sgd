@@ -110,7 +110,8 @@ public class FrequenciaController {
       LocalDate data,
       SituacaoEncontro situacao,
       String justificativa,
-      Instant criadoEm) {
+      Instant criadoEm,
+      Instant chamadaSalvaEm) {
     static EncontroResponse of(Encontro e) {
       return new EncontroResponse(
           e.getId(),
@@ -118,7 +119,8 @@ public class FrequenciaController {
           e.getData(),
           e.getSituacao(),
           e.getJustificativa(),
-          e.getCriadoEm());
+          e.getCriadoEm(),
+          e.getChamadaSalvaEm());
     }
   }
 

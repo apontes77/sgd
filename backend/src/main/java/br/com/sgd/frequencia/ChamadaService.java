@@ -86,6 +86,7 @@ public class ChamadaService {
         mudancas.add(m);
       }
     }
+    e.marcarChamadaSalva(agora);
     if (!mudancas.isEmpty())
       encontros.auditar(
           ator,
