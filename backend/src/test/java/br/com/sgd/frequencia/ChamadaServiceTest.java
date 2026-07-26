@@ -24,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.server.ResponseStatusException;
 
 import br.com.sgd.adolescente.Adolescente;
+import br.com.sgd.adolescente.AdolescenteService;
 import br.com.sgd.adolescente.EscopoOrganizacionalService;
 import br.com.sgd.adolescente.VinculoAdolescenteDiscipulado;
 import br.com.sgd.organizacao.Discipulado;
@@ -36,6 +37,7 @@ class ChamadaServiceTest {
   @Mock EncontroService encontros;
   @Mock FrequenciaRepository frequencias;
   @Mock VisitanteRepository visitantes;
+  @Mock AdolescenteService adolescentes;
   @Mock EscopoOrganizacionalService escopo;
   @Mock Encontro encontro;
   @Mock Discipulado discipulado;
@@ -46,7 +48,12 @@ class ChamadaServiceTest {
   void setup() {
     service =
         new ChamadaService(
-            encontros, frequencias, visitantes, escopo, Clock.fixed(AGORA, ZoneOffset.UTC));
+            encontros,
+            frequencias,
+            visitantes,
+            adolescentes,
+            escopo,
+            Clock.fixed(AGORA, ZoneOffset.UTC));
     ator = new User("Ator", "ator@teste.local", "hash", Set.of(Role.DISCIPULADOR));
   }
 
@@ -127,6 +134,26 @@ class ChamadaServiceTest {
     assertThat(salvas).hasSize(2);
     assertThat(historica.getSituacao()).isEqualTo(SituacaoFrequencia.AUSENTE);
     verify(encontros).auditar(eq(ator), eq("FREQUENCIA"), eq("SUBSTITUIR_CHAMADA"), any());
+    verify(adolescentes).promoverVisitanteSeElegivel(ator, 1L);
+    verify(adolescentes, never()).promoverVisitanteSeElegivel(ator, 2L);
+  }
+
+  @Test
+  void aposSalvarAvaliaPromocaoSomenteParaPresentes() {
+    prepararEncontro();
+    Adolescente ana = adolescente(1L, "Ana");
+    Adolescente bia = adolescente(2L, "Bia");
+    when(encontros.participantesAtuais(encontro)).thenReturn(List.of(vinculo(ana), vinculo(bia)));
+    when(frequencias.findAllByEncontroIdOrderByAdolescenteNome(1L)).thenReturn(List.of());
+    when(frequencias.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    service.salvar(
+        ator,
+        1L,
+        List.of(item(1L, SituacaoFrequencia.PRESENTE), item(2L, SituacaoFrequencia.AUSENTE)));
+
+    verify(adolescentes).promoverVisitanteSeElegivel(ator, 1L);
+    verify(adolescentes, never()).promoverVisitanteSeElegivel(ator, 2L);
   }
 
   @Test

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import br.com.sgd.adolescente.Adolescente;
+import br.com.sgd.adolescente.AdolescenteService;
 import br.com.sgd.adolescente.EscopoOrganizacionalService;
 import br.com.sgd.user.User;
 
@@ -18,6 +19,7 @@ public class ChamadaService {
   private final EncontroService encontros;
   private final FrequenciaRepository frequencias;
   private final VisitanteRepository visitantes;
+  private final AdolescenteService adolescentes;
   private final EscopoOrganizacionalService escopo;
   private final Clock clock;
 
@@ -25,11 +27,13 @@ public class ChamadaService {
       EncontroService e,
       FrequenciaRepository f,
       VisitanteRepository v,
+      AdolescenteService a,
       EscopoOrganizacionalService es,
       Clock c) {
     encontros = e;
     frequencias = f;
     visitantes = v;
+    adolescentes = a;
     escopo = es;
     clock = c;
   }
@@ -88,6 +92,11 @@ public class ChamadaService {
           "FREQUENCIA",
           "SUBSTITUIR_CHAMADA",
           Map.of("encontroId", encontroId, "alteracoes", mudancas));
+    resultado.stream()
+        .filter(f -> f.getSituacao() == SituacaoFrequencia.PRESENTE)
+        .map(f -> f.getAdolescente().getId())
+        .distinct()
+        .forEach(id -> adolescentes.promoverVisitanteSeElegivel(ator, id));
     return resultado;
   }
 

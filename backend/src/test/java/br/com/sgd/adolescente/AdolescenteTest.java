@@ -45,6 +45,28 @@ class AdolescenteTest {
   }
 
   @Test
+  void promoveVisitanteParaDiscipulo() {
+    Adolescente adolescente =
+        new Adolescente(
+            cadastro(CategoriaAdolescente.VISITANTE, null, contatosDoResponsavel()), true);
+
+    adolescente.promoverDeVisitanteParaDiscipulo();
+
+    assertThat(adolescente.getCategoria()).isEqualTo(CategoriaAdolescente.DISCIPULO);
+  }
+
+  @Test
+  void rejeitaPromocaoQuandoNaoEVisitante() {
+    Adolescente adolescente =
+        new Adolescente(
+            cadastro(CategoriaAdolescente.DISCIPULO, null, contatosDoResponsavel()), true);
+
+    assertThatThrownBy(adolescente::promoverDeVisitanteParaDiscipulo)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Somente visitante");
+  }
+
+  @Test
   void exigeContatoMinimoDeMaePaiOuResponsavel() {
     assertThatThrownBy(() -> ContatosAdolescente.de(null, null, null, null, null, null))
         .isInstanceOf(IllegalArgumentException.class)

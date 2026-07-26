@@ -65,6 +65,8 @@ RN043 - Quando um adolescente ativo na categoria `DISCIPULO` acumula ao menos qu
 
 RN044 - A listagem de adolescentes exibe três grupos (Discípulos, Visitantes e Discípulos GOE) por discipulado. Gerente e Administrador selecionam o discipulado; Discipulador e Co-líder visualizam o próprio grupo.
 
+RN045 - Quando um adolescente ativo na categoria `VISITANTE` acumula ao menos três presenças (`PRESENTE`) em encontros `REALIZADO` cuja data está na janela de cinco semanas (35 dias corridos inclusivos) a partir do `dataInicio` do primeiro vínculo com discipulado, o sistema promove automaticamente a categoria para `DISCIPULO` e registra auditoria. A promoção ocorre ao salvar a chamada, sem confirmação do usuário, e é unidirecional (não rebaixa se a presença for editada depois). Ignora inativos, anonimizados e categorias `DISCIPULO`/`DISCIPULO_GOE`.
+
 ---
 
 ## Relatórios

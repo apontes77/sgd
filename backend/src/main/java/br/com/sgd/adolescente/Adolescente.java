@@ -80,6 +80,15 @@ public class Adolescente {
     atualizadoEm = Instant.now();
   }
 
+  /** Promove visitante a discípulo. Idempotente somente quando a categoria atual é VISITANTE. */
+  public void promoverDeVisitanteParaDiscipulo() {
+    if (categoria != CategoriaAdolescente.VISITANTE)
+      throw new IllegalStateException("Somente visitante pode ser promovido a discípulo.");
+    this.categoria = CategoriaAdolescente.DISCIPULO;
+    this.motivoAfastamento = null;
+    this.atualizadoEm = Instant.now();
+  }
+
   /**
    * Remove os dados pessoais diretos preservando o histórico agregado de frequência. Atende ao
    * direito de eliminação do titular/responsável (LGPD art. 18) sem descartar as contagens de

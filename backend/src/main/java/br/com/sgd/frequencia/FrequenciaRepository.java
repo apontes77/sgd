@@ -44,6 +44,21 @@ public interface FrequenciaRepository extends JpaRepository<Frequencia, Long> {
       @Param("fim") LocalDate fim,
       @Param("minimoFaltas") long minimoFaltas);
 
+  @Query(
+      """
+      select count(f)
+      from Frequencia f
+      join f.encontro e
+      where f.adolescente.id = :adolescenteId
+        and e.situacao = br.com.sgd.frequencia.SituacaoEncontro.REALIZADO
+        and f.situacao = br.com.sgd.frequencia.SituacaoFrequencia.PRESENTE
+        and e.data between :inicio and :fim
+      """)
+  long contarPresencasRealizadas(
+      @Param("adolescenteId") long adolescenteId,
+      @Param("inicio") LocalDate inicio,
+      @Param("fim") LocalDate fim);
+
   interface AlertaGoeRow {
     Long getAdolescenteId();
 

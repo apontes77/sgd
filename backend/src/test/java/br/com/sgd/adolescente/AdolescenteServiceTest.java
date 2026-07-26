@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -214,6 +215,82 @@ class AdolescenteServiceTest {
   }
 
   @Test
+  void promoveVisitanteComTresPresencasNaJanelaDoPrimeiroVinculo() {
+    Adolescente visitante = adolescenteNaCategoria(CategoriaAdolescente.VISITANTE);
+    var primeiro = new VinculoAdolescenteDiscipulado(visitante, origem, LocalDate.of(2026, 6, 1));
+    when(adolescentes.findById(1L)).thenReturn(Optional.of(visitante));
+    when(vinculos.findAllByAdolescenteIdOrderByDataInicioAsc(1L)).thenReturn(List.of(primeiro));
+    when(frequencias.contarPresencasRealizadas(
+            1L, LocalDate.of(2026, 6, 1), LocalDate.of(2026, 7, 5)))
+        .thenReturn(3L);
+
+    service.promoverVisitanteSeElegivel(usuario, 1L);
+
+    assertThat(visitante.getCategoria()).isEqualTo(CategoriaAdolescente.DISCIPULO);
+    verify(auditoria).save(any());
+  }
+
+  @Test
+  void naoPromoveVisitanteComMenosDeTresPresencas() {
+    Adolescente visitante = adolescenteNaCategoria(CategoriaAdolescente.VISITANTE);
+    var vinculo = new VinculoAdolescenteDiscipulado(visitante, origem, LocalDate.of(2026, 6, 1));
+    when(adolescentes.findById(1L)).thenReturn(Optional.of(visitante));
+    when(vinculos.findAllByAdolescenteIdOrderByDataInicioAsc(1L)).thenReturn(List.of(vinculo));
+    when(frequencias.contarPresencasRealizadas(
+            1L, LocalDate.of(2026, 6, 1), LocalDate.of(2026, 7, 5)))
+        .thenReturn(2L);
+
+    service.promoverVisitanteSeElegivel(usuario, 1L);
+
+    assertThat(visitante.getCategoria()).isEqualTo(CategoriaAdolescente.VISITANTE);
+    verify(auditoria, never()).save(any());
+  }
+
+  @Test
+  void naoPromoveQuandoJaEDiscipuloOuInativo() {
+    Adolescente discipulo = adolescenteNaCategoria(CategoriaAdolescente.DISCIPULO);
+    when(adolescentes.findById(1L)).thenReturn(Optional.of(discipulo));
+    service.promoverVisitanteSeElegivel(usuario, 1L);
+    verify(frequencias, never()).contarPresencasRealizadas(eq(1L), any(), any());
+
+    Adolescente inativo = adolescenteNaCategoria(CategoriaAdolescente.VISITANTE);
+    inativo.atualizar(
+        new DadosCadastroAdolescente(
+            "Ana",
+            LocalDate.of(2010, 3, 2),
+            null,
+            null,
+            LocalDate.of(2026, 1, 1),
+            CategoriaAdolescente.VISITANTE,
+            null,
+            null,
+            ContatosAdolescente.de(null, null, null, null, "Mãe da Ana", "(11) 98888-0000")),
+        false);
+    when(adolescentes.findById(2L)).thenReturn(Optional.of(inativo));
+    service.promoverVisitanteSeElegivel(usuario, 2L);
+    verify(vinculos, never()).findAllByAdolescenteIdOrderByDataInicioAsc(2L);
+  }
+
+  @Test
+  void usaDataInicioDoPrimeiroVinculoComoAncoraDaJanela() {
+    Adolescente visitante = adolescenteNaCategoria(CategoriaAdolescente.VISITANTE);
+    var antigo = new VinculoAdolescenteDiscipulado(visitante, origem, LocalDate.of(2026, 5, 1));
+    var atual = new VinculoAdolescenteDiscipulado(visitante, destino, LocalDate.of(2026, 6, 15));
+    when(adolescentes.findById(1L)).thenReturn(Optional.of(visitante));
+    when(vinculos.findAllByAdolescenteIdOrderByDataInicioAsc(1L))
+        .thenReturn(List.of(antigo, atual));
+    when(frequencias.contarPresencasRealizadas(
+            1L, LocalDate.of(2026, 5, 1), LocalDate.of(2026, 6, 4)))
+        .thenReturn(3L);
+
+    service.promoverVisitanteSeElegivel(usuario, 1L);
+
+    verify(frequencias)
+        .contarPresencasRealizadas(1L, LocalDate.of(2026, 5, 1), LocalDate.of(2026, 6, 4));
+    assertThat(visitante.getCategoria()).isEqualTo(CategoriaAdolescente.DISCIPULO);
+  }
+
+  @Test
   void anonimizaRemovendoDadosPessoaisERegistraAuditoria() {
     Adolescente adolescente =
         new Adolescente(
@@ -249,6 +326,10 @@ class AdolescenteServiceTest {
   }
 
   private static Adolescente adolescenteComResponsavel() {
+    return adolescenteNaCategoria(CategoriaAdolescente.DISCIPULO);
+  }
+
+  private static Adolescente adolescenteNaCategoria(CategoriaAdolescente categoria) {
     return new Adolescente(
         new DadosCadastroAdolescente(
             "Ana",
@@ -256,7 +337,7 @@ class AdolescenteServiceTest {
             null,
             null,
             LocalDate.of(2026, 1, 1),
-            CategoriaAdolescente.DISCIPULO,
+            categoria,
             null,
             null,
             ContatosAdolescente.de(null, null, null, null, "Mãe da Ana", "(11) 98888-0000")),

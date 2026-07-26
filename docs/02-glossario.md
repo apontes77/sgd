@@ -34,7 +34,7 @@ Categoria do adolescente que já possui presença com alguma constância no disc
 
 ## Visitante (categoria)
 
-Categoria do adolescente que começou a frequentar o discipulado e foi cadastrado com vínculo. Diferente da contagem de visitantes do encontro.
+Categoria do adolescente que começou a frequentar o discipulado e foi cadastrado com vínculo. Diferente da contagem de visitantes do encontro. Com três presenças em encontros realizados na janela de 35 dias a partir do início do primeiro vínculo, o sistema promove automaticamente para Discípulo.
 
 ## Discípulo GOE
 

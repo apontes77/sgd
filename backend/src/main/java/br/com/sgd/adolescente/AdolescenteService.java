@@ -29,6 +29,11 @@ public class AdolescenteService {
   private static final ZoneId ZONA_NEGOCIO = ZoneId.of("America/Sao_Paulo");
   private static final int JANELA_GOE_DIAS = 42;
   private static final long MINIMO_FALTAS_GOE = 4;
+
+  /** Janela inclusiva a partir do primeiro vínculo: inicio .. inicio+34 = 35 dias corridos. */
+  private static final int JANELA_PROMOCAO_VISITANTE_DIAS = 35;
+
+  private static final long MINIMO_PRESENCAS_PROMOCAO_VISITANTE = 3;
   private final AdolescenteRepository adolescentes;
   private final VinculoAdolescenteRepository vinculos;
   private final DiscipuladoRepository discipulados;
@@ -157,6 +162,41 @@ public class AdolescenteService {
         .stream()
         .map(r -> new AlertaGoe(r.getAdolescenteId(), r.getNome(), r.getFaltas()))
         .toList();
+  }
+
+  /**
+   * Promove automaticamente VISITANTE → DISCIPULO quando há ao menos três presenças em encontros
+   * REALIZADO na janela de 35 dias a partir do dataInicio do primeiro vínculo. Sem confirmação de
+   * UI; unidirecional (não rebaixa se a presença for editada depois).
+   */
+  public void promoverVisitanteSeElegivel(User ator, long adolescenteId) {
+    Adolescente adolescente = buscar(adolescenteId);
+    if (!adolescente.isAtivo()
+        || adolescente.isAnonimizado()
+        || adolescente.getCategoria() != CategoriaAdolescente.VISITANTE) {
+      return;
+    }
+    List<VinculoAdolescenteDiscipulado> historico =
+        vinculos.findAllByAdolescenteIdOrderByDataInicioAsc(adolescenteId);
+    if (historico.isEmpty()) return;
+    LocalDate inicio = historico.get(0).getDataInicio();
+    LocalDate fim = inicio.plusDays(JANELA_PROMOCAO_VISITANTE_DIAS - 1L);
+    long presencas = frequencias.contarPresencasRealizadas(adolescenteId, inicio, fim);
+    if (presencas < MINIMO_PRESENCAS_PROMOCAO_VISITANTE) return;
+    adolescente.promoverDeVisitanteParaDiscipulo();
+    auditoria.save(
+        new AuditLog(
+            ator,
+            "ADOLESCENTE",
+            "PROMOVER_VISITANTE",
+            "adolescenteId="
+                + adolescenteId
+                + ",anterior=VISITANTE,novo=DISCIPULO,presencas="
+                + presencas
+                + ",janelaInicio="
+                + inicio
+                + ",janelaFim="
+                + fim));
   }
 
   @Transactional(readOnly = true)
