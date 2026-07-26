@@ -201,13 +201,11 @@ O relatório diário é formatado em A4 e impresso ou salvo como PDF pelo diálo
 
 ## 7. Qualidade e integração contínua
 
-### DEC-023 — A estratégia de testes combina isolamento e banco real
+### DEC-023 — A estratégia de testes usa o perfil `test` com H2
 
 **Status:** Implementada.
 
-Testes unitários e HTTP rápidos usam o perfil `test` e H2 quando apropriado. Consultas nativas, migrations e diferenças de driver são validadas também com PostgreSQL 16 via Testcontainers e Flyway.
-
-Os testes Testcontainers podem ser ignorados localmente quando Docker não está disponível, mas devem executar no CI. O perfil `test` deve permanecer ativo nesses testes para que integrações externas de produção, como SMTP, não sejam inicializadas.
+Testes unitários e HTTP usam o perfil `test` e H2. O perfil `test` deve permanecer ativo para que integrações externas de produção, como SMTP, não sejam inicializadas.
 
 ### DEC-024 — O CI valida os dois projetos separadamente
 
