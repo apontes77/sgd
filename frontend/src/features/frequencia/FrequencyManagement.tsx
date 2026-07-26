@@ -35,6 +35,7 @@ import {
 } from '@/features/frequencia/api'
 import { ApiError } from '@/shared/api/httpClient'
 import { BOTTOM_NAV_OFFSET, EmptyState, SectionCard } from '@/shared/ui'
+import { contatoMinimoValido, mensagemTelefoneInvalido, telefoneValido } from '@/shared/validation/telefone'
 
 interface Props {
   discipuladoId: number
@@ -58,6 +59,13 @@ const visitanteVazio: DadosPessoaisAdolescente = {
   responsavelNome: '',
   responsavelTelefone: '',
   consentimentoEm: '',
+  categoria: 'VISITANTE',
+  nomeMae: '',
+  telefoneMae: '',
+  nomePai: '',
+  telefonePai: '',
+  estrutura: '',
+  motivoAfastamento: '',
 }
 
 export default function FrequencyManagement({
@@ -266,9 +274,25 @@ export default function FrequencyManagement({
       setErro('Informe nome e data de nascimento do visitante.')
       return
     }
-    if (!visitante.responsavelNome.trim() || !visitante.consentimentoEm) {
-      setErro('Informe o responsável e a data de consentimento do visitante.')
+    if (!visitante.consentimentoEm) {
+      setErro('Informe a data de consentimento do visitante.')
       return
+    }
+    if (!contatoMinimoValido(visitante)) {
+      setErro('Informe nome e telefone da mãe, ou do pai, ou do responsável.')
+      return
+    }
+    const telefones: Array<[string | undefined, string]> = [
+      [visitante.telefone, 'telefone do adolescente'],
+      [visitante.telefoneMae, 'telefone da mãe'],
+      [visitante.telefonePai, 'telefone do pai'],
+      [visitante.responsavelTelefone, 'telefone do responsável'],
+    ]
+    for (const [valor, rotulo] of telefones) {
+      if (!telefoneValido(valor)) {
+        setErro(mensagemTelefoneInvalido(rotulo))
+        return
+      }
     }
     setSalvando(true)
     setErro('')
@@ -281,6 +305,12 @@ export default function FrequencyManagement({
         responsavelNome: visitante.responsavelNome.trim(),
         responsavelTelefone: visitante.responsavelTelefone || undefined,
         consentimentoEm: visitante.consentimentoEm,
+        categoria: 'VISITANTE',
+        nomeMae: visitante.nomeMae || undefined,
+        telefoneMae: visitante.telefoneMae || undefined,
+        nomePai: visitante.nomePai || undefined,
+        telefonePai: visitante.telefonePai || undefined,
+        estrutura: visitante.estrutura || undefined,
         discipuladoId,
         ativo: true,
         dataInicio: data,
@@ -698,8 +728,8 @@ export default function FrequencyManagement({
               salvando ||
               !visitante?.nome.trim() ||
               !visitante?.dataNascimento ||
-              !visitante?.responsavelNome.trim() ||
-              !visitante?.consentimentoEm
+              !visitante?.consentimentoEm ||
+              !contatoMinimoValido(visitante)
             }
           >
             Adicionar

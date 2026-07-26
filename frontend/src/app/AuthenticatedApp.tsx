@@ -259,7 +259,14 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
               {section === 'meu-discipulado' && <LeaderDashboard />}
               {section === 'estrutura' && <OrganizationManagement />}
               {section === 'usuarios' && <UserManagement client={userManagementClient} />}
-              {section === 'adolescentes' && <AdolescentManagement podeAnonimizar={isAdmin} />}
+              {section === 'adolescentes' && (
+                <AdolescentManagement
+                  podeAnonimizar={isAdmin}
+                  podeEditar={currentUser.perfis.some(
+                    (perfil) => perfil === 'ADMIN' || perfil === 'DISCIPULADOR' || perfil === 'CO_LIDER',
+                  )}
+                />
+              )}
               {section === 'frequencia' && <FrequencyPage currentUser={currentUser} />}
               {section === 'relatorios' && <FrequencyReport />}
             </motion.div>

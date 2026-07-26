@@ -103,10 +103,24 @@ class RelatorioFrequenciaHttpTest {
     encontro(gamma, SituacaoEncontro.REALIZADO);
     Adolescente bia =
         adolescentes.saveAndFlush(
-            new Adolescente("Bia", LocalDate.of(2010, 2, 1), "(11) 98888-2222", null));
+            new Adolescente(
+                "Bia",
+                LocalDate.of(2010, 2, 1),
+                "(11) 98888-2222",
+                null,
+                "Responsável Bia",
+                "(11) 90000-2222",
+                LocalDate.of(2026, 1, 1)));
     Adolescente ana =
         adolescentes.saveAndFlush(
-            new Adolescente("Ana", LocalDate.of(2010, 1, 1), "(11) 97777-1111", null));
+            new Adolescente(
+                "Ana",
+                LocalDate.of(2010, 1, 1),
+                "(11) 97777-1111",
+                null,
+                "Responsável Ana",
+                "(11) 90000-1111",
+                LocalDate.of(2026, 1, 1)));
     frequencias.saveAndFlush(
         new Frequencia(alphaPrincipal, bia, SituacaoFrequencia.PRESENTE, AGORA));
     frequencias.saveAndFlush(

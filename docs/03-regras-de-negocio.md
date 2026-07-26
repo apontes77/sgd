@@ -57,6 +57,14 @@ RN018 - O histórico de adolescentes inativados deve ser preservado.
 
 RN019 - Um adolescente torna-se inativado após três meses sem participação.
 
+RN041 - No cadastro, o adolescente recebe obrigatoriamente uma categoria: `DISCIPULO`, `VISITANTE` ou `DISCIPULO_GOE`. A categoria é independente da flag de ativo/inativo.
+
+RN042 - A categoria `DISCIPULO_GOE` exige motivo do afastamento. Demais categorias não persistem motivo.
+
+RN043 - Quando um adolescente ativo na categoria `DISCIPULO` acumula ao menos quatro faltas (`AUSENTE`) em encontros `REALIZADO` cuja data está nas últimas seis semanas (42 dias corridos, timezone America/Sao_Paulo), o sistema apresenta alerta de potencial Discípulo GOE. A mudança de categoria só ocorre mediante confirmação do usuário autorizado, com motivo informado.
+
+RN044 - A listagem de adolescentes exibe três grupos (Discípulos, Visitantes e Discípulos GOE) por discipulado. Gerente e Administrador selecionam o discipulado; Discipulador e Co-líder visualizam o próprio grupo.
+
 ---
 
 ## Relatórios

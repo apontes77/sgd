@@ -37,9 +37,14 @@ erDiagram
     ADOLESCENTE {
         bigint id PK
         string nome
-        int idade
+        date data_nascimento
         string telefone
         string instagram
+        string categoria
+        string telefone_mae
+        string telefone_pai
+        string estrutura
+        string motivo_afastamento
         boolean ativo
     }
     VINCULO_ADOLESCENTE_DISCIPULADO {
@@ -146,9 +151,15 @@ erDiagram
 
 - id
 - nome
-- idade
+- data_nascimento
 - telefone
 - instagram
+- categoria (`DISCIPULO`, `VISITANTE`, `DISCIPULO_GOE`)
+- telefone_mae
+- telefone_pai
+- estrutura
+- motivo_afastamento (obrigatório quando categoria = `DISCIPULO_GOE`)
+- responsavel_nome / responsavel_telefone / consentimento_em
 - ativo
 
 ### Responsavel

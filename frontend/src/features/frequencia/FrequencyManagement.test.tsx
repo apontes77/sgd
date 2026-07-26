@@ -157,6 +157,7 @@ describe('registro de frequência', () => {
     await userEvent.type(screen.getAllByLabelText(/nome/i)[0], 'João Visitante')
     fireEvent.change(screen.getByLabelText(/Data de nascimento/), { target: { value: '2011-05-04' } })
     await userEvent.type(screen.getByLabelText(/Nome do responsável/i), 'Responsável do João')
+    await userEvent.type(screen.getByLabelText(/Telefone do responsável/i), '11988887777')
     await userEvent.click(screen.getByRole('button', { name: 'Adicionar' }))
 
     expect(await screen.findByText('João Visitante')).toBeInTheDocument()
@@ -167,6 +168,8 @@ describe('registro de frequência', () => {
       nome: 'João Visitante',
       discipuladoId: 1,
       dataInicio: hoje,
+      categoria: 'VISITANTE',
+      responsavelTelefone: '11988887777',
     })
 
     await userEvent.click(await screen.findByRole('button', { name: 'Salvar frequência' }))

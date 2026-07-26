@@ -366,7 +366,7 @@ class FrequenciaHttpTest {
                     .content(
                         "{\"nome\":\""
                             + nome
-                            + "\",\"dataNascimento\":\"2011-05-04\",\"responsavelNome\":\"Responsável\",\"consentimentoEm\":\"2026-01-01\",\"discipuladoId\":"
+                            + "\",\"dataNascimento\":\"2011-05-04\",\"categoria\":\"VISITANTE\",\"responsavelNome\":\"Responsável\",\"responsavelTelefone\":\"(11) 98888-0000\",\"consentimentoEm\":\"2026-01-01\",\"discipuladoId\":"
                             + proprio.getId()
                             + ",\"ativo\":true,\"dataInicio\":\""
                             + dataInicio
@@ -405,7 +405,7 @@ class FrequenciaHttpTest {
   private String adolescente(String nome, boolean ativo) {
     return "{\"nome\":\""
         + nome
-        + "\",\"dataNascimento\":\"2010-01-01\",\"responsavelNome\":\"Responsável\",\"consentimentoEm\":\"2026-01-01\",\"discipuladoId\":"
+        + "\",\"dataNascimento\":\"2010-01-01\",\"categoria\":\"DISCIPULO\",\"responsavelNome\":\"Responsável\",\"responsavelTelefone\":\"(11) 98888-0000\",\"consentimentoEm\":\"2026-01-01\",\"discipuladoId\":"
         + proprio.getId()
         + ",\"ativo\":"
         + ativo

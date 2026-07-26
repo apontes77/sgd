@@ -1,5 +1,6 @@
 package br.com.sgd.adolescente;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -16,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import br.com.sgd.audit.AuditLog;
 import br.com.sgd.audit.AuditLogRepository;
+import br.com.sgd.frequencia.FrequenciaRepository;
 import br.com.sgd.organizacao.Discipulado;
 import br.com.sgd.organizacao.DiscipuladoRepository;
 import br.com.sgd.user.Role;
@@ -25,40 +27,54 @@ import br.com.sgd.user.User;
 @Transactional
 public class AdolescenteService {
   private static final ZoneId ZONA_NEGOCIO = ZoneId.of("America/Sao_Paulo");
+  private static final int JANELA_GOE_DIAS = 42;
+  private static final long MINIMO_FALTAS_GOE = 4;
   private final AdolescenteRepository adolescentes;
   private final VinculoAdolescenteRepository vinculos;
   private final DiscipuladoRepository discipulados;
   private final EscopoOrganizacionalService escopo;
   private final AuditLogRepository auditoria;
+  private final FrequenciaRepository frequencias;
+  private final Clock clock;
 
   public AdolescenteService(
       AdolescenteRepository adolescentes,
       VinculoAdolescenteRepository vinculos,
       DiscipuladoRepository discipulados,
       EscopoOrganizacionalService escopo,
-      AuditLogRepository auditoria) {
+      AuditLogRepository auditoria,
+      FrequenciaRepository frequencias,
+      Clock clock) {
     this.adolescentes = adolescentes;
     this.vinculos = vinculos;
     this.discipulados = discipulados;
     this.escopo = escopo;
     this.auditoria = auditoria;
+    this.frequencias = frequencias;
+    this.clock = clock;
   }
 
   public Adolescente criar(User usuario, DadosAdolescente dados) {
     Discipulado discipulado = discipuladoAtivo(dados.discipuladoId());
     escopo.exigirAlteracao(usuario, discipulado);
     Adolescente adolescente =
-        new Adolescente(
-            dados.nome(),
-            dados.dataNascimento(),
-            dados.telefone(),
-            dados.instagram(),
-            dados.responsavelNome(),
-            dados.responsavelTelefone(),
-            dados.consentimentoEm());
-    if (Boolean.FALSE.equals(dados.ativo()))
-      adolescente.atualizar(
-          dados.nome(), dados.dataNascimento(), dados.telefone(), dados.instagram(), false);
+        new Adolescente(dados.nome(), dados.dataNascimento(), dados.telefone(), dados.instagram());
+    adolescente.atualizar(
+        dados.nome(),
+        dados.dataNascimento(),
+        dados.telefone(),
+        dados.instagram(),
+        dados.responsavelNome(),
+        dados.responsavelTelefone(),
+        dados.consentimentoEm(),
+        dados.categoria() == null ? CategoriaAdolescente.DISCIPULO : dados.categoria(),
+        dados.nomeMae(),
+        dados.telefoneMae(),
+        dados.nomePai(),
+        dados.telefonePai(),
+        dados.estrutura(),
+        dados.motivoAfastamento(),
+        dados.ativo() == null || dados.ativo());
     adolescente = adolescentes.save(adolescente);
     LocalDate inicioVinculo =
         dados.dataInicio() == null ? LocalDate.now(ZONA_NEGOCIO) : dados.dataInicio();
@@ -81,6 +97,13 @@ public class AdolescenteService {
         dados.responsavelNome(),
         dados.responsavelTelefone(),
         dados.consentimentoEm(),
+        dados.categoria() == null ? adolescente.getCategoria() : dados.categoria(),
+        dados.nomeMae(),
+        dados.telefoneMae(),
+        dados.nomePai(),
+        dados.telefonePai(),
+        dados.estrutura(),
+        dados.motivoAfastamento(),
         dados.ativo());
     return adolescente;
   }
@@ -112,16 +135,42 @@ public class AdolescenteService {
   }
 
   @Transactional(readOnly = true)
-  public Page<Adolescente> listar(
-      User usuario, Long discipuladoId, Boolean ativo, Pageable pageable) {
+  public Page<AdolescenteComVinculo> listar(
+      User usuario,
+      Long discipuladoId,
+      Boolean ativo,
+      CategoriaAdolescente categoria,
+      Pageable pageable) {
     if (discipuladoId != null)
       escopo.exigirLeitura(usuario, discipuladoAtivoOuInativo(discipuladoId));
     Specification<Adolescente> filtro =
         Specification.where(
             ativo == null ? null : (root, query, cb) -> cb.equal(root.get("ativo"), ativo));
+    if (categoria != null)
+      filtro = filtro.and((root, query, cb) -> cb.equal(root.get("categoria"), categoria));
     if (discipuladoId != null) filtro = filtro.and(noDiscipulado(discipuladoId));
     filtro = filtro.and(noEscopo(usuario));
-    return adolescentes.findAll(filtro, pageable);
+    return adolescentes.findAll(filtro, pageable).map(this::comVinculoAtual);
+  }
+
+  @Transactional(readOnly = true)
+  public List<AlertaGoe> listarAlertasGoe(User usuario, long discipuladoId) {
+    Discipulado discipulado = discipuladoAtivoOuInativo(discipuladoId);
+    escopo.exigirLeitura(usuario, discipulado);
+    LocalDate fim = LocalDate.now(clock.withZone(ZONA_NEGOCIO));
+    LocalDate inicio = fim.minusDays(JANELA_GOE_DIAS - 1L);
+    return frequencias
+        .encontrarPotenciaisGoe(discipuladoId, inicio, fim, MINIMO_FALTAS_GOE)
+        .stream()
+        .map(r -> new AlertaGoe(r.getAdolescenteId(), r.getNome(), r.getFaltas()))
+        .toList();
+  }
+
+  @Transactional(readOnly = true)
+  public AdolescenteComVinculo comVinculoAtual(Adolescente adolescente) {
+    VinculoAdolescenteDiscipulado vinculo = vinculoAtual(adolescente.getId());
+    Discipulado discipulado = vinculo.getDiscipulado();
+    return new AdolescenteComVinculo(adolescente, discipulado.getId(), discipulado.getNome());
   }
 
   @Transactional(readOnly = true)
@@ -205,7 +254,19 @@ public class AdolescenteService {
       String responsavelNome,
       String responsavelTelefone,
       LocalDate consentimentoEm,
+      CategoriaAdolescente categoria,
+      String nomeMae,
+      String telefoneMae,
+      String nomePai,
+      String telefonePai,
+      String estrutura,
+      String motivoAfastamento,
       Long discipuladoId,
       Boolean ativo,
       LocalDate dataInicio) {}
+
+  public record AdolescenteComVinculo(
+      Adolescente adolescente, long discipuladoId, String discipuladoNome) {}
+
+  public record AlertaGoe(long adolescenteId, String nome, long faltas) {}
 }
