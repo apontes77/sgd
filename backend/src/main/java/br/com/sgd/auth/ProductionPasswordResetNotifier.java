@@ -2,12 +2,15 @@ package br.com.sgd.auth;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.HtmlUtils;
 
 import br.com.sgd.config.SecurityProperties;
 import br.com.sgd.user.User;
@@ -42,22 +45,45 @@ public class ProductionPasswordResetNotifier implements PasswordResetNotifier {
   public void notify(User user, String rawToken) {
     String encodedToken = URLEncoder.encode(rawToken, StandardCharsets.UTF_8);
     String resetUrl = frontendUrl + "/redefinir-senha?token=" + encodedToken;
-    SimpleMailMessage message = new SimpleMailMessage();
-    message.setFrom(from);
-    message.setTo(user.getEmail());
-    message.setSubject("Redefinicao de senha - SGD");
-    message.setText(
-        """
-                Ola, %s.
+    String safeName = HtmlUtils.htmlEscape(user.getNome());
+    String safeUrl = HtmlUtils.htmlEscape(resetUrl);
 
-                Recebemos uma solicitacao para redefinir sua senha no SGD.
-                Acesse o link abaixo em ate %d minutos:
+    try {
+      MimeMessage mimeMessage = mailSender.createMimeMessage();
+      MimeMessageHelper helper =
+          new MimeMessageHelper(mimeMessage, true, StandardCharsets.UTF_8.name());
+      helper.setFrom(from);
+      helper.setTo(user.getEmail());
+      helper.setSubject("Redefinicao de senha - SGD");
+      helper.setText(plainTextBody(user.getNome(), resetUrl), htmlBody(safeName, safeUrl));
+      mailSender.send(mimeMessage);
+    } catch (MessagingException exception) {
+      throw new IllegalStateException("Falha ao montar e-mail de redefinicao de senha", exception);
+    }
+  }
 
-                %s
+  private String plainTextBody(String nome, String resetUrl) {
+    return """
+            Ola, %s.
 
-                Se voce nao fez esta solicitacao, ignore esta mensagem.
-                """
-            .formatted(user.getNome(), expirationMinutes, resetUrl));
-    mailSender.send(message);
+            Recebemos uma solicitacao para redefinir sua senha no SGD.
+            Acesse o link abaixo em ate %d minutos:
+
+            %s
+
+            Se voce nao fez esta solicitacao, ignore esta mensagem.
+            """
+        .formatted(nome, expirationMinutes, resetUrl);
+  }
+
+  private String htmlBody(String safeName, String safeUrl) {
+    return """
+            <p>Ola, %s.</p>
+            <p>Recebemos uma solicitacao para redefinir sua senha no SGD.
+            Acesse o link abaixo em ate %d minutos:</p>
+            <p><a href="%s">%s</a></p>
+            <p>Se voce nao fez esta solicitacao, ignore esta mensagem.</p>
+            """
+        .formatted(safeName, expirationMinutes, safeUrl, safeUrl);
   }
 }
