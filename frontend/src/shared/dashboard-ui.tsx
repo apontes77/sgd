@@ -22,7 +22,7 @@ import {
 import ReactECharts from 'echarts-for-react'
 
 import type { EvolucaoMensal, ResumoPainel } from '@/features/dashboards/api'
-import { chartColors } from '@/shared/charts/chartTheme'
+import { axisLabelStyle, legendTextStyle, useChartColors } from '@/shared/charts/chartTheme'
 import { formatarMes, type MesVisual, percentual } from '@/shared/dashboard-utils'
 import { AnalyticsCard, FilterToolbar, KpiCard } from '@/shared/ui'
 
@@ -51,15 +51,18 @@ export function FiltroPeriodo({
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }}>
         <TextField
           required
+          fullWidth
           label="Data inicial"
           type="date"
           value={dataInicio}
           onChange={(event) => onInicio(event.target.value)}
           slotProps={{ inputLabel: { shrink: true } }}
           error={Boolean(dataInicio && dataFim && dataInicio > dataFim)}
+          sx={{ width: { xs: '100%', sm: 'auto' } }}
         />
         <TextField
           required
+          fullWidth
           label="Data final"
           type="date"
           value={dataFim}
@@ -69,8 +72,16 @@ export function FiltroPeriodo({
           helperText={
             dataInicio && dataFim && dataInicio > dataFim ? 'A data final deve ser posterior à inicial.' : undefined
           }
+          sx={{ width: { xs: '100%', sm: 'auto' } }}
         />
-        <Button type="submit" variant="contained" disabled={invalido} startIcon={<FilterAltRounded />}>
+        <Button
+          type="submit"
+          variant="contained"
+          disabled={invalido}
+          startIcon={<FilterAltRounded />}
+          fullWidth
+          sx={{ width: { xs: '100%', sm: 'auto' } }}
+        >
           Aplicar
         </Button>
       </Stack>
@@ -131,6 +142,7 @@ export function PainelEvolucao({
 
 export function GraficoEvolucao({ titulo, dados }: { titulo: string; dados: MesVisual[] }) {
   const mobile = useMediaQuery('(max-width:599.95px)')
+  const colors = useChartColors()
   const labels = dados.map((item) => formatarMes(item.referencia))
   const valor = (
     item: MesVisual,
@@ -146,13 +158,14 @@ export function GraficoEvolucao({ titulo, dados }: { titulo: string; dados: MesV
         style={{ height: mobile ? 320 : 360, width: '100%' }}
         option={{
           aria: { enabled: true },
+          textStyle: { color: colors.text },
           tooltip: { trigger: 'axis' },
           legend: {
             top: 0,
             left: 'center',
             width: mobile ? '92%' : undefined,
             itemGap: mobile ? 8 : 12,
-            textStyle: { fontSize: mobile ? 11 : 12 },
+            textStyle: legendTextStyle(colors, mobile ? 11 : 12),
             data: ['Presentes', 'Ausentes', 'Visitantes', 'Presença'],
           },
           grid: {
@@ -162,23 +175,33 @@ export function GraficoEvolucao({ titulo, dados }: { titulo: string; dados: MesV
             bottom: mobile ? 36 : 45,
             containLabel: true,
           },
-          xAxis: { type: 'category', data: labels, axisLabel: { hideOverlap: true, fontSize: mobile ? 11 : 12 } },
+          xAxis: {
+            type: 'category',
+            data: labels,
+            axisLabel: { ...axisLabelStyle(colors, mobile ? 11 : 12), hideOverlap: true },
+            axisLine: { lineStyle: { color: colors.axisLine } },
+          },
           yAxis: [
             {
               type: 'value',
               name: mobile ? undefined : 'Pessoas',
               nameGap: 28,
+              nameTextStyle: { color: colors.textSecondary },
               minInterval: 1,
               splitNumber: mobile ? 3 : 5,
+              axisLabel: axisLabelStyle(colors, mobile ? 11 : 12),
+              splitLine: { lineStyle: { color: colors.splitLine } },
             },
             {
               type: 'value',
               name: mobile ? undefined : 'Presença',
               nameGap: 32,
+              nameTextStyle: { color: colors.textSecondary },
               min: 0,
               max: 100,
               splitNumber: mobile ? 4 : 5,
-              axisLabel: { formatter: '{value}%' },
+              axisLabel: { ...axisLabelStyle(colors, mobile ? 11 : 12), formatter: '{value}%' },
+              splitLine: { show: false },
             },
           ],
           series: [
@@ -187,21 +210,21 @@ export function GraficoEvolucao({ titulo, dados }: { titulo: string; dados: MesV
               type: 'bar',
               barMaxWidth: 32,
               data: dados.map((i) => valor(i, 'presentes')),
-              itemStyle: { color: chartColors.success, borderRadius: [4, 4, 0, 0] },
+              itemStyle: { color: colors.success, borderRadius: [4, 4, 0, 0] },
             },
             {
               name: 'Ausentes',
               type: 'bar',
               barMaxWidth: 32,
               data: dados.map((i) => valor(i, 'ausentes')),
-              itemStyle: { color: chartColors.error, borderRadius: [4, 4, 0, 0] },
+              itemStyle: { color: colors.error, borderRadius: [4, 4, 0, 0] },
             },
             {
               name: 'Visitantes',
               type: 'bar',
               barMaxWidth: 32,
               data: dados.map((i) => valor(i, 'visitantes')),
-              itemStyle: { color: chartColors.secondary, borderRadius: [4, 4, 0, 0] },
+              itemStyle: { color: colors.secondary, borderRadius: [4, 4, 0, 0] },
             },
             {
               name: 'Presença',
@@ -216,8 +239,8 @@ export function GraficoEvolucao({ titulo, dados }: { titulo: string; dados: MesV
                   ? { value: null, symbol: 'none', symbolSize: 0 }
                   : { value, symbol: 'circle', symbolSize: 8 }
               }),
-              lineStyle: { width: 3, color: chartColors.primary },
-              itemStyle: { color: chartColors.primary },
+              lineStyle: { width: 3, color: colors.primary },
+              itemStyle: { color: colors.primary },
             },
           ],
         }}
@@ -228,10 +251,11 @@ export function GraficoEvolucao({ titulo, dados }: { titulo: string; dados: MesV
 }
 
 export function TabelaEvolucao({ titulo, dados }: { titulo: string; dados: MesVisual[] }) {
+  const colors = useChartColors()
   return (
     <TableContainer>
       <Table size="small" aria-label={titulo}>
-        <caption style={{ textAlign: 'left', paddingBottom: 12, color: chartColors.textSecondary }}>{titulo}</caption>
+        <caption style={{ textAlign: 'left', paddingBottom: 12, color: colors.textSecondary }}>{titulo}</caption>
         <TableHead>
           <TableRow>
             <TableCell scope="col">Mês</TableCell>

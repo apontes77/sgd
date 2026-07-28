@@ -10,13 +10,16 @@ export function AnalyticsCard({
   description,
   chart,
   table,
+  defaultView = 'chart',
 }: {
   title: string
   description?: ReactNode
   chart: ReactNode
   table: ReactNode
+  /** Preferência inicial; use "table" em charts densos (ex.: heatmap). */
+  defaultView?: 'chart' | 'table'
 }) {
-  const [view, setView] = useState<'chart' | 'table'>('chart')
+  const [view, setView] = useState<'chart' | 'table'>(defaultView)
   return (
     <SectionCard
       title={title}

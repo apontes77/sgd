@@ -17,7 +17,7 @@ import ReactECharts from 'echarts-for-react'
 import { useEffect, useState } from 'react'
 
 import { type DiscipuloPainel, painelApi, type PainelLiderResponse } from '@/features/dashboards/api'
-import { chartColors } from '@/shared/charts/chartTheme'
+import { axisLabelStyle, useChartColors } from '@/shared/charts/chartTheme'
 import { FiltroPeriodo, KpisPresenca, PainelEvolucao } from '@/shared/dashboard-ui'
 import { formatarMes, normalizarMeses, percentual, periodoPadrao } from '@/shared/dashboard-utils'
 import { AnalyticsCard, EmptyState, KpiCard, LoadingState, PageHeader, SectionCard } from '@/shared/ui'
@@ -187,16 +187,29 @@ function normalizarDiscipulo(inicio: string, fim: string, evolucao: DiscipuloPai
 }
 
 function GraficoIndividual({ nome, dados }: { nome: string; dados: MesDiscipulo[] }) {
+  const colors = useChartColors()
   return (
     <Box role="img" aria-label={`Gráfico do percentual mensal de presença de ${nome}.`}>
       <ReactECharts
         style={{ height: 320 }}
         option={{
           aria: { enabled: true },
+          textStyle: { color: colors.text },
           tooltip: { trigger: 'axis', valueFormatter: (valor: number) => percentual(valor) },
           grid: { left: 55, right: 35, bottom: 45, containLabel: true },
-          xAxis: { type: 'category', data: dados.map((item) => formatarMes(item.referencia)) },
-          yAxis: { type: 'value', min: 0, max: 100, axisLabel: { formatter: '{value}%' } },
+          xAxis: {
+            type: 'category',
+            data: dados.map((item) => formatarMes(item.referencia)),
+            axisLabel: axisLabelStyle(colors, 12),
+            axisLine: { lineStyle: { color: colors.axisLine } },
+          },
+          yAxis: {
+            type: 'value',
+            min: 0,
+            max: 100,
+            axisLabel: { ...axisLabelStyle(colors, 12), formatter: '{value}%' },
+            splitLine: { lineStyle: { color: colors.splitLine } },
+          },
           series: [
             {
               name: 'Presença',
@@ -204,8 +217,8 @@ function GraficoIndividual({ nome, dados }: { nome: string; dados: MesDiscipulo[
               connectNulls: false,
               symbolSize: 9,
               data: dados.map((item) => (item.possuiRegistro ? item.percentualPresenca : null)),
-              lineStyle: { width: 3, color: chartColors.primary },
-              itemStyle: { color: chartColors.primary },
+              lineStyle: { width: 3, color: colors.primary },
+              itemStyle: { color: colors.primary },
             },
           ],
         }}

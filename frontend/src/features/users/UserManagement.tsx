@@ -143,7 +143,7 @@ export default function UserManagement({ client }: { client: UserManagementClien
             label="Status"
             value={activeFilter}
             onChange={(e) => setActiveFilter(e.target.value)}
-            sx={{ minWidth: 220 }}
+            sx={{ minWidth: { xs: '100%', sm: 220 }, width: { xs: '100%', sm: 'auto' } }}
           >
             <MenuItem value="">Todos</MenuItem>
             <MenuItem value="true">Ativos</MenuItem>
