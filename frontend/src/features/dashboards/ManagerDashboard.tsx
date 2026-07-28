@@ -11,19 +11,19 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
   Typography,
+  useMediaQuery,
 } from '@mui/material'
 import ReactECharts from 'echarts-for-react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { type DiscipuladoPainel, painelApi, type PainelGerenciaResponse } from '@/features/dashboards/api'
-import { chartColors } from '@/shared/charts/chartTheme'
+import { axisLabelStyle, seriesLabelStyle, useChartColors } from '@/shared/charts/chartTheme'
 import { FiltroPeriodo, KpisPresenca, PainelEvolucao } from '@/shared/dashboard-ui'
 import { normalizarMeses, percentual, periodoPadrao } from '@/shared/dashboard-utils'
-import { AnalyticsCard, LoadingState, PageHeader, SectionCard } from '@/shared/ui'
+import { AnalyticsCard, DataTableCard, LoadingState, PageHeader, SectionCard } from '@/shared/ui'
 
 const REFERENCIA_INFORMATIVA = 70
 
@@ -108,7 +108,7 @@ export default function ManagerDashboard() {
                 <SectionCard
                   title="Detalhe do discipulado"
                   action={
-                    <FormControl sx={{ minWidth: { xs: 220, sm: 340 } }}>
+                    <FormControl sx={{ minWidth: { xs: '100%', sm: 340 }, width: { xs: '100%', sm: 'auto' } }}>
                       <InputLabel id="discipulado-painel-label">Discipulado</InputLabel>
                       <Select
                         labelId="discipulado-painel-label"
@@ -164,7 +164,7 @@ function SupervisaoNaoRealizados({ dados }: { dados: PainelGerenciaResponse['enc
       description="Ocorrências registradas por administradores no período selecionado."
     >
       {dados.length ? (
-        <TableContainer>
+        <DataTableCard>
           <Table size="small" aria-label="Encontros não realizados">
             <TableHead>
               <TableRow>
@@ -183,7 +183,7 @@ function SupervisaoNaoRealizados({ dados }: { dados: PainelGerenciaResponse['enc
               ))}
             </TableBody>
           </Table>
-        </TableContainer>
+        </DataTableCard>
       ) : (
         <Alert severity="success">Nenhum encontro foi marcado como não realizado no período.</Alert>
       )}
@@ -198,11 +198,14 @@ function GraficoComparacao({
   dados: DiscipuladoPainel[]
   onSelecionar: (id: number) => void
 }) {
+  const mobile = useMediaQuery('(max-width:599.95px)')
+  const colors = useChartColors()
+  const nomeWidth = mobile ? 108 : 140
   const ordenados = [...dados].sort(
     (a, b) => a.resumo.percentualPresenca - b.resumo.percentualPresenca || a.nome.localeCompare(b.nome, 'pt-BR'),
   )
   return (
-    <Box role="img" aria-label="Gráfico de barras do percentual de presença por discipulado.">
+    <Box role="img" aria-label="Gráfico de barras do percentual de presença por discipulado." sx={{ minWidth: 0 }}>
       <ReactECharts
         onEvents={{
           click: (param: { dataIndex: number }) => {
@@ -210,13 +213,30 @@ function GraficoComparacao({
             if (item) onSelecionar(item.id)
           },
         }}
-        style={{ height: Math.min(650, Math.max(300, ordenados.length * 48)) }}
+        style={{
+          height: Math.min(mobile ? 520 : 650, Math.max(mobile ? 260 : 300, ordenados.length * (mobile ? 40 : 48))),
+        }}
         option={{
           aria: { enabled: true },
+          textStyle: { color: colors.text },
           tooltip: { trigger: 'axis', valueFormatter: (valor: number) => percentual(valor) },
-          grid: { left: 140, right: 60, bottom: 30, containLabel: true },
-          xAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%' } },
-          yAxis: { type: 'category', data: ordenados.map((item) => item.nome) },
+          grid: { left: 8, right: mobile ? 48 : 60, bottom: 30, containLabel: true },
+          xAxis: {
+            type: 'value',
+            max: 100,
+            axisLabel: { ...axisLabelStyle(colors, mobile ? 11 : 12), formatter: '{value}%' },
+            splitLine: { lineStyle: { color: colors.splitLine } },
+          },
+          yAxis: {
+            type: 'category',
+            data: ordenados.map((item) => item.nome),
+            axisLabel: {
+              ...axisLabelStyle(colors, mobile ? 11 : 12),
+              width: nomeWidth,
+              overflow: 'truncate',
+            },
+            axisLine: { lineStyle: { color: colors.axisLine } },
+          },
           series: [
             {
               type: 'bar',
@@ -226,14 +246,19 @@ function GraficoComparacao({
                 itemStyle: {
                   color:
                     item.resumo.encontrosRealizados === 0
-                      ? chartColors.neutral
+                      ? colors.neutral
                       : item.resumo.percentualPresenca < REFERENCIA_INFORMATIVA
-                        ? chartColors.warning
-                        : chartColors.success,
+                        ? colors.warning
+                        : colors.success,
                   borderRadius: [0, 5, 5, 0],
                 },
               })),
-              label: { show: true, position: 'right', formatter: '{c}%' },
+              label: {
+                show: true,
+                position: 'right',
+                formatter: '{c}%',
+                ...seriesLabelStyle(colors, mobile ? 11 : 12),
+              },
             },
           ],
         }}
@@ -244,7 +269,7 @@ function GraficoComparacao({
 
 function TabelaComparacao({ dados, onSelecionar }: { dados: DiscipuladoPainel[]; onSelecionar: (id: number) => void }) {
   return (
-    <TableContainer>
+    <DataTableCard>
       <Table size="small" aria-label="Resumo por discipulado">
         <TableHead>
           <TableRow>
@@ -279,7 +304,7 @@ function TabelaComparacao({ dados, onSelecionar }: { dados: DiscipuladoPainel[];
           ))}
         </TableBody>
       </Table>
-    </TableContainer>
+    </DataTableCard>
   )
 }
 

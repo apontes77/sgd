@@ -1,4 +1,4 @@
-import { AddRounded, DeleteForeverRounded, EditRounded, SwapHorizRounded } from '@mui/icons-material'
+import { AddRounded } from '@mui/icons-material'
 import {
   Alert,
   Button,
@@ -26,7 +26,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AdolescenteFormFields } from '@/features/adolescentes/AdolescenteFormFields'
 import type { Adolescente, AdolescenteInput, AlertaGoe, DiscipuladoResumo } from '@/features/adolescentes/api'
 import { adolescentesApi } from '@/features/adolescentes/api'
-import { DataTableCard, EmptyState, FilterToolbar, FormSheet, PageHeader, SectionCard, StatusChip } from '@/shared/ui'
+import {
+  DataTableCard,
+  EmptyState,
+  FilterToolbar,
+  FormSheet,
+  PageHeader,
+  RowActionsMenu,
+  SectionCard,
+  StatusChip,
+} from '@/shared/ui'
 import { contatoMinimoValido, mensagemTelefoneInvalido, telefoneValido } from '@/shared/validation/telefone'
 
 const hoje = () => new Date().toISOString().slice(0, 10)
@@ -346,37 +355,25 @@ export default function AdolescentManagement({
 
   function acoesLinha(a: Adolescente) {
     if (!podeEditar && !podeAnonimizar) return null
-    return (
-      <Stack direction="row" justifyContent="flex-end" gap={0.5} flexWrap="wrap">
-        {podeEditar && (
-          <>
-            <Button size="small" startIcon={<EditRounded />} onClick={() => editar(a)}>
-              Editar
-            </Button>
-            <Button
-              size="small"
-              startIcon={<SwapHorizRounded />}
-              onClick={() => {
+    const actions = [
+      ...(podeEditar
+        ? [
+            { label: 'Editar', onClick: () => editar(a) },
+            {
+              label: 'Transferir',
+              onClick: () => {
                 setTransferindo(a)
                 setDestino(0)
-              }}
-            >
-              Transferir
-            </Button>
-            {a.ativo && (
-              <Button size="small" color="warning" onClick={() => setInativando(a)}>
-                Inativar
-              </Button>
-            )}
-          </>
-        )}
-        {podeAnonimizar && !a.anonimizado && (
-          <Button size="small" color="error" startIcon={<DeleteForeverRounded />} onClick={() => setAnonimizando(a)}>
-            Excluir dados
-          </Button>
-        )}
-      </Stack>
-    )
+              },
+            },
+            ...(a.ativo ? [{ label: 'Inativar', onClick: () => setInativando(a), color: 'warning' as const }] : []),
+          ]
+        : []),
+      ...(podeAnonimizar && !a.anonimizado
+        ? [{ label: 'Excluir dados', onClick: () => setAnonimizando(a), color: 'error' as const }]
+        : []),
+    ]
+    return <RowActionsMenu ariaLabel={`Ações de ${a.nome}`} actions={actions} />
   }
 
   return (

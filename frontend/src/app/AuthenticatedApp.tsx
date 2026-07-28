@@ -555,7 +555,7 @@ function FrequencyPage({ currentUser }: { currentUser: Usuario }) {
         description="Escolha a data e informe se houve discipulado."
         action={
           mostrarSeletor ? (
-            <FormControl sx={{ minWidth: { xs: 240, sm: 320 } }}>
+            <FormControl sx={{ minWidth: { xs: '100%', sm: 320 }, width: { xs: '100%', sm: 'auto' } }}>
               <InputLabel>Discipulado</InputLabel>
               <Select
                 label="Discipulado"

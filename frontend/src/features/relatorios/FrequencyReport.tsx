@@ -14,7 +14,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
   TextField,
@@ -26,7 +25,7 @@ import { useEffect, useState } from 'react'
 import { organizationApi } from '@/features/organizacao/api'
 import { relatorioApi, type RelatorioEncontro, type RelatorioPeriodoResponse } from '@/features/relatorios/api'
 import type { Discipulado, Usuario } from '@/shared/api/types'
-import { FilterToolbar, PageHeader } from '@/shared/ui'
+import { DataTableCard, FilterToolbar, PageHeader } from '@/shared/ui'
 
 export default function FrequencyReport({ currentUser }: { currentUser: Usuario }) {
   const podeFiltrarDiscipulado = currentUser.perfis.includes('GERENTE') || currentUser.perfis.includes('ADMIN')
@@ -117,22 +116,26 @@ export default function FrequencyReport({ currentUser }: { currentUser: Usuario 
         >
           <TextField
             required
+            fullWidth
             type="date"
             label="Data inicial"
             value={dataInicio}
             onChange={(e) => setDataInicio(e.target.value)}
             slotProps={{ inputLabel: { shrink: true } }}
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
           />
           <TextField
             required
+            fullWidth
             type="date"
             label="Data final"
             value={dataFim}
             onChange={(e) => setDataFim(e.target.value)}
             slotProps={{ inputLabel: { shrink: true } }}
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
           />
           {podeFiltrarDiscipulado && (
-            <FormControl sx={{ minWidth: 220 }}>
+            <FormControl sx={{ minWidth: { xs: '100%', sm: 220 }, width: { xs: '100%', sm: 'auto' } }}>
               <InputLabel id="relatorio-discipulado-label">Discipulado</InputLabel>
               <Select
                 labelId="relatorio-discipulado-label"
@@ -149,7 +152,14 @@ export default function FrequencyReport({ currentUser }: { currentUser: Usuario 
               </Select>
             </FormControl>
           )}
-          <Button type="submit" variant="contained" startIcon={<SearchRounded />} disabled={carregando}>
+          <Button
+            type="submit"
+            variant="contained"
+            startIcon={<SearchRounded />}
+            disabled={carregando}
+            fullWidth
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
+          >
             {carregando ? 'Consultando...' : 'Consultar'}
           </Button>
           <Button
@@ -157,6 +167,8 @@ export default function FrequencyReport({ currentUser }: { currentUser: Usuario 
             startIcon={<PrintRounded />}
             disabled={!dados?.relatorios.length}
             onClick={() => window.print()}
+            fullWidth
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
           >
             Imprimir / salvar como PDF
           </Button>
@@ -229,7 +241,7 @@ function PaginaRelatorio({ item, emitidoEm }: { item: RelatorioEncontro; emitido
             <strong>Justificativa:</strong> {item.justificativa || 'Não informada'}
           </Alert>
         ) : (
-          <TableContainer>
+          <DataTableCard>
             <Table size="small" aria-label={`Frequência do ${item.discipulado.nome} em ${formatarData(item.data)}`}>
               <TableHead>
                 <TableRow>
@@ -269,7 +281,7 @@ function PaginaRelatorio({ item, emitidoEm }: { item: RelatorioEncontro; emitido
                 )}
               </TableBody>
             </Table>
-          </TableContainer>
+          </DataTableCard>
         )}
         {!naoRealizado && (
           <Box

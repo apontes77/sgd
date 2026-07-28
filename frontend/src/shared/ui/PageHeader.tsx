@@ -34,7 +34,7 @@ export function PageHeader({
           </Typography>
         )}
       </Box>
-      {action && <Box sx={{ flexShrink: 0 }}>{action}</Box>}
+      {action && <Box sx={{ flexShrink: 0, width: { xs: '100%', sm: 'auto' }, minWidth: 0 }}>{action}</Box>}
     </Stack>
   )
 }

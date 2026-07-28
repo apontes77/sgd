@@ -6,19 +6,19 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
   Typography,
+  useMediaQuery,
 } from '@mui/material'
 import ReactECharts from 'echarts-for-react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { type IndicadorGerencia, type PainelAdminResponse, painelApi } from '@/features/dashboards/api'
-import { chartColors } from '@/shared/charts/chartTheme'
+import { axisLabelStyle, seriesLabelStyle, useChartColors } from '@/shared/charts/chartTheme'
 import { FiltroPeriodo, KpisPresenca, PainelEvolucao } from '@/shared/dashboard-ui'
 import { normalizarMeses, percentual, periodoPadrao } from '@/shared/dashboard-utils'
-import { AnalyticsCard, LoadingState, PageHeader } from '@/shared/ui'
+import { AnalyticsCard, DataTableCard, LoadingState, PageHeader } from '@/shared/ui'
 
 type Ordenacao = 'nome' | 'percentual' | 'volume'
 
@@ -131,12 +131,18 @@ function ordenarGerencias(dados: IndicadorGerencia[], ordenacao: Ordenacao) {
 }
 
 function GraficoGerencias({ dados }: { dados: IndicadorGerencia[] }) {
+  const mobile = useMediaQuery('(max-width:599.95px)')
+  const colors = useChartColors()
+  const nomeWidth = mobile ? 108 : 140
   return (
-    <Box role="img" aria-label="Gráfico de barras do percentual de presença por gerência.">
+    <Box role="img" aria-label="Gráfico de barras do percentual de presença por gerência." sx={{ minWidth: 0 }}>
       <ReactECharts
-        style={{ height: Math.min(600, Math.max(300, dados.length * 48)) }}
+        style={{
+          height: Math.min(mobile ? 480 : 600, Math.max(mobile ? 260 : 300, dados.length * (mobile ? 40 : 48))),
+        }}
         option={{
           aria: { enabled: true },
+          textStyle: { color: colors.text },
           tooltip: {
             trigger: 'axis',
             formatter: (params: Array<{ dataIndex: number; value: number }>) => {
@@ -146,16 +152,35 @@ function GraficoGerencias({ dados }: { dados: IndicadorGerencia[] }) {
                 : ''
             },
           },
-          grid: { left: 130, right: 55, bottom: 30, containLabel: true },
-          xAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value}%' } },
-          yAxis: { type: 'category', data: dados.map((item) => item.nome) },
+          grid: { left: 8, right: mobile ? 48 : 60, bottom: 30, containLabel: true },
+          xAxis: {
+            type: 'value',
+            max: 100,
+            axisLabel: { ...axisLabelStyle(colors, mobile ? 11 : 12), formatter: '{value}%' },
+            splitLine: { lineStyle: { color: colors.splitLine } },
+          },
+          yAxis: {
+            type: 'category',
+            data: dados.map((item) => item.nome),
+            axisLabel: {
+              ...axisLabelStyle(colors, mobile ? 11 : 12),
+              width: nomeWidth,
+              overflow: 'truncate',
+            },
+            axisLine: { lineStyle: { color: colors.axisLine } },
+          },
           series: [
             {
               name: 'Presença',
               type: 'bar',
               data: dados.map((item) => item.percentualPresenca),
-              label: { show: true, position: 'right', formatter: '{c}%' },
-              itemStyle: { color: chartColors.primary, borderRadius: [0, 5, 5, 0] },
+              label: {
+                show: true,
+                position: 'right',
+                formatter: '{c}%',
+                ...seriesLabelStyle(colors, mobile ? 11 : 12),
+              },
+              itemStyle: { color: colors.primary, borderRadius: [0, 5, 5, 0] },
             },
           ],
         }}
@@ -174,7 +199,7 @@ function TabelaGerencias({
   onOrdenacao: (valor: Ordenacao) => void
 }) {
   return (
-    <TableContainer>
+    <DataTableCard>
       <Table size="small" aria-label="Resumo por gerência">
         <TableHead>
           <TableRow>
@@ -211,7 +236,7 @@ function TabelaGerencias({
           ))}
         </TableBody>
       </Table>
-    </TableContainer>
+    </DataTableCard>
   )
 }
 
@@ -225,13 +250,20 @@ function BotaoOrdenacao({ ativo, onClick, children }: { ativo: boolean; onClick:
 }
 
 function GraficoSexos({ dados }: { dados: PainelAdminResponse }) {
+  const mobile = useMediaQuery('(max-width:599.95px)')
+  const colors = useChartColors()
   const labels = dados.sexos.map((item) => (item.sexo === 'MASCULINO' ? 'Masculino' : 'Feminino'))
   return (
-    <Box role="img" aria-label="Gráfico de barras comparando o percentual de presença por sexo do discipulado.">
+    <Box
+      role="img"
+      aria-label="Gráfico de barras comparando o percentual de presença por sexo do discipulado."
+      sx={{ minWidth: 0 }}
+    >
       <ReactECharts
-        style={{ height: 300 }}
+        style={{ height: mobile ? 260 : 300 }}
         option={{
           aria: { enabled: true },
+          textStyle: { color: colors.text },
           tooltip: {
             trigger: 'axis',
             formatter: (params: Array<{ dataIndex: number }>) => {
@@ -241,15 +273,31 @@ function GraficoSexos({ dados }: { dados: PainelAdminResponse }) {
                 : ''
             },
           },
-          grid: { left: 95, right: 60, bottom: 30, containLabel: true },
-          xAxis: { type: 'value', min: 0, max: 100, axisLabel: { formatter: '{value}%' } },
-          yAxis: { type: 'category', data: labels },
+          grid: { left: 8, right: mobile ? 48 : 60, bottom: 30, containLabel: true },
+          xAxis: {
+            type: 'value',
+            min: 0,
+            max: 100,
+            axisLabel: { ...axisLabelStyle(colors, mobile ? 11 : 12), formatter: '{value}%' },
+            splitLine: { lineStyle: { color: colors.splitLine } },
+          },
+          yAxis: {
+            type: 'category',
+            data: labels,
+            axisLabel: axisLabelStyle(colors, mobile ? 12 : 13),
+            axisLine: { lineStyle: { color: colors.axisLine } },
+          },
           series: [
             {
               type: 'bar',
               data: dados.sexos.map((item) => item.percentualPresenca),
-              label: { show: true, position: 'right', formatter: '{c}%' },
-              itemStyle: { color: chartColors.secondary, borderRadius: [0, 5, 5, 0] },
+              label: {
+                show: true,
+                position: 'right',
+                formatter: '{c}%',
+                ...seriesLabelStyle(colors, mobile ? 11 : 12),
+              },
+              itemStyle: { color: colors.secondary, borderRadius: [0, 5, 5, 0] },
             },
           ],
         }}
@@ -260,7 +308,7 @@ function GraficoSexos({ dados }: { dados: PainelAdminResponse }) {
 
 function TabelaSexos({ dados }: { dados: PainelAdminResponse }) {
   return (
-    <TableContainer>
+    <DataTableCard>
       <Table size="small" aria-label="Resumo por sexo">
         <TableHead>
           <TableRow>
@@ -285,6 +333,6 @@ function TabelaSexos({ dados }: { dados: PainelAdminResponse }) {
           ))}
         </TableBody>
       </Table>
-    </TableContainer>
+    </DataTableCard>
   )
 }

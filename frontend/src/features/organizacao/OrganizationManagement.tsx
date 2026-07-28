@@ -30,7 +30,7 @@ import type { FormEvent } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { organizationApi } from '@/features/organizacao/api'
-import { LoadingState, PageHeader } from '@/shared/ui'
+import { LoadingState, PageHeader, RowActionsMenu } from '@/shared/ui'
 
 import type {
   CriarUsuarioRequest,
@@ -459,14 +459,15 @@ function GerenciaList({
               disablePadding
               divider
               secondaryAction={
-                <Button
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    onEdit(item)
-                  }}
-                >
-                  Editar
-                </Button>
+                <RowActionsMenu
+                  ariaLabel={`Ações de ${item.nome}`}
+                  actions={[
+                    {
+                      label: 'Editar',
+                      onClick: () => onEdit(item),
+                    },
+                  ]}
+                />
               }
             >
               <ListItemButton selected={selectedId === item.id} onClick={() => onSelect(item)}>
@@ -478,6 +479,9 @@ function GerenciaList({
                     </Stack>
                   }
                   secondary={`Gerente: ${userName(users, item.gerenteId)} · Faixas: ${formatFaixas(item.faixasEtarias)}`}
+                  primaryTypographyProps={{ component: 'div', sx: { minWidth: 0 } }}
+                  secondaryTypographyProps={{ sx: { minWidth: 0, pr: 1 } }}
+                  sx={{ pr: 1, minWidth: 0 }}
                 />
               </ListItemButton>
             </ListItem>
@@ -514,14 +518,15 @@ function DiscipuladoList({
             divider
             alignItems="flex-start"
             secondaryAction={
-              <Stack direction="row" spacing={1}>
-                <Button onClick={() => onEdit(item)}>Editar</Button>
-                {item.ativo !== false && (
-                  <Button color="warning" onClick={() => onDeactivate(item)}>
-                    Inativar
-                  </Button>
-                )}
-              </Stack>
+              <RowActionsMenu
+                ariaLabel={`Ações de ${item.nome}`}
+                actions={[
+                  { label: 'Editar', onClick: () => onEdit(item) },
+                  ...(item.ativo !== false
+                    ? [{ label: 'Inativar', onClick: () => onDeactivate(item), color: 'warning' as const }]
+                    : []),
+                ]}
+              />
             }
           >
             <ListItemText
@@ -555,6 +560,9 @@ function DiscipuladoList({
                   </span>
                 </>
               }
+              primaryTypographyProps={{ component: 'div', sx: { minWidth: 0 } }}
+              secondaryTypographyProps={{ component: 'div', sx: { minWidth: 0, pr: 1 } }}
+              sx={{ pr: 1, minWidth: 0 }}
             />
           </ListItem>
         ))
