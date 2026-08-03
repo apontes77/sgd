@@ -140,6 +140,44 @@ class ChamadaServiceTest {
   }
 
   @Test
+  void incluiRegistroHistoricoDeDiscipuloGoeMesmoForaDosParticipantesAtuais() {
+    prepararEncontro();
+    Adolescente ana = adolescente(1L, "Ana");
+    Adolescente goe = adolescente(3L, "Goe");
+    Frequencia historica =
+        new Frequencia(encontro, goe, SituacaoFrequencia.AUSENTE, AGORA.minusSeconds(60));
+    when(encontros.participantesAtuais(encontro)).thenReturn(List.of(vinculo(ana)));
+    when(frequencias.findAllByEncontroIdOrderByAdolescenteNome(1L)).thenReturn(List.of(historica));
+    when(frequencias.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    List<Frequencia> salvas =
+        service.salvar(
+            ator,
+            1L,
+            List.of(item(1L, SituacaoFrequencia.PRESENTE), item(3L, SituacaoFrequencia.AUSENTE)));
+
+    assertThat(salvas).hasSize(2);
+    assertThat(historica.getSituacao()).isEqualTo(SituacaoFrequencia.AUSENTE);
+    verify(adolescentes).promoverVisitanteSeElegivel(ator, 1L);
+    verify(adolescentes, never()).promoverVisitanteSeElegivel(ator, 3L);
+  }
+
+  @Test
+  void naoExigeDiscipuloGoeNaChamadaQuandoForaDosParticipantesAtuais() {
+    prepararEncontro();
+    Adolescente ana = adolescente(1L, "Ana");
+    when(encontros.participantesAtuais(encontro)).thenReturn(List.of(vinculo(ana)));
+    when(frequencias.findAllByEncontroIdOrderByAdolescenteNome(1L)).thenReturn(List.of());
+    when(frequencias.save(any())).thenAnswer(i -> i.getArgument(0));
+
+    List<Frequencia> salvas =
+        service.salvar(ator, 1L, List.of(item(1L, SituacaoFrequencia.PRESENTE)));
+
+    assertThat(salvas).hasSize(1);
+    verify(encontros).participantesAtuais(encontro);
+  }
+
+  @Test
   void aposSalvarAvaliaPromocaoSomenteParaPresentes() {
     prepararEncontro();
     Adolescente ana = adolescente(1L, "Ana");

@@ -106,11 +106,15 @@ export function AdolescenteFormFields({ value, onChange, disabled, autoFocus = t
         onChange={(e) => onChange({ dataNascimento: e.target.value })}
       />
       <TextField
+        required={goe}
         label="Telefone"
         value={value.telefone ?? ''}
         disabled={disabled}
         error={Boolean(erroTelefone(value.telefone, 'telefone do adolescente'))}
-        helperText={erroTelefone(value.telefone, 'telefone do adolescente')}
+        helperText={
+          erroTelefone(value.telefone, 'telefone do adolescente') ??
+          (goe ? 'Obrigatório para Discípulo GOE.' : undefined)
+        }
         onChange={(e) => onChange({ telefone: e.target.value })}
       />
       <TextField
@@ -143,8 +147,9 @@ export function AdolescenteFormFields({ value, onChange, disabled, autoFocus = t
         </Typography>
       </Divider>
       <Alert severity="info" variant="outlined">
-        Informe nome e telefone da mãe, ou do pai, ou de um responsável. É necessário pelo menos um desses pares
-        completos para salvar o cadastro.
+        {goe
+          ? 'Para Discípulo GOE, o telefone do adolescente é suficiente. Contatos de mãe, pai ou responsável são opcionais.'
+          : 'Informe nome e telefone da mãe, ou do pai, ou de um responsável. É necessário pelo menos um desses pares completos para salvar o cadastro.'}
       </Alert>
       <TextField
         label="Nome da mãe"
@@ -187,14 +192,14 @@ export function AdolescenteFormFields({ value, onChange, disabled, autoFocus = t
             </Typography>
           </Divider>
           <TextField
-            required
+            required={!goe}
             label="Nome do responsável"
             value={value.responsavelNome}
             disabled={disabled}
             onChange={(e) => onChange({ responsavelNome: e.target.value })}
           />
           <TextField
-            required
+            required={!goe}
             label="Telefone do responsável"
             value={value.responsavelTelefone ?? ''}
             disabled={disabled}

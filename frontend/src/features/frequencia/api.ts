@@ -45,6 +45,15 @@ export const frequenciaApi = {
       body: JSON.stringify({ quantidade }),
     }),
   obterVisitantes: (id: number) => request<{ quantidade: number }>(`/encontros/${id}/visitantes`),
-  listarAdolescentes: (discipuladoId: number) =>
-    request<Pagina<AdolescenteResumo>>(`/adolescentes?discipuladoId=${discipuladoId}&ativo=true&page=0&size=100`),
+  listarAdolescentes: (discipuladoId: number) => {
+    const params = new URLSearchParams({
+      discipuladoId: String(discipuladoId),
+      ativo: 'true',
+      page: '0',
+      size: '100',
+    })
+    params.append('categoria', 'DISCIPULO')
+    params.append('categoria', 'VISITANTE')
+    return request<Pagina<AdolescenteResumo>>(`/adolescentes?${params}`)
+  },
 }

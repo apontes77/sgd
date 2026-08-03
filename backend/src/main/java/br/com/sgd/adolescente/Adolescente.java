@@ -114,13 +114,18 @@ public class Adolescente {
       throw new IllegalArgumentException("A data de nascimento é inválida.");
     if (dados.categoria() == null)
       throw new IllegalArgumentException("A categoria do adolescente é obrigatória.");
-    if (dados.contatos() == null)
-      throw new IllegalArgumentException(
-          "Informe nome e telefone da mãe, ou do pai, ou do responsável.");
 
     this.nome = dados.nome().trim();
     this.dataNascimento = dados.dataNascimento();
     this.telefone = TelefoneValidator.validarOpcional(dados.telefone(), "telefone do adolescente");
+    if (dados.categoria() == CategoriaAdolescente.DISCIPULO_GOE) {
+      if (this.telefone == null)
+        throw new IllegalArgumentException(
+            "O telefone do adolescente é obrigatório para discípulo GOE.");
+    } else if (dados.contatos() == null || !dados.contatos().temContatoFamiliar()) {
+      throw new IllegalArgumentException(
+          "Informe nome e telefone da mãe, ou do pai, ou do responsável.");
+    }
     this.instagram = normalizar(dados.instagram());
     this.consentimentoEm = dados.consentimentoEm();
     this.categoria = dados.categoria();

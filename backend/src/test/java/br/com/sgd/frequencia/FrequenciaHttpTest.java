@@ -209,6 +209,40 @@ class FrequenciaHttpTest {
   }
 
   @Test
+  void discipuloGoeNaoEntraNaChamadaDeParticipantesAtuais() throws Exception {
+    String token = token(discipulador);
+    long anaId = criarAdolescente(token, "Ana");
+    long goeId = criarDiscipuloGoe(token, "Goe");
+    long encontroId = criarEncontro(token, proprio.getId(), "2026-06-01", 201);
+
+    salvarChamada(
+        token,
+        encontroId,
+        "{\"frequencias\":[{\"adolescenteId\":" + anaId + ",\"situacao\":\"PRESENTE\"}]}",
+        200);
+    salvarChamada(
+        token,
+        encontroId,
+        "{\"frequencias\":[{\"adolescenteId\":"
+            + anaId
+            + ",\"situacao\":\"PRESENTE\"},{\"adolescenteId\":"
+            + goeId
+            + ",\"situacao\":\"AUSENTE\"}]}",
+        409);
+
+    mvc.perform(
+            get("/api/v1/adolescentes")
+                .param("discipuladoId", String.valueOf(proprio.getId()))
+                .param("ativo", "true")
+                .param("categoria", "DISCIPULO")
+                .param("categoria", "VISITANTE")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[?(@.id==" + anaId + ")]").exists())
+        .andExpect(jsonPath("$.content[?(@.id==" + goeId + ")]").doesNotExist());
+  }
+
+  @Test
   void usaVinculosAtuaisEmEncontroPassadoEPreservaFrequenciaAnterior() throws Exception {
     String token = token(discipulador);
     long anaId = criarAdolescente(token, "Ana");
@@ -391,6 +425,25 @@ class FrequenciaHttpTest {
                     .header(HttpHeaders.AUTHORIZATION, bearer(token))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(adolescente(nome, true)))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    return json.readTree(response).get("id").asLong();
+  }
+
+  private long criarDiscipuloGoe(String token, String nome) throws Exception {
+    String response =
+        mvc.perform(
+                post("/api/v1/adolescentes")
+                    .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        "{\"nome\":\""
+                            + nome
+                            + "\",\"dataNascimento\":\"2010-01-01\",\"telefone\":\"(11) 91234-5678\",\"categoria\":\"DISCIPULO_GOE\",\"motivoAfastamento\":\"Afastou-se\",\"consentimentoEm\":\"2026-01-01\",\"discipuladoId\":"
+                            + proprio.getId()
+                            + ",\"ativo\":true}"))
             .andExpect(status().isCreated())
             .andReturn()
             .getResponse()

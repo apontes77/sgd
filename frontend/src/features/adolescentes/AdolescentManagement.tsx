@@ -36,7 +36,7 @@ import {
   SectionCard,
   StatusChip,
 } from '@/shared/ui'
-import { contatoMinimoValido, mensagemTelefoneInvalido, telefoneValido } from '@/shared/validation/telefone'
+import { mensagemTelefoneInvalido, telefoneValido, validarContatosPorCategoria } from '@/shared/validation/telefone'
 
 const hoje = () => new Date().toISOString().slice(0, 10)
 
@@ -104,10 +104,7 @@ function validarFormularioAdolescente(form: AdolescenteInput): string | null {
   for (const [valor, rotulo] of telefones) {
     if (!telefoneValido(valor)) return mensagemTelefoneInvalido(rotulo)
   }
-  if (!contatoMinimoValido(form)) {
-    return 'Informe nome e telefone da mãe, ou do pai, ou do responsável.'
-  }
-  return null
+  return validarContatosPorCategoria(form.categoria, form)
 }
 
 export default function AdolescentManagement({
@@ -135,6 +132,7 @@ export default function AdolescentManagement({
   const [alertaAtual, setAlertaAtual] = useState<AlertaGoe | null>(null)
   const [confirmarGoe, setConfirmarGoe] = useState(false)
   const [motivoGoe, setMotivoGoe] = useState('')
+  const [telefoneGoe, setTelefoneGoe] = useState('')
   const [ignoradosGoe, setIgnoradosGoe] = useState<number[]>([])
 
   const carregarDiscipulados = useCallback(async () => {
@@ -197,6 +195,7 @@ export default function AdolescentManagement({
     setAlertaAtual(pendente ?? null)
     setConfirmarGoe(false)
     setMotivoGoe('')
+    setTelefoneGoe('')
   }, [alertasGoe, ignoradosGoe])
 
   const discipulos = useMemo(() => items.filter((a) => (a.categoria ?? 'DISCIPULO') === 'DISCIPULO'), [items])
@@ -332,11 +331,21 @@ export default function AdolescentManagement({
       setIgnoradosGoe((prev) => [...prev, alertaAtual.adolescenteId])
       return
     }
+    const telefoneInformado = alvo.telefone?.trim() ? alvo.telefone : telefoneGoe.trim()
+    if (!telefoneInformado) {
+      setErro('O telefone do adolescente é obrigatório para discípulo GOE.')
+      return
+    }
+    if (!telefoneValido(telefoneInformado)) {
+      setErro(mensagemTelefoneInvalido('telefone do adolescente'))
+      return
+    }
     setSalvando(true)
     setErro('')
     try {
       await adolescentesApi.atualizar(alvo.id, {
         ...inputFromAdolescente(alvo),
+        telefone: telefoneInformado,
         categoria: 'DISCIPULO_GOE',
         motivoAfastamento: motivoGoe.trim(),
       })
@@ -344,6 +353,7 @@ export default function AdolescentManagement({
       setIgnoradosGoe((prev) => [...prev, alertaAtual.adolescenteId])
       setConfirmarGoe(false)
       setMotivoGoe('')
+      setTelefoneGoe('')
       await carregar()
       await carregarAlertas(filtro)
     } catch (e) {
@@ -606,9 +616,24 @@ export default function AdolescentManagement({
         <DialogContent>
           <Stack spacing={2} mt={1}>
             <Typography color="text.secondary">Informe o motivo do afastamento de {alertaAtual?.nome}.</Typography>
+            {alertaAtual && !items.find((a) => a.id === alertaAtual.adolescenteId)?.telefone?.trim() && (
+              <TextField
+                required
+                autoFocus
+                label="Telefone do adolescente"
+                value={telefoneGoe}
+                onChange={(e) => setTelefoneGoe(e.target.value)}
+                error={Boolean(telefoneGoe.trim() && !telefoneValido(telefoneGoe))}
+                helperText={
+                  telefoneGoe.trim() && !telefoneValido(telefoneGoe)
+                    ? mensagemTelefoneInvalido('telefone do adolescente')
+                    : 'Obrigatório para Discípulo GOE.'
+                }
+              />
+            )}
             <TextField
               required
-              autoFocus
+              autoFocus={Boolean(items.find((a) => a.id === alertaAtual?.adolescenteId)?.telefone?.trim())}
               label="Motivo do afastamento"
               value={motivoGoe}
               multiline
@@ -621,7 +646,13 @@ export default function AdolescentManagement({
           <Button onClick={() => setConfirmarGoe(false)}>Cancelar</Button>
           <Button
             variant="contained"
-            disabled={salvando || !motivoGoe.trim()}
+            disabled={
+              salvando ||
+              !motivoGoe.trim() ||
+              (Boolean(alertaAtual) &&
+                !items.find((a) => a.id === alertaAtual?.adolescenteId)?.telefone?.trim() &&
+                !telefoneGoe.trim())
+            }
             onClick={() => void confirmarAtualizacaoGoe()}
           >
             Atualizar status

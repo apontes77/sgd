@@ -346,10 +346,11 @@ class AdolescenteServiceTest {
 
   private AdolescenteService.DadosAdolescente dadosBasicos(
       long discipuladoId, CategoriaAdolescente categoria, String motivo) {
+    String telefone = categoria == CategoriaAdolescente.DISCIPULO_GOE ? "(11) 91234-5678" : null;
     return new AdolescenteService.DadosAdolescente(
         " Ana ",
         LocalDate.of(2010, 3, 2),
-        null,
+        telefone,
         "@ana",
         null,
         null,

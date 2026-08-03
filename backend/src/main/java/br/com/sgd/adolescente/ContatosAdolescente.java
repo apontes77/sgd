@@ -4,8 +4,9 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 
 /**
- * Contatos da família do adolescente. Exige ao menos um par completo de nome e telefone entre mãe,
- * pai e responsável legal, para que a liderança sempre tenha um adulto a acionar.
+ * Contatos da família do adolescente. Cada par informado (mãe, pai ou responsável) deve estar
+ * completo (nome e telefone). A obrigatoriedade de ao menos um contato familiar é decidida pela
+ * entidade {@link Adolescente} conforme a categoria.
  */
 @Embeddable
 public class ContatosAdolescente {
@@ -62,11 +63,11 @@ public class ContatosAdolescente {
     exigirParCompleto(mae, telMae, "da mãe");
     exigirParCompleto(pai, telPai, "do pai");
     exigirParCompleto(responsavel, telResponsavel, "do responsável");
-    if (mae == null && pai == null && responsavel == null) {
-      throw new IllegalArgumentException(
-          "Informe nome e telefone da mãe, ou do pai, ou do responsável.");
-    }
     return new ContatosAdolescente(mae, telMae, pai, telPai, responsavel, telResponsavel);
+  }
+
+  public boolean temContatoFamiliar() {
+    return nomeMae != null || nomePai != null || responsavelNome != null;
   }
 
   private static void exigirParCompleto(String nome, String telefone, String complemento) {
