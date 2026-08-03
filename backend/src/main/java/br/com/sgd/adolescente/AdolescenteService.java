@@ -137,15 +137,15 @@ public class AdolescenteService {
       User usuario,
       Long discipuladoId,
       Boolean ativo,
-      CategoriaAdolescente categoria,
+      List<CategoriaAdolescente> categorias,
       Pageable pageable) {
     if (discipuladoId != null)
       escopo.exigirLeitura(usuario, discipuladoAtivoOuInativo(discipuladoId));
     Specification<Adolescente> filtro =
         Specification.where(
             ativo == null ? null : (root, query, cb) -> cb.equal(root.get("ativo"), ativo));
-    if (categoria != null)
-      filtro = filtro.and((root, query, cb) -> cb.equal(root.get("categoria"), categoria));
+    if (categorias != null && !categorias.isEmpty())
+      filtro = filtro.and((root, query, cb) -> root.get("categoria").in(categorias));
     if (discipuladoId != null) filtro = filtro.and(noDiscipulado(discipuladoId));
     filtro = filtro.and(noEscopo(usuario));
     return adolescentes.findAll(filtro, pageable).map(this::comVinculoAtual);

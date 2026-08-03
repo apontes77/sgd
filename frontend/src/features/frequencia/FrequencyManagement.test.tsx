@@ -45,6 +45,11 @@ describe('registro de frequência', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Salvar frequência' }))
     expect(await screen.findByText('Frequência salva.')).toBeInTheDocument()
 
+    const listagem = fetchMock.mock.calls.find(([url]) => String(url).includes('/adolescentes?'))
+    expect(String(listagem?.[0])).toContain('categoria=DISCIPULO')
+    expect(String(listagem?.[0])).toContain('categoria=VISITANTE')
+    expect(String(listagem?.[0])).not.toContain('DISCIPULO_GOE')
+
     const salvamento = fetchMock.mock.calls.find(
       ([url, init]) => String(url).endsWith('/encontros/10/frequencias') && init?.method === 'PUT',
     )

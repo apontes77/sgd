@@ -10,15 +10,37 @@ import org.junit.jupiter.api.Test;
 class AdolescenteTest {
   private static final LocalDate NASCIMENTO = LocalDate.of(2010, 3, 2);
   private static final LocalDate CONSENTIMENTO = LocalDate.of(2026, 1, 1);
+  private static final String TELEFONE = "(11) 91234-5678";
 
   private static ContatosAdolescente contatosDoResponsavel() {
     return ContatosAdolescente.de(null, null, null, null, "Responsável", "(11) 98888-0000");
   }
 
+  private static ContatosAdolescente contatosVazios() {
+    return ContatosAdolescente.de(null, null, null, null, null, null);
+  }
+
+  private static DadosCadastroAdolescente cadastro(
+      CategoriaAdolescente categoria,
+      String motivoAfastamento,
+      ContatosAdolescente contatos,
+      String telefone) {
+    return new DadosCadastroAdolescente(
+        "Ana",
+        NASCIMENTO,
+        telefone,
+        null,
+        CONSENTIMENTO,
+        categoria,
+        null,
+        motivoAfastamento,
+        contatos);
+  }
+
   private static DadosCadastroAdolescente cadastro(
       CategoriaAdolescente categoria, String motivoAfastamento, ContatosAdolescente contatos) {
-    return new DadosCadastroAdolescente(
-        "Ana", NASCIMENTO, null, null, CONSENTIMENTO, categoria, null, motivoAfastamento, contatos);
+    String telefone = categoria == CategoriaAdolescente.DISCIPULO_GOE ? TELEFONE : null;
+    return cadastro(categoria, motivoAfastamento, contatos, telefone);
   }
 
   @Test
@@ -28,6 +50,29 @@ class AdolescenteTest {
     assertThatThrownBy(() -> new Adolescente(dados, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("motivo do afastamento");
+  }
+
+  @Test
+  void discipuloGoeExigeTelefoneDoAdolescente() {
+    var dados = cadastro(CategoriaAdolescente.DISCIPULO_GOE, "Afastou-se", contatosVazios(), null);
+
+    assertThatThrownBy(() -> new Adolescente(dados, true))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("telefone do adolescente");
+  }
+
+  @Test
+  void discipuloGoeAceitaSemContatoFamiliarQuandoTemTelefone() {
+    Adolescente adolescente =
+        new Adolescente(
+            cadastro(CategoriaAdolescente.DISCIPULO_GOE, "Afastou-se", contatosVazios(), TELEFONE),
+            true);
+
+    assertThat(adolescente.getCategoria()).isEqualTo(CategoriaAdolescente.DISCIPULO_GOE);
+    assertThat(adolescente.getTelefone()).isEqualTo(TELEFONE);
+    assertThat(adolescente.getResponsavelNome()).isNull();
+    assertThat(adolescente.getNomeMae()).isNull();
+    assertThat(adolescente.getNomePai()).isNull();
   }
 
   @Test
@@ -67,8 +112,11 @@ class AdolescenteTest {
   }
 
   @Test
-  void exigeContatoMinimoDeMaePaiOuResponsavel() {
-    assertThatThrownBy(() -> ContatosAdolescente.de(null, null, null, null, null, null))
+  void exigeContatoMinimoDeMaePaiOuResponsavelParaNaoGoe() {
+    assertThatThrownBy(
+            () ->
+                new Adolescente(
+                    cadastro(CategoriaAdolescente.DISCIPULO, null, contatosVazios()), true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("mãe, ou do pai, ou do responsável");
   }
@@ -78,6 +126,13 @@ class AdolescenteTest {
     assertThatThrownBy(() -> ContatosAdolescente.de("Maria", null, null, null, null, null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("nome e telefone da mãe");
+  }
+
+  @Test
+  void contatosVaziosSaoPermitidosNoEmbeddable() {
+    ContatosAdolescente contatos = contatosVazios();
+
+    assertThat(contatos.temContatoFamiliar()).isFalse();
   }
 
   @Test

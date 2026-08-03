@@ -75,11 +75,14 @@ export const CATEGORIA_LABEL: Record<CategoriaAdolescente, string> = {
 }
 
 export const adolescentesApi = {
-  listar: (discipuladoId?: number, ativo?: boolean, categoria?: CategoriaAdolescente) => {
+  listar: (discipuladoId?: number, ativo?: boolean, categoria?: CategoriaAdolescente | CategoriaAdolescente[]) => {
     const params = new URLSearchParams({ page: '0', size: '100' })
     if (discipuladoId) params.set('discipuladoId', String(discipuladoId))
     if (ativo !== undefined) params.set('ativo', String(ativo))
-    if (categoria) params.set('categoria', categoria)
+    if (categoria) {
+      const categorias = Array.isArray(categoria) ? categoria : [categoria]
+      categorias.forEach((c) => params.append('categoria', c))
+    }
     return request<Pagina<Adolescente>>(`/adolescentes?${params}`)
   },
   alertasGoe: (discipuladoId: number) =>
