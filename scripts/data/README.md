@@ -1,24 +1,33 @@
-# Carga da estrutura masculina (produção / homolog)
+# Carga de estrutura (masculino / feminino)
 
-Script: `scripts/carga_estrutura_masculina.py`  
-Dados: `scripts/data/gerentes_masculino.csv` e `scripts/data/discipulados_masculino.csv`
+Script: `scripts/carga_estrutura.py`  
+Compat: `scripts/carga_estrutura_masculina.py` → `--lote masculino`
+
+## Dados
+
+| Lote | Gerentes | Discipulados |
+|---|---|---|
+| `masculino` | `gerentes_masculino.csv` | `discipulados_masculino.csv` |
+| `feminino` | `gerentes_feminino.csv` | `discipulados_feminino.csv` |
 
 ## O que carrega
 
-- 6 gerentes (`GERENTE`, e `DISCIPULADOR` quando também lideram grupo)
-- 33 discipulados masculinos vinculados às gerências
+- Gerentes (`GERENTE`, e `DISCIPULADOR` quando também lideram grupo)
+- Discipulados do sexo do lote, vinculados às gerências
 - **Não** cria co-líderes nem adolescentes
+- Em atualização de usuário existente, **preserva** perfis já presentes (ex.: `ADMIN`)
 
-## Pré-voo (sem API)
+## Pré-voo
 
 ```bash
-python3 scripts/carga_estrutura_masculina.py --validate-only
+python3 scripts/carga_estrutura.py --lote feminino --validate-only
+python3 scripts/carga_estrutura.py --lote masculino --validate-only
 ```
 
-## Dry-run (plano sem mutar)
+## Dry-run
 
 ```bash
-python3 scripts/carga_estrutura_masculina.py --dry-run
+python3 scripts/carga_estrutura.py --lote feminino --dry-run
 ```
 
 ## Homologação / produção
@@ -31,7 +40,8 @@ python3 scripts/carga_estrutura_masculina.py --dry-run
 
 ```bash
 SGD_ADMIN_EMAIL='...' SGD_ADMIN_PASSWORD='...' \
-  python3 scripts/carga_estrutura_masculina.py \
+  python3 scripts/carga_estrutura.py \
+  --lote feminino \
   --api-url https://<api>/api/v1 \
   --allow-remote \
   --dry-run
@@ -41,18 +51,21 @@ SGD_ADMIN_EMAIL='...' SGD_ADMIN_PASSWORD='...' \
 
 ```bash
 SGD_ADMIN_EMAIL='...' SGD_ADMIN_PASSWORD='...' \
-  python3 scripts/carga_estrutura_masculina.py \
+  python3 scripts/carga_estrutura.py \
+  --lote feminino \
   --api-url https://<api>/api/v1 \
   --allow-remote \
   --senha-padrao 'SuaFrase12ch' \
-  --passwords-out /tmp/sgd-carga-senhas.csv
+  --passwords-out /tmp/sgd-carga-senhas-feminino.csv
 ```
 
 Sem `--senha-padrao`, o script gera uma senha aleatória por usuário.
 
-5. Avisar os líderes da senha padrão e pedir troca no primeiro acesso (`esqueci a senha` ou redefinição).
-6. O CSV em `--passwords-out` lista só usuários **novos** (existentes não têm senha alterada). Apague o arquivo depois.
-7. Conferir na UI: 6 gerências, 33 discipulados, papéis acumulados.
+5. Avisar os líderes da senha padrão e pedir troca no primeiro acesso.
+6. O CSV em `--passwords-out` lista só usuários **novos**. Apague o arquivo depois.
+7. Conferir na UI as gerências/discipulados do lote.
+
+Repita com `--lote masculino` se ainda não tiver carregado o lote masculino.
 
 ## Idempotência
 
