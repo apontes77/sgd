@@ -4,7 +4,7 @@ O arquivo `render.yaml` cria os três recursos de produção do SGD:
 
 - `sgd-web`: site estático React/Vite;
 - `sgd-api`: serviço web Docker com uma única instância;
-- `sgd-db`: PostgreSQL 16 gerenciado, sem acesso externo.
+- `sgd-db`: PostgreSQL 16 gerenciado (`basic-1gb`, 1 GB de disco), sem acesso externo.
 
 ## Pré-requisitos
 
