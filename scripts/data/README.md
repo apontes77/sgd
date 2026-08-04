@@ -37,18 +37,21 @@ SGD_ADMIN_EMAIL='...' SGD_ADMIN_PASSWORD='...' \
   --dry-run
 ```
 
-4. Aplicar:
+4. Aplicar com **uma senha temporária igual para todos** (mín. 12 caracteres; não versionar no Git):
 
 ```bash
 SGD_ADMIN_EMAIL='...' SGD_ADMIN_PASSWORD='...' \
   python3 scripts/carga_estrutura_masculina.py \
   --api-url https://<api>/api/v1 \
   --allow-remote \
+  --senha-padrao 'SuaFrase12ch' \
   --passwords-out /tmp/sgd-carga-senhas.csv
 ```
 
-5. Entregar senhas temporárias dos usuários **novos** (arquivo local, permissão `600`). Usuários já existentes não têm senha sobrescrita.
-6. Apagar o arquivo de senhas após a entrega.
+Sem `--senha-padrao`, o script gera uma senha aleatória por usuário.
+
+5. Avisar os líderes da senha padrão e pedir troca no primeiro acesso (`esqueci a senha` ou redefinição).
+6. O CSV em `--passwords-out` lista só usuários **novos** (existentes não têm senha alterada). Apague o arquivo depois.
 7. Conferir na UI: 6 gerências, 33 discipulados, papéis acumulados.
 
 ## Idempotência

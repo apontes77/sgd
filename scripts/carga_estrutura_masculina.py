@@ -597,6 +597,14 @@ def main() -> int:
         default=None,
         help="arquivo CSV local com senhas temporárias (fora do repo)",
     )
+    parser.add_argument(
+        "--senha-padrao",
+        default=None,
+        help=(
+            "senha temporária única para todos os usuários novos "
+            "(mín. 12 caracteres; recomendado para carga em massa)"
+        ),
+    )
     args = parser.parse_args()
 
     if not args.gerentes_csv.exists() or not args.discipulados_csv.exists():
@@ -613,7 +621,16 @@ def main() -> int:
 
     validate_environment(args.api_url, args.allow_remote)
 
-    passwords = {email: generate_password() for email in plan.users}
+    if args.senha_padrao is not None:
+        if len(args.senha_padrao) < 12:
+            raise CargaError("--senha-padrao deve ter no mínimo 12 caracteres (regra da API)")
+        shared = args.senha_padrao
+        passwords = {email: shared for email in plan.users}
+        print(f"Senha temporária: padrão compartilhada ({len(shared)} caracteres).")
+    else:
+        passwords = {email: generate_password() for email in plan.users}
+        print("Senha temporária: única gerada por usuário (use --senha-padrao para uma só).")
+
     if args.dry_run:
         print("\n=== Dry-run (sem mutações) ===")
         upsert_users(None, plan, dry_run=True, passwords=passwords)
@@ -645,18 +662,22 @@ def main() -> int:
     upsert_discipulados(client, plan, users, gerencias, dry_run=False)
 
     if new_passwords:
+        if args.senha_padrao:
+            print(
+                f"\n{len(new_passwords)} usuário(s) novo(s) com a mesma senha temporária "
+                "(avise para alterarem no primeiro acesso)."
+            )
         out = args.passwords_out
         if out is None:
             stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
             out = Path(f"/tmp/sgd-carga-senhas-{stamp}.csv")
-        # filtrar plan.users só dos novos para o CSV
         subset = CargaPlan(
             gerentes=plan.gerentes,
             discipulados=plan.discipulados,
             users={e: plan.users[e] for e in new_passwords},
         )
         write_passwords(out, new_passwords, subset)
-        print(f"\nSenhas temporárias dos usuários novos: {out}")
+        print(f"Lista dos usuários novos: {out}")
         print("Entregue fora de banda e apague o arquivo depois.")
     else:
         print("\nNenhum usuário novo: senhas existentes preservadas.")
