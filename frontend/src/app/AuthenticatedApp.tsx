@@ -338,12 +338,45 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
                 key={item.value}
                 selected={section === item.value}
                 onClick={() => navigate(item.value)}
-                sx={{ minHeight: 48, px: 2.5 }}
+                sx={{
+                  minHeight: 48,
+                  px: 2.5,
+                  '&.Mui-selected': {
+                    bgcolor: (theme) => alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.22 : 0.08),
+                    color: (theme) =>
+                      theme.palette.mode === 'dark' ? theme.palette.common.white : theme.palette.primary.dark,
+                    '&:hover': {
+                      bgcolor: (theme) => alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.3 : 0.12),
+                    },
+                  },
+                }}
               >
-                <ListItemIcon sx={{ minWidth: 40, color: section === item.value ? 'primary.main' : 'text.secondary' }}>
+                <ListItemIcon
+                  sx={{
+                    minWidth: 40,
+                    color: (theme) =>
+                      section === item.value
+                        ? theme.palette.mode === 'dark'
+                          ? theme.palette.common.white
+                          : theme.palette.primary.main
+                        : theme.palette.text.secondary,
+                  }}
+                >
                   {item.icon}
                 </ListItemIcon>
-                <ListItemText primary={item.label} />
+                <ListItemText
+                  primary={item.label}
+                  primaryTypographyProps={{
+                    sx: {
+                      color: (theme) =>
+                        section === item.value
+                          ? theme.palette.mode === 'dark'
+                            ? theme.palette.common.white
+                            : theme.palette.primary.dark
+                          : 'inherit',
+                    },
+                  }}
+                />
               </ListItemButton>
             ))}
           </List>
@@ -365,8 +398,8 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
               sx={{
                 width: 38,
                 height: 38,
-                bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
-                color: 'primary.main',
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
                 fontSize: '.9rem',
                 fontWeight: 700,
               }}
@@ -430,7 +463,13 @@ function Navigation({
           <Diversity3Rounded />
         </Box>
         <Box>
-          <Typography variant="h6" color="primary.dark">
+          <Typography
+            variant="h6"
+            sx={{
+              color: (theme) =>
+                theme.palette.mode === 'dark' ? theme.palette.common.white : theme.palette.primary.dark,
+            }}
+          >
             SGD
           </Typography>
           <Typography variant="caption" color="text.secondary">
@@ -464,16 +503,30 @@ function Navigation({
                     mt: 0.4,
                     minHeight: 44,
                     '&.Mui-selected': {
-                      bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
-                      color: 'primary.dark',
-                      '&:hover': { bgcolor: (theme) => alpha(theme.palette.primary.main, 0.12) },
+                      bgcolor: (theme) =>
+                        alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.22 : 0.08),
+                      color: (theme) =>
+                        theme.palette.mode === 'dark' ? theme.palette.common.white : theme.palette.primary.dark,
+                      '&:hover': {
+                        bgcolor: (theme) =>
+                          alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.3 : 0.12),
+                      },
+                      '& .MuiListItemIcon-root': {
+                        color: (theme) =>
+                          theme.palette.mode === 'dark' ? theme.palette.common.white : theme.palette.primary.main,
+                      },
                     },
                   }}
                 >
                   <ListItemIcon
                     sx={{
                       minWidth: 38,
-                      color: current === item.value ? 'primary.main' : 'text.secondary',
+                      color: (theme) =>
+                        current === item.value
+                          ? theme.palette.mode === 'dark'
+                            ? theme.palette.common.white
+                            : theme.palette.primary.main
+                          : theme.palette.text.secondary,
                       '& svg': { fontSize: 21 },
                     }}
                   >
@@ -505,8 +558,8 @@ function Navigation({
             sx={{
               width: 38,
               height: 38,
-              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
-              color: 'primary.main',
+              bgcolor: 'primary.main',
+              color: 'primary.contrastText',
               fontSize: '.9rem',
               fontWeight: 700,
             }}
