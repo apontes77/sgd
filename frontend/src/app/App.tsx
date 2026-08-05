@@ -6,7 +6,6 @@ import {
   SecurityRounded,
 } from '@mui/icons-material'
 import { Alert, Box, Button, Card, CircularProgress, InputAdornment, Stack, TextField, Typography } from '@mui/material'
-import { alpha } from '@mui/material/styles'
 import type { FormEvent } from 'react'
 import { useEffect, useState } from 'react'
 
@@ -241,13 +240,19 @@ export default function App() {
                     borderRadius: 2.5,
                     display: 'grid',
                     placeItems: 'center',
-                    color: 'primary.main',
-                    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.08),
+                    color: 'primary.contrastText',
+                    bgcolor: 'primary.main',
                   }}
                 >
                   <GroupsRounded />
                 </Box>
-                <Typography variant="h5" color="primary.dark">
+                <Typography
+                  variant="h5"
+                  sx={{
+                    color: (theme) =>
+                      theme.palette.mode === 'dark' ? theme.palette.common.white : theme.palette.primary.dark,
+                  }}
+                >
                   SGD
                 </Typography>
               </Stack>

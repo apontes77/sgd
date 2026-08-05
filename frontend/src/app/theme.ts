@@ -42,14 +42,19 @@ const dark = {
 
 export function createAppTheme(mode: 'light' | 'dark' = 'light') {
   const palette = mode === 'light' ? light : dark
+  const isDark = mode === 'dark'
+  // Em dark mode, primary.main fica mais claro para texto/ícones sobre fundo escuro.
+  const primaryMain = isDark ? primaryLight : primary
+  const primaryDarkTone = isDark ? primary : primaryDark
+  const primaryLightTone = isDark ? '#8BA3FF' : primaryLight
 
   return createTheme({
     palette: {
       mode,
       primary: {
-        main: primary,
-        dark: primaryDark,
-        light: primaryLight,
+        main: primaryMain,
+        dark: primaryDarkTone,
+        light: primaryLightTone,
         contrastText: '#FFFFFF',
       },
       secondary: {
@@ -80,9 +85,18 @@ export function createAppTheme(mode: 'light' | 'dark' = 'light') {
     components: {
       MuiCssBaseline: {
         styleOverrides: {
-          html: { WebkitTextSizeAdjust: '100%' },
+          html: {
+            WebkitTextSizeAdjust: '100%',
+            // Controles nativos (ex.: ícone do calendário em input[type=date])
+            colorScheme: mode,
+          },
           body: { minWidth: 320 },
-          '::selection': { backgroundColor: alpha(primary, 0.2) },
+          '::selection': { backgroundColor: alpha(primaryMain, 0.2) },
+          'input[type="date"]::-webkit-calendar-picker-indicator': {
+            opacity: 1,
+            filter: isDark ? 'invert(1)' : 'none',
+            cursor: 'pointer',
+          },
         },
       },
       MuiPaper: { styleOverrides: { root: { backgroundImage: 'none' } } },
@@ -94,12 +108,32 @@ export function createAppTheme(mode: 'light' | 'dark' = 'light') {
           sizeLarge: { minHeight: 48 },
           containedPrimary: {
             background: `linear-gradient(135deg, ${primary} 0%, ${primaryLight} 100%)`,
+            color: '#FFFFFF',
             '&:hover': { background: `linear-gradient(135deg, ${primaryDark} 0%, ${primary} 100%)` },
           },
+          outlinedPrimary: isDark
+            ? {
+                color: '#FFFFFF',
+                borderColor: alpha('#FFFFFF', 0.45),
+                '&:hover': {
+                  borderColor: '#FFFFFF',
+                  backgroundColor: alpha('#FFFFFF', 0.08),
+                },
+              }
+            : undefined,
+          textPrimary: isDark
+            ? {
+                color: '#FFFFFF',
+                '&:hover': { backgroundColor: alpha('#FFFFFF', 0.08) },
+              }
+            : undefined,
         },
       },
       MuiIconButton: {
-        styleOverrides: { root: { borderRadius: 10, minWidth: 40, minHeight: 40 } },
+        styleOverrides: {
+          root: { borderRadius: 10, minWidth: 40, minHeight: 40 },
+          colorPrimary: isDark ? { color: '#FFFFFF' } : undefined,
+        },
       },
       MuiCard: {
         styleOverrides: {
@@ -116,6 +150,18 @@ export function createAppTheme(mode: 'light' | 'dark' = 'light') {
       MuiOutlinedInput: {
         styleOverrides: {
           root: { borderRadius: 10 },
+        },
+      },
+      MuiListItemButton: {
+        styleOverrides: {
+          root: isDark
+            ? {
+                '&.Mui-selected': {
+                  color: '#FFFFFF',
+                  '& .MuiListItemIcon-root': { color: '#FFFFFF' },
+                },
+              }
+            : undefined,
         },
       },
       MuiTableCell: {
