@@ -45,6 +45,8 @@ export interface AdolescenteInput {
   discipuladoId: number
   ativo?: boolean
   dataInicio?: string
+  naoPossuiTelefone?: boolean
+  naoPossuiContatoFamiliar?: boolean
 }
 
 export interface AlertaGoe {

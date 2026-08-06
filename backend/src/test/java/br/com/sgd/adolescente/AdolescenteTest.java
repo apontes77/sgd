@@ -25,6 +25,25 @@ class AdolescenteTest {
       String motivoAfastamento,
       ContatosAdolescente contatos,
       String telefone) {
+    return cadastro(categoria, motivoAfastamento, contatos, telefone, false, false);
+  }
+
+  private static DadosCadastroAdolescente cadastro(
+      CategoriaAdolescente categoria,
+      String motivoAfastamento,
+      ContatosAdolescente contatos,
+      String telefone,
+      boolean naoPossuiTelefone) {
+    return cadastro(categoria, motivoAfastamento, contatos, telefone, naoPossuiTelefone, false);
+  }
+
+  private static DadosCadastroAdolescente cadastro(
+      CategoriaAdolescente categoria,
+      String motivoAfastamento,
+      ContatosAdolescente contatos,
+      String telefone,
+      boolean naoPossuiTelefone,
+      boolean naoPossuiContatoFamiliar) {
     return new DadosCadastroAdolescente(
         "Ana",
         NASCIMENTO,
@@ -34,7 +53,9 @@ class AdolescenteTest {
         categoria,
         null,
         motivoAfastamento,
-        contatos);
+        contatos,
+        naoPossuiTelefone,
+        naoPossuiContatoFamiliar);
   }
 
   private static DadosCadastroAdolescente cadastro(
@@ -59,6 +80,18 @@ class AdolescenteTest {
     assertThatThrownBy(() -> new Adolescente(dados, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("telefone do adolescente");
+  }
+
+  @Test
+  void discipuloGoeAceitaSemTelefoneQuandoMarcadoQueNaoPossui() {
+    Adolescente adolescente =
+        new Adolescente(
+            cadastro(
+                CategoriaAdolescente.DISCIPULO_GOE, "Afastou-se", contatosVazios(), null, true),
+            true);
+
+    assertThat(adolescente.getCategoria()).isEqualTo(CategoriaAdolescente.DISCIPULO_GOE);
+    assertThat(adolescente.getTelefone()).isNull();
   }
 
   @Test
@@ -122,6 +155,19 @@ class AdolescenteTest {
   }
 
   @Test
+  void aceitaCadastroSemContatoFamiliarQuandoMarcadoQueNaoPossui() {
+    Adolescente adolescente =
+        new Adolescente(
+            cadastro(CategoriaAdolescente.DISCIPULO, null, contatosVazios(), null, false, true),
+            true);
+
+    assertThat(adolescente.getCategoria()).isEqualTo(CategoriaAdolescente.DISCIPULO);
+    assertThat(adolescente.getNomeMae()).isNull();
+    assertThat(adolescente.getNomePai()).isNull();
+    assertThat(adolescente.getResponsavelNome()).isNull();
+  }
+
+  @Test
   void exigeNomeETelefoneDoMesmoContato() {
     assertThatThrownBy(() -> ContatosAdolescente.de("Maria", null, null, null, null, null))
         .isInstanceOf(IllegalArgumentException.class)
@@ -147,7 +193,9 @@ class AdolescenteTest {
             CategoriaAdolescente.DISCIPULO,
             null,
             null,
-            contatosDoResponsavel());
+            contatosDoResponsavel(),
+            false,
+            false);
 
     assertThatThrownBy(() -> new Adolescente(dados, true))
         .isInstanceOf(IllegalArgumentException.class)

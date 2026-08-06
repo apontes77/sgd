@@ -8,6 +8,10 @@ describe('validarContatosPorCategoria', () => {
     expect(validarContatosPorCategoria('DISCIPULO_GOE', { telefone: '(11) 91234-5678' })).toBeNull()
   })
 
+  it('permite Discípulo GOE sem telefone quando marcado que não possui', () => {
+    expect(validarContatosPorCategoria('DISCIPULO_GOE', { naoPossuiTelefone: true })).toBeNull()
+  })
+
   it('não exige contato familiar para Discípulo GOE', () => {
     expect(
       validarContatosPorCategoria('DISCIPULO_GOE', {
@@ -25,6 +29,11 @@ describe('validarContatosPorCategoria', () => {
         telefoneMae: '(11) 98888-0000',
       }),
     ).toBeNull()
+  })
+
+  it('permite Discípulo e Visitante sem contato familiar quando marcado que não possui', () => {
+    expect(validarContatosPorCategoria('DISCIPULO', { naoPossuiContatoFamiliar: true })).toBeNull()
+    expect(validarContatosPorCategoria('VISITANTE', { naoPossuiContatoFamiliar: true })).toBeNull()
   })
 
   it('contatoMinimoValido continua validando o par completo', () => {

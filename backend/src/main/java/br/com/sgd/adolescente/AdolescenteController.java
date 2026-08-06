@@ -127,7 +127,9 @@ public class AdolescenteController {
       @Size(max = 500) String motivoAfastamento,
       @NotNull @Positive Long discipuladoId,
       Boolean ativo,
-      LocalDate dataInicio) {
+      LocalDate dataInicio,
+      Boolean naoPossuiTelefone,
+      Boolean naoPossuiContatoFamiliar) {
     AdolescenteService.DadosAdolescente dados() {
       return new AdolescenteService.DadosAdolescente(
           nome,
@@ -146,7 +148,9 @@ public class AdolescenteController {
           motivoAfastamento,
           discipuladoId,
           ativo,
-          dataInicio);
+          dataInicio,
+          naoPossuiTelefone,
+          naoPossuiContatoFamiliar);
     }
   }
 

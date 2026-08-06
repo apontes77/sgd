@@ -347,7 +347,9 @@ class RelatorioFrequenciaHttpTest {
             CategoriaAdolescente.DISCIPULO,
             null,
             null,
-            ContatosAdolescente.de(null, null, null, null, responsavelNome, responsavelTelefone)),
+            ContatosAdolescente.de(null, null, null, null, responsavelNome, responsavelTelefone),
+            false,
+            false),
         true);
   }
 

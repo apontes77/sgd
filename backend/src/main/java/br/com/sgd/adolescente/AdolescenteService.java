@@ -88,22 +88,30 @@ public class AdolescenteService {
 
   private static DadosCadastroAdolescente cadastro(
       DadosAdolescente dados, CategoriaAdolescente categoria) {
+    boolean naoPossuiTelefone = Boolean.TRUE.equals(dados.naoPossuiTelefone());
+    boolean naoPossuiContatoFamiliar = Boolean.TRUE.equals(dados.naoPossuiContatoFamiliar());
+    ContatosAdolescente contatos =
+        naoPossuiContatoFamiliar
+            ? ContatosAdolescente.de(null, null, null, null, null, null)
+            : ContatosAdolescente.de(
+                dados.nomeMae(),
+                dados.telefoneMae(),
+                dados.nomePai(),
+                dados.telefonePai(),
+                dados.responsavelNome(),
+                dados.responsavelTelefone());
     return new DadosCadastroAdolescente(
         dados.nome(),
         dados.dataNascimento(),
-        dados.telefone(),
+        naoPossuiTelefone ? null : dados.telefone(),
         dados.instagram(),
         dados.consentimentoEm(),
         categoria,
         dados.estrutura(),
         dados.motivoAfastamento(),
-        ContatosAdolescente.de(
-            dados.nomeMae(),
-            dados.telefoneMae(),
-            dados.nomePai(),
-            dados.telefonePai(),
-            dados.responsavelNome(),
-            dados.responsavelTelefone()));
+        contatos,
+        naoPossuiTelefone,
+        naoPossuiContatoFamiliar);
   }
 
   public void anonimizar(User usuario, long adolescenteId) {
@@ -296,7 +304,9 @@ public class AdolescenteService {
       String motivoAfastamento,
       Long discipuladoId,
       Boolean ativo,
-      LocalDate dataInicio) {}
+      LocalDate dataInicio,
+      Boolean naoPossuiTelefone,
+      Boolean naoPossuiContatoFamiliar) {}
 
   public record AdolescenteComVinculo(
       Adolescente adolescente, long discipuladoId, String discipuladoNome) {}

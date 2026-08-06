@@ -12,4 +12,6 @@ public record DadosCadastroAdolescente(
     CategoriaAdolescente categoria,
     String estrutura,
     String motivoAfastamento,
-    ContatosAdolescente contatos) {}
+    ContatosAdolescente contatos,
+    boolean naoPossuiTelefone,
+    boolean naoPossuiContatoFamiliar) {}

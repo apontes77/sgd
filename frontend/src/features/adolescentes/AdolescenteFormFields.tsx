@@ -1,4 +1,15 @@
-import { Alert, Divider, FormControl, InputLabel, MenuItem, Select, TextField, Typography } from '@mui/material'
+import {
+  Alert,
+  Checkbox,
+  Divider,
+  FormControl,
+  FormControlLabel,
+  InputLabel,
+  MenuItem,
+  Select,
+  TextField,
+  Typography,
+} from '@mui/material'
 
 import { CATEGORIA_LABEL, type CategoriaAdolescente } from '@/features/adolescentes/api'
 import { mensagemTelefoneInvalido, telefoneValido } from '@/shared/validation/telefone'
@@ -7,6 +18,8 @@ export interface DadosPessoaisAdolescente {
   nome: string
   dataNascimento: string
   telefone?: string
+  naoPossuiTelefone?: boolean
+  naoPossuiContatoFamiliar?: boolean
   instagram?: string
   responsavelNome: string
   responsavelTelefone?: string
@@ -52,17 +65,29 @@ function erroTelefone(valor: string | undefined, rotulo: string) {
   return telefoneValido(valor) ? undefined : mensagemTelefoneInvalido(rotulo)
 }
 
+const contatosFamiliaresVazios: Partial<DadosPessoaisAdolescente> = {
+  nomeMae: '',
+  telefoneMae: '',
+  nomePai: '',
+  telefonePai: '',
+  responsavelNome: '',
+  responsavelTelefone: '',
+}
+
 export function AdolescenteFormFields({ value, onChange, disabled, autoFocus = true }: Props) {
   const goe = value.categoria === 'DISCIPULO_GOE'
-  const exibirResponsavel = deveExibirResponsavel(value)
+  const semTelefone = Boolean(value.naoPossuiTelefone)
+  const semContatoFamiliar = Boolean(value.naoPossuiContatoFamiliar)
+  const exibirResponsavel = !semContatoFamiliar && deveExibirResponsavel(value)
+  const camposFamiliaDesabilitados = disabled || semContatoFamiliar
 
   function alterarContatoFamiliar(patch: Partial<DadosPessoaisAdolescente>) {
-    const next = { ...value, ...patch }
+    const next = { ...value, ...patch, naoPossuiContatoFamiliar: false }
     if (maeCompleta(next) || paiCompleto(next)) {
-      onChange({ ...patch, responsavelNome: '', responsavelTelefone: '' })
+      onChange({ ...patch, naoPossuiContatoFamiliar: false, responsavelNome: '', responsavelTelefone: '' })
       return
     }
-    onChange(patch)
+    onChange({ ...patch, naoPossuiContatoFamiliar: false })
   }
 
   return (
@@ -106,16 +131,33 @@ export function AdolescenteFormFields({ value, onChange, disabled, autoFocus = t
         onChange={(e) => onChange({ dataNascimento: e.target.value })}
       />
       <TextField
-        required={goe}
+        required={goe && !semTelefone}
         label="Telefone"
-        value={value.telefone ?? ''}
-        disabled={disabled}
-        error={Boolean(erroTelefone(value.telefone, 'telefone do adolescente'))}
+        value={semTelefone ? '' : (value.telefone ?? '')}
+        disabled={disabled || semTelefone}
+        error={Boolean(!semTelefone && erroTelefone(value.telefone, 'telefone do adolescente'))}
         helperText={
-          erroTelefone(value.telefone, 'telefone do adolescente') ??
-          (goe ? 'Obrigatório para Discípulo GOE.' : undefined)
+          semTelefone
+            ? 'Cadastro permitido sem telefone. É possível informar depois na edição.'
+            : (erroTelefone(value.telefone, 'telefone do adolescente') ??
+              (goe ? 'Obrigatório para Discípulo GOE, salvo se não possuir telefone.' : undefined))
         }
-        onChange={(e) => onChange({ telefone: e.target.value })}
+        onChange={(e) => onChange({ telefone: e.target.value, naoPossuiTelefone: false })}
+      />
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={semTelefone}
+            disabled={disabled}
+            onChange={(e) =>
+              onChange({
+                naoPossuiTelefone: e.target.checked,
+                telefone: e.target.checked ? '' : value.telefone,
+              })
+            }
+          />
+        }
+        label="Não possui telefone"
       />
       <TextField
         label="Estrutura"
@@ -148,39 +190,59 @@ export function AdolescenteFormFields({ value, onChange, disabled, autoFocus = t
       </Divider>
       <Alert severity="info" variant="outlined">
         {goe
-          ? 'Para Discípulo GOE, o telefone do adolescente é suficiente. Contatos de mãe, pai ou responsável são opcionais.'
-          : 'Informe nome e telefone da mãe, ou do pai, ou de um responsável. É necessário pelo menos um desses pares completos para salvar o cadastro.'}
+          ? semTelefone
+            ? 'Para Discípulo GOE sem telefone próprio, informe se possível um contato de mãe, pai ou responsável (opcional).'
+            : 'Para Discípulo GOE, o telefone do adolescente é suficiente. Contatos de mãe, pai ou responsável são opcionais.'
+          : semContatoFamiliar
+            ? 'Cadastro permitido sem contato de pais ou responsável. É possível informar depois na edição.'
+            : 'Informe nome e telefone da mãe, ou do pai, ou de um responsável. É necessário pelo menos um desses pares completos, salvo se marcar que não possui contato familiar.'}
       </Alert>
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={semContatoFamiliar}
+            disabled={disabled}
+            onChange={(e) =>
+              onChange(
+                e.target.checked
+                  ? { naoPossuiContatoFamiliar: true, ...contatosFamiliaresVazios }
+                  : { naoPossuiContatoFamiliar: false },
+              )
+            }
+          />
+        }
+        label="Não possui contato de pais ou responsável"
+      />
       <TextField
         label="Nome da mãe"
-        value={value.nomeMae ?? ''}
-        disabled={disabled}
-        required={temDadosMae(value)}
+        value={semContatoFamiliar ? '' : (value.nomeMae ?? '')}
+        disabled={camposFamiliaDesabilitados}
+        required={!semContatoFamiliar && temDadosMae(value)}
         onChange={(e) => alterarContatoFamiliar({ nomeMae: e.target.value })}
       />
       <TextField
         label="Tel. mãe"
-        value={value.telefoneMae ?? ''}
-        disabled={disabled}
-        required={temDadosMae(value)}
-        error={Boolean(erroTelefone(value.telefoneMae, 'telefone da mãe'))}
-        helperText={erroTelefone(value.telefoneMae, 'telefone da mãe')}
+        value={semContatoFamiliar ? '' : (value.telefoneMae ?? '')}
+        disabled={camposFamiliaDesabilitados}
+        required={!semContatoFamiliar && temDadosMae(value)}
+        error={Boolean(!semContatoFamiliar && erroTelefone(value.telefoneMae, 'telefone da mãe'))}
+        helperText={semContatoFamiliar ? undefined : erroTelefone(value.telefoneMae, 'telefone da mãe')}
         onChange={(e) => alterarContatoFamiliar({ telefoneMae: e.target.value })}
       />
       <TextField
         label="Nome do pai"
-        value={value.nomePai ?? ''}
-        disabled={disabled}
-        required={temDadosPai(value)}
+        value={semContatoFamiliar ? '' : (value.nomePai ?? '')}
+        disabled={camposFamiliaDesabilitados}
+        required={!semContatoFamiliar && temDadosPai(value)}
         onChange={(e) => alterarContatoFamiliar({ nomePai: e.target.value })}
       />
       <TextField
         label="Tel. pai"
-        value={value.telefonePai ?? ''}
-        disabled={disabled}
-        required={temDadosPai(value)}
-        error={Boolean(erroTelefone(value.telefonePai, 'telefone do pai'))}
-        helperText={erroTelefone(value.telefonePai, 'telefone do pai')}
+        value={semContatoFamiliar ? '' : (value.telefonePai ?? '')}
+        disabled={camposFamiliaDesabilitados}
+        required={!semContatoFamiliar && temDadosPai(value)}
+        error={Boolean(!semContatoFamiliar && erroTelefone(value.telefonePai, 'telefone do pai'))}
+        helperText={semContatoFamiliar ? undefined : erroTelefone(value.telefonePai, 'telefone do pai')}
         onChange={(e) => alterarContatoFamiliar({ telefonePai: e.target.value })}
       />
 
@@ -195,17 +257,17 @@ export function AdolescenteFormFields({ value, onChange, disabled, autoFocus = t
             required={!goe}
             label="Nome do responsável"
             value={value.responsavelNome}
-            disabled={disabled}
-            onChange={(e) => onChange({ responsavelNome: e.target.value })}
+            disabled={camposFamiliaDesabilitados}
+            onChange={(e) => onChange({ responsavelNome: e.target.value, naoPossuiContatoFamiliar: false })}
           />
           <TextField
             required={!goe}
             label="Telefone do responsável"
             value={value.responsavelTelefone ?? ''}
-            disabled={disabled}
+            disabled={camposFamiliaDesabilitados}
             error={Boolean(erroTelefone(value.responsavelTelefone, 'telefone do responsável'))}
             helperText={erroTelefone(value.responsavelTelefone, 'telefone do responsável')}
-            onChange={(e) => onChange({ responsavelTelefone: e.target.value })}
+            onChange={(e) => onChange({ responsavelTelefone: e.target.value, naoPossuiContatoFamiliar: false })}
           />
         </>
       )}

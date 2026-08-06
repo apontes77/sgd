@@ -56,6 +56,8 @@ const visitanteVazio: DadosPessoaisAdolescente = {
   nome: '',
   dataNascimento: '',
   telefone: '',
+  naoPossuiTelefone: false,
+  naoPossuiContatoFamiliar: false,
   instagram: '',
   responsavelNome: '',
   responsavelTelefone: '',
@@ -286,16 +288,19 @@ export default function FrequencyManagement({
       setErro('Informe a data de consentimento do visitante.')
       return
     }
-    if (!contatoMinimoValido(visitante)) {
+    if (!visitante.naoPossuiContatoFamiliar && !contatoMinimoValido(visitante)) {
       setErro('Informe nome e telefone da mãe, ou do pai, ou do responsável.')
       return
     }
-    const telefones: Array<[string | undefined, string]> = [
-      [visitante.telefone, 'telefone do adolescente'],
-      [visitante.telefoneMae, 'telefone da mãe'],
-      [visitante.telefonePai, 'telefone do pai'],
-      [visitante.responsavelTelefone, 'telefone do responsável'],
-    ]
+    const telefones: Array<[string | undefined, string]> = []
+    if (!visitante.naoPossuiTelefone) telefones.push([visitante.telefone, 'telefone do adolescente'])
+    if (!visitante.naoPossuiContatoFamiliar) {
+      telefones.push(
+        [visitante.telefoneMae, 'telefone da mãe'],
+        [visitante.telefonePai, 'telefone do pai'],
+        [visitante.responsavelTelefone, 'telefone do responsável'],
+      )
+    }
     for (const [valor, rotulo] of telefones) {
       if (!telefoneValido(valor)) {
         setErro(mensagemTelefoneInvalido(rotulo))
@@ -308,16 +313,20 @@ export default function FrequencyManagement({
       const criado = await adolescentesApi.criar({
         nome,
         dataNascimento: visitante.dataNascimento,
-        telefone: visitante.telefone || undefined,
+        telefone: visitante.naoPossuiTelefone ? undefined : visitante.telefone || undefined,
+        naoPossuiTelefone: Boolean(visitante.naoPossuiTelefone),
+        naoPossuiContatoFamiliar: Boolean(visitante.naoPossuiContatoFamiliar),
         instagram: visitante.instagram || undefined,
-        responsavelNome: visitante.responsavelNome.trim(),
-        responsavelTelefone: visitante.responsavelTelefone || undefined,
+        responsavelNome: visitante.naoPossuiContatoFamiliar ? '' : visitante.responsavelNome.trim(),
+        responsavelTelefone: visitante.naoPossuiContatoFamiliar
+          ? undefined
+          : visitante.responsavelTelefone || undefined,
         consentimentoEm: visitante.consentimentoEm,
         categoria: 'VISITANTE',
-        nomeMae: visitante.nomeMae || undefined,
-        telefoneMae: visitante.telefoneMae || undefined,
-        nomePai: visitante.nomePai || undefined,
-        telefonePai: visitante.telefonePai || undefined,
+        nomeMae: visitante.naoPossuiContatoFamiliar ? undefined : visitante.nomeMae || undefined,
+        telefoneMae: visitante.naoPossuiContatoFamiliar ? undefined : visitante.telefoneMae || undefined,
+        nomePai: visitante.naoPossuiContatoFamiliar ? undefined : visitante.nomePai || undefined,
+        telefonePai: visitante.naoPossuiContatoFamiliar ? undefined : visitante.telefonePai || undefined,
         estrutura: visitante.estrutura || undefined,
         discipuladoId,
         ativo: true,

@@ -139,7 +139,9 @@ class AdolescenteServiceTest {
             null,
             10L,
             true,
-            LocalDate.of(2026, 3, 1));
+            LocalDate.of(2026, 3, 1),
+            false,
+            false);
 
     service.criar(usuario, dados);
 
@@ -264,7 +266,9 @@ class AdolescenteServiceTest {
             CategoriaAdolescente.VISITANTE,
             null,
             null,
-            ContatosAdolescente.de(null, null, null, null, "Mãe da Ana", "(11) 98888-0000")),
+            ContatosAdolescente.de(null, null, null, null, "Mãe da Ana", "(11) 98888-0000"),
+            false,
+            false),
         false);
     when(adolescentes.findById(2L)).thenReturn(Optional.of(inativo));
     service.promoverVisitanteSeElegivel(usuario, 2L);
@@ -304,7 +308,9 @@ class AdolescenteServiceTest {
                 "Núcleo A",
                 "Mudou de cidade",
                 ContatosAdolescente.de(
-                    "Mãe da Ana", "(11) 98888-0000", "Pai da Ana", "(11) 97777-0000", null, null)),
+                    "Mãe da Ana", "(11) 98888-0000", "Pai da Ana", "(11) 97777-0000", null, null),
+                false,
+                false),
             true);
     when(adolescentes.findById(1L)).thenReturn(Optional.of(adolescente));
 
@@ -340,7 +346,9 @@ class AdolescenteServiceTest {
             categoria,
             null,
             null,
-            ContatosAdolescente.de(null, null, null, null, "Mãe da Ana", "(11) 98888-0000")),
+            ContatosAdolescente.de(null, null, null, null, "Mãe da Ana", "(11) 98888-0000"),
+            false,
+            false),
         true);
   }
 
@@ -364,7 +372,9 @@ class AdolescenteServiceTest {
         motivo,
         discipuladoId,
         true,
-        null);
+        null,
+        false,
+        false);
   }
 
   private static FrequenciaRepository.AlertaGoeRow row(long id, String nome, long faltas) {

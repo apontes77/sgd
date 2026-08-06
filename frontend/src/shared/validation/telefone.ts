@@ -35,11 +35,13 @@ export function contatoMinimoValido(dados: {
   return mae || pai || responsavel
 }
 
-/** Discípulo GOE exige telefone do adolescente; demais categorias exigem contato familiar. */
+/** Discípulo GOE exige telefone do adolescente (salvo quando marcado que não possui); demais categorias exigem contato familiar (salvo quando marcado que não possui). */
 export function validarContatosPorCategoria(
   categoria: 'DISCIPULO' | 'VISITANTE' | 'DISCIPULO_GOE',
   dados: {
     telefone?: string
+    naoPossuiTelefone?: boolean
+    naoPossuiContatoFamiliar?: boolean
     nomeMae?: string
     telefoneMae?: string
     nomePai?: string
@@ -49,10 +51,12 @@ export function validarContatosPorCategoria(
   },
 ): string | null {
   if (categoria === 'DISCIPULO_GOE') {
+    if (dados.naoPossuiTelefone) return null
     if (!dados.telefone?.trim()) return 'O telefone do adolescente é obrigatório para discípulo GOE.'
     if (!telefoneValido(dados.telefone)) return mensagemTelefoneInvalido('telefone do adolescente')
     return null
   }
+  if (dados.naoPossuiContatoFamiliar) return null
   if (!contatoMinimoValido(dados)) {
     return 'Informe nome e telefone da mãe, ou do pai, ou do responsável.'
   }

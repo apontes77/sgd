@@ -2,11 +2,13 @@ import { AddRounded } from '@mui/icons-material'
 import {
   Alert,
   Button,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControl,
+  FormControlLabel,
   InputLabel,
   MenuItem,
   Select,
@@ -54,11 +56,28 @@ function aniversario(dataNascimento: string): string {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 }
 
+function temContatoFamiliarSalvo(a: Adolescente): boolean {
+  return Boolean(
+    a.nomeMae?.trim() ||
+    a.telefoneMae?.trim() ||
+    a.nomePai?.trim() ||
+    a.telefonePai?.trim() ||
+    a.responsavelNome?.trim() ||
+    a.responsavelTelefone?.trim(),
+  )
+}
+
 function inputFromAdolescente(a: Adolescente): AdolescenteInput {
+  // GOE sem telefone: marca o checkbox para reabrir/editar sem bloquear validação.
+  const semTelefone = a.categoria === 'DISCIPULO_GOE' && !a.telefone?.trim()
+  // Discípulo/Visitante sem contato familiar: idem para o checkbox de família.
+  const semContatoFamiliar = a.categoria !== 'DISCIPULO_GOE' && !temContatoFamiliarSalvo(a)
   return {
     nome: a.nome,
     dataNascimento: a.dataNascimento,
     telefone: a.telefone ?? '',
+    naoPossuiTelefone: semTelefone,
+    naoPossuiContatoFamiliar: semContatoFamiliar,
     instagram: a.instagram ?? '',
     responsavelNome: a.responsavelNome ?? '',
     responsavelTelefone: a.responsavelTelefone ?? '',
@@ -79,6 +98,8 @@ const vazio: AdolescenteInput = {
   nome: '',
   dataNascimento: '',
   telefone: '',
+  naoPossuiTelefone: false,
+  naoPossuiContatoFamiliar: false,
   instagram: '',
   responsavelNome: '',
   responsavelTelefone: '',
@@ -95,12 +116,15 @@ const vazio: AdolescenteInput = {
 }
 
 function validarFormularioAdolescente(form: AdolescenteInput): string | null {
-  const telefones: Array<[string | undefined, string]> = [
-    [form.telefone, 'telefone do adolescente'],
-    [form.telefoneMae, 'telefone da mãe'],
-    [form.telefonePai, 'telefone do pai'],
-    [form.responsavelTelefone, 'telefone do responsável'],
-  ]
+  const telefones: Array<[string | undefined, string]> = []
+  if (!form.naoPossuiTelefone) telefones.push([form.telefone, 'telefone do adolescente'])
+  if (!form.naoPossuiContatoFamiliar) {
+    telefones.push(
+      [form.telefoneMae, 'telefone da mãe'],
+      [form.telefonePai, 'telefone do pai'],
+      [form.responsavelTelefone, 'telefone do responsável'],
+    )
+  }
   for (const [valor, rotulo] of telefones) {
     if (!telefoneValido(valor)) return mensagemTelefoneInvalido(rotulo)
   }
@@ -133,6 +157,7 @@ export default function AdolescentManagement({
   const [confirmarGoe, setConfirmarGoe] = useState(false)
   const [motivoGoe, setMotivoGoe] = useState('')
   const [telefoneGoe, setTelefoneGoe] = useState('')
+  const [naoPossuiTelefoneGoe, setNaoPossuiTelefoneGoe] = useState(false)
   const [ignoradosGoe, setIgnoradosGoe] = useState<number[]>([])
 
   const carregarDiscipulados = useCallback(async () => {
@@ -251,8 +276,20 @@ export default function AdolescentManagement({
     setErro('')
     setSucesso('')
     try {
-      if (editando) await adolescentesApi.atualizar(editando.id, form)
-      else await adolescentesApi.criar(form)
+      const payload: AdolescenteInput = {
+        ...form,
+        telefone: form.naoPossuiTelefone ? '' : form.telefone,
+        naoPossuiTelefone: Boolean(form.naoPossuiTelefone),
+        nomeMae: form.naoPossuiContatoFamiliar ? '' : form.nomeMae,
+        telefoneMae: form.naoPossuiContatoFamiliar ? '' : form.telefoneMae,
+        nomePai: form.naoPossuiContatoFamiliar ? '' : form.nomePai,
+        telefonePai: form.naoPossuiContatoFamiliar ? '' : form.telefonePai,
+        responsavelNome: form.naoPossuiContatoFamiliar ? '' : form.responsavelNome,
+        responsavelTelefone: form.naoPossuiContatoFamiliar ? '' : form.responsavelTelefone,
+        naoPossuiContatoFamiliar: Boolean(form.naoPossuiContatoFamiliar),
+      }
+      if (editando) await adolescentesApi.atualizar(editando.id, payload)
+      else await adolescentesApi.criar(payload)
       setSucesso(editando ? 'Adolescente atualizado.' : 'Adolescente cadastrado.')
       setEditando(null)
       setForm(vazio)
@@ -331,12 +368,13 @@ export default function AdolescentManagement({
       setIgnoradosGoe((prev) => [...prev, alertaAtual.adolescenteId])
       return
     }
-    const telefoneInformado = alvo.telefone?.trim() ? alvo.telefone : telefoneGoe.trim()
-    if (!telefoneInformado) {
-      setErro('O telefone do adolescente é obrigatório para discípulo GOE.')
+    const jaTemTelefone = Boolean(alvo.telefone?.trim())
+    const telefoneInformado = jaTemTelefone ? alvo.telefone : telefoneGoe.trim()
+    if (!jaTemTelefone && !naoPossuiTelefoneGoe && !telefoneInformado) {
+      setErro('Informe o telefone do adolescente ou marque que não possui telefone.')
       return
     }
-    if (!telefoneValido(telefoneInformado)) {
+    if (!naoPossuiTelefoneGoe && telefoneInformado && !telefoneValido(telefoneInformado)) {
       setErro(mensagemTelefoneInvalido('telefone do adolescente'))
       return
     }
@@ -345,7 +383,8 @@ export default function AdolescentManagement({
     try {
       await adolescentesApi.atualizar(alvo.id, {
         ...inputFromAdolescente(alvo),
-        telefone: telefoneInformado,
+        telefone: naoPossuiTelefoneGoe ? '' : telefoneInformado,
+        naoPossuiTelefone: naoPossuiTelefoneGoe || !telefoneInformado,
         categoria: 'DISCIPULO_GOE',
         motivoAfastamento: motivoGoe.trim(),
       })
@@ -354,6 +393,7 @@ export default function AdolescentManagement({
       setConfirmarGoe(false)
       setMotivoGoe('')
       setTelefoneGoe('')
+      setNaoPossuiTelefoneGoe(false)
       await carregar()
       await carregarAlertas(filtro)
     } catch (e) {
@@ -617,19 +657,39 @@ export default function AdolescentManagement({
           <Stack spacing={2} mt={1}>
             <Typography color="text.secondary">Informe o motivo do afastamento de {alertaAtual?.nome}.</Typography>
             {alertaAtual && !items.find((a) => a.id === alertaAtual.adolescenteId)?.telefone?.trim() && (
-              <TextField
-                required
-                autoFocus
-                label="Telefone do adolescente"
-                value={telefoneGoe}
-                onChange={(e) => setTelefoneGoe(e.target.value)}
-                error={Boolean(telefoneGoe.trim() && !telefoneValido(telefoneGoe))}
-                helperText={
-                  telefoneGoe.trim() && !telefoneValido(telefoneGoe)
-                    ? mensagemTelefoneInvalido('telefone do adolescente')
-                    : 'Obrigatório para Discípulo GOE.'
-                }
-              />
+              <>
+                <TextField
+                  required={!naoPossuiTelefoneGoe}
+                  autoFocus
+                  label="Telefone do adolescente"
+                  value={naoPossuiTelefoneGoe ? '' : telefoneGoe}
+                  disabled={naoPossuiTelefoneGoe}
+                  onChange={(e) => {
+                    setTelefoneGoe(e.target.value)
+                    setNaoPossuiTelefoneGoe(false)
+                  }}
+                  error={Boolean(telefoneGoe.trim() && !telefoneValido(telefoneGoe))}
+                  helperText={
+                    naoPossuiTelefoneGoe
+                      ? 'Cadastro permitido sem telefone. É possível informar depois na edição.'
+                      : telefoneGoe.trim() && !telefoneValido(telefoneGoe)
+                        ? mensagemTelefoneInvalido('telefone do adolescente')
+                        : 'Obrigatório para Discípulo GOE, salvo se não possuir telefone.'
+                  }
+                />
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={naoPossuiTelefoneGoe}
+                      onChange={(e) => {
+                        setNaoPossuiTelefoneGoe(e.target.checked)
+                        if (e.target.checked) setTelefoneGoe('')
+                      }}
+                    />
+                  }
+                  label="Não possui telefone"
+                />
+              </>
             )}
             <TextField
               required
@@ -643,7 +703,15 @@ export default function AdolescentManagement({
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setConfirmarGoe(false)}>Cancelar</Button>
+          <Button
+            onClick={() => {
+              setConfirmarGoe(false)
+              setNaoPossuiTelefoneGoe(false)
+              setTelefoneGoe('')
+            }}
+          >
+            Cancelar
+          </Button>
           <Button
             variant="contained"
             disabled={
@@ -651,6 +719,7 @@ export default function AdolescentManagement({
               !motivoGoe.trim() ||
               (Boolean(alertaAtual) &&
                 !items.find((a) => a.id === alertaAtual?.adolescenteId)?.telefone?.trim() &&
+                !naoPossuiTelefoneGoe &&
                 !telefoneGoe.trim())
             }
             onClick={() => void confirmarAtualizacaoGoe()}

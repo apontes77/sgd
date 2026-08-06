@@ -70,7 +70,9 @@ public class Adolescente {
             categoria,
             estrutura,
             motivoAfastamento,
-            contatos),
+            contatos,
+            telefone == null || telefone.isBlank(),
+            contatos == null || !contatos.temContatoFamiliar()),
         ativo);
   }
 
@@ -117,21 +119,39 @@ public class Adolescente {
 
     this.nome = dados.nome().trim();
     this.dataNascimento = dados.dataNascimento();
-    this.telefone = TelefoneValidator.validarOpcional(dados.telefone(), "telefone do adolescente");
-    if (dados.categoria() == CategoriaAdolescente.DISCIPULO_GOE) {
-      if (this.telefone == null)
-        throw new IllegalArgumentException(
-            "O telefone do adolescente é obrigatório para discípulo GOE.");
-    } else if (dados.contatos() == null || !dados.contatos().temContatoFamiliar()) {
-      throw new IllegalArgumentException(
-          "Informe nome e telefone da mãe, ou do pai, ou do responsável.");
-    }
+    this.telefone = telefoneFrom(dados);
+    exigirContatosPorCategoria(dados, this.telefone);
     this.instagram = normalizar(dados.instagram());
     this.consentimentoEm = dados.consentimentoEm();
     this.categoria = dados.categoria();
-    this.contatos = dados.contatos();
+    this.contatos = contatosFrom(dados);
     this.estrutura = normalizar(dados.estrutura());
     this.motivoAfastamento = motivoExigidoPelaCategoria(dados);
+  }
+
+  private static String telefoneFrom(DadosCadastroAdolescente dados) {
+    if (dados.naoPossuiTelefone()) return null;
+    return TelefoneValidator.validarOpcional(dados.telefone(), "telefone do adolescente");
+  }
+
+  private static ContatosAdolescente contatosFrom(DadosCadastroAdolescente dados) {
+    if (dados.naoPossuiContatoFamiliar())
+      return ContatosAdolescente.de(null, null, null, null, null, null);
+    return dados.contatos();
+  }
+
+  private static void exigirContatosPorCategoria(DadosCadastroAdolescente dados, String telefone) {
+    if (dados.categoria() == CategoriaAdolescente.DISCIPULO_GOE) {
+      if (telefone == null && !dados.naoPossuiTelefone())
+        throw new IllegalArgumentException(
+            "O telefone do adolescente é obrigatório para discípulo GOE, salvo quando marcado que não possui telefone.");
+      return;
+    }
+    if (!dados.naoPossuiContatoFamiliar()
+        && (dados.contatos() == null || !dados.contatos().temContatoFamiliar())) {
+      throw new IllegalArgumentException(
+          "Informe nome e telefone da mãe, ou do pai, ou do responsável, salvo quando marcado que não possui contato familiar.");
+    }
   }
 
   /** O motivo do afastamento só faz sentido para discípulo GOE, então é limpo nas demais. */

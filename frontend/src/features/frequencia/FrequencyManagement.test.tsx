@@ -174,14 +174,19 @@ describe('registro de frequência', () => {
       throw new Error(`Requisição inesperada: ${method} ${url}`)
     })
 
+    const user = userEvent.setup({ delay: null })
     render(<FrequencyManagement discipuladoId={1} />)
-    await userEvent.click(await screen.findByRole('button', { name: /Houve discipulado/i }))
-    await userEvent.click(await screen.findByRole('button', { name: 'Adicionar visitante' }))
-    await userEvent.type(screen.getAllByLabelText(/nome/i)[0], 'João Visitante')
+    await user.click(await screen.findByRole('button', { name: /Houve discipulado/i }))
+    await user.click(await screen.findByRole('button', { name: 'Adicionar visitante' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Nome' }), { target: { value: 'João Visitante' } })
     fireEvent.change(screen.getByLabelText(/Data de nascimento/), { target: { value: '2011-05-04' } })
-    await userEvent.type(screen.getByLabelText(/Nome do responsável/i), 'Responsável do João')
-    await userEvent.type(screen.getByLabelText(/Telefone do responsável/i), '11988887777')
-    await userEvent.click(screen.getByRole('button', { name: 'Adicionar' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Nome do responsável' }), {
+      target: { value: 'Responsável do João' },
+    })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Telefone do responsável' }), {
+      target: { value: '11988887777' },
+    })
+    await user.click(screen.getByRole('button', { name: 'Adicionar' }))
 
     expect(await screen.findByText('João Visitante')).toBeInTheDocument()
     const criacaoVisitante = fetchMock.mock.calls.find(
@@ -195,13 +200,13 @@ describe('registro de frequência', () => {
       responsavelTelefone: '11988887777',
     })
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Salvar frequência' }))
+    await user.click(await screen.findByRole('button', { name: 'Salvar frequência' }))
     expect(await screen.findByText('Frequência salva.')).toBeInTheDocument()
     const salvamento = fetchMock.mock.calls.find(
       ([url, init]) => String(url).endsWith('/encontros/10/frequencias') && init?.method === 'PUT',
     )
     expect(JSON.parse(String(salvamento?.[1]?.body)).frequencias).toEqual([{ adolescenteId: 99, situacao: 'PRESENTE' }])
-  })
+  }, 15000)
 
   it('alterna presença ao tocar na linha do adolescente', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {

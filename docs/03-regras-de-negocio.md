@@ -65,7 +65,7 @@ RN041 - No cadastro, o adolescente recebe obrigatoriamente uma categoria: `DISCI
 
 RN042 - A categoria `DISCIPULO_GOE` exige motivo do afastamento. Demais categorias não persistem motivo.
 
-RN048 - No cadastro de `DISCIPULO` e `VISITANTE`, é obrigatório informar ao menos um par completo de nome e telefone entre mãe, pai ou responsável legal. Na categoria `DISCIPULO_GOE`, esses contatos familiares são opcionais e o telefone do próprio adolescente é obrigatório.
+RN048 - No cadastro de `DISCIPULO` e `VISITANTE`, é obrigatório informar ao menos um par completo de nome e telefone entre mãe, pai ou responsável legal, salvo quando marcado explicitamente que não possui contato familiar (`naoPossuiContatoFamiliar`); nesse caso os contatos ficam vazios e podem ser informados depois na edição. Na categoria `DISCIPULO_GOE`, esses contatos familiares são opcionais e o telefone do próprio adolescente é obrigatório, salvo quando marcado explicitamente que o adolescente não possui telefone (`naoPossuiTelefone`); nesse caso o telefone fica vazio e pode ser informado depois na edição.
 
 RN049 - A lista de presença (chamada) de um encontro inclui somente adolescentes ativos nas categorias `DISCIPULO` e `VISITANTE`. Discípulos `DISCIPULO_GOE` permanecem na base para registro histórico e na gestão de adolescentes, mas não entram como participantes atuais da frequência. Registros de frequência já existentes de um GOE em um encontro continuam visíveis/editáveis como registro anterior.
 
