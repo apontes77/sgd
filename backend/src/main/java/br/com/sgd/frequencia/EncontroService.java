@@ -79,11 +79,21 @@ public class EncontroService {
   }
 
   public Encontro atualizar(User ator, long id, LocalDate data, SituacaoEncontro situacao) {
-    return atualizar(ator, id, data, situacao, null);
+    return atualizar(ator, id, data, situacao, null, null);
   }
 
   public Encontro atualizar(
       User ator, long id, LocalDate data, SituacaoEncontro situacao, String justificativa) {
+    return atualizar(ator, id, data, situacao, justificativa, null);
+  }
+
+  public Encontro atualizar(
+      User ator,
+      long id,
+      LocalDate data,
+      SituacaoEncontro situacao,
+      String justificativa,
+      String observacao) {
     var e = encontro(id);
     escopo.exigirAlteracao(ator, e.getDiscipulado());
     var novaData = data == null ? e.getData() : data;
@@ -92,24 +102,39 @@ public class EncontroService {
     if (encontros.existsByDiscipuladoIdAndDataAndIdNot(e.getDiscipulado().getId(), novaData, id))
       conflito("Já existe um encontro registrado para este discipulado nesta data.");
     var novaSituacao = situacao == null ? e.getSituacao() : situacao;
-    if (e.getSituacao() == SituacaoEncontro.NAO_REALIZADO
-        && novaSituacao == SituacaoEncontro.REALIZADO) exigirReversaoAdministrativa(ator);
-    else if (e.getSituacao() == SituacaoEncontro.NAO_REALIZADO
-        || novaSituacao == SituacaoEncontro.NAO_REALIZADO) exigirRegistroNaoRealizado(ator);
-    String motivo =
-        novaSituacao == SituacaoEncontro.NAO_REALIZADO
-            ? validarJustificativa(
-                novaSituacao, justificativa == null ? e.getJustificativa() : justificativa)
-            : validarJustificativa(novaSituacao, justificativa);
-    if (e.getSituacao() != novaSituacao
-        && (frequencias.existsByEncontroId(id)
-            || visitantes.findByEncontroId(id).map(v -> v.getQuantidade() > 0).orElse(false)))
-      conflito(
-          "Um encontro com chamada ou visitantes registrados não pode ter sua situação alterada.");
+    exigirPermissaoSituacao(ator, e.getSituacao(), novaSituacao);
+    exigirSituacaoSemChamada(e.getSituacao(), novaSituacao, id);
+    String motivo = resolverJustificativa(e, novaSituacao, justificativa);
+    String novaObservacao = observacao == null ? e.getObservacao() : validarObservacao(observacao);
     var antes = estado(e);
-    e.atualizar(data, novaSituacao, motivo, clock.instant());
+    e.atualizar(data, novaSituacao, motivo, novaObservacao, clock.instant());
     auditar(ator, "ENCONTRO", "ALTERAR", Map.of("id", id, "anterior", antes, "novo", estado(e)));
     return e;
+  }
+
+  private void exigirPermissaoSituacao(
+      User ator, SituacaoEncontro atual, SituacaoEncontro novaSituacao) {
+    if (atual == SituacaoEncontro.NAO_REALIZADO && novaSituacao == SituacaoEncontro.REALIZADO)
+      exigirReversaoAdministrativa(ator);
+    else if (atual == SituacaoEncontro.NAO_REALIZADO
+        || novaSituacao == SituacaoEncontro.NAO_REALIZADO) exigirRegistroNaoRealizado(ator);
+  }
+
+  private void exigirSituacaoSemChamada(
+      SituacaoEncontro atual, SituacaoEncontro novaSituacao, long id) {
+    if (atual == novaSituacao) return;
+    if (frequencias.existsByEncontroId(id)
+        || visitantes.findByEncontroId(id).map(v -> v.getQuantidade() > 0).orElse(false))
+      conflito(
+          "Um encontro com chamada ou visitantes registrados não pode ter sua situação alterada.");
+  }
+
+  private static String resolverJustificativa(
+      Encontro e, SituacaoEncontro novaSituacao, String justificativa) {
+    if (novaSituacao != SituacaoEncontro.NAO_REALIZADO)
+      return validarJustificativa(novaSituacao, justificativa);
+    return validarJustificativa(
+        novaSituacao, justificativa == null ? e.getJustificativa() : justificativa);
   }
 
   @Transactional(readOnly = true)
@@ -150,6 +175,14 @@ public class EncontroService {
     return situacao == SituacaoEncontro.NAO_REALIZADO ? valor : null;
   }
 
+  private static String validarObservacao(String observacao) {
+    String valor = observacao == null ? null : observacao.trim();
+    if (valor != null && valor.isEmpty()) return null;
+    if (valor != null && valor.length() > 500)
+      throw new IllegalArgumentException("A observação deve ter no máximo 500 caracteres.");
+    return valor;
+  }
+
   private static void exigirRegistroNaoRealizado(User ator) {
     if (!ator.getPerfis().contains(Role.ADMIN) && !ator.getPerfis().contains(Role.DISCIPULADOR))
       throw new ResponseStatusException(
@@ -177,6 +210,7 @@ public class EncontroService {
     estado.put("data", e.getData());
     estado.put("situacao", e.getSituacao());
     estado.put("justificativa", e.getJustificativa());
+    estado.put("observacao", e.getObservacao());
     estado.put("chamadaSalvaEm", e.getChamadaSalvaEm());
     return estado;
   }

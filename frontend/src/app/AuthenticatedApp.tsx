@@ -628,6 +628,7 @@ function FrequencyPage({ currentUser }: { currentUser: Usuario }) {
       {discipuladoId ? (
         <FrequencyManagement
           discipuladoId={discipuladoId}
+          discipulado={discipulados.find((item) => item.id === discipuladoId)}
           podeAdministrar={podeAdministrar}
           podeRegistrarNaoRealizacao={podeRegistrarNaoRealizacao}
         />

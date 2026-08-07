@@ -47,7 +47,7 @@ public class FrequenciaController {
       @PathVariable long id,
       @Valid @RequestBody AtualizarEncontroRequest r) {
     return EncontroResponse.of(
-        encontros.atualizar(u, id, r.data(), r.situacao(), r.justificativa()));
+        encontros.atualizar(u, id, r.data(), r.situacao(), r.justificativa(), r.observacao()));
   }
 
   @GetMapping("/{id}/frequencias")
@@ -93,7 +93,10 @@ public class FrequenciaController {
       @Size(max = 500) String justificativa) {}
 
   public record AtualizarEncontroRequest(
-      LocalDate data, SituacaoEncontro situacao, @Size(max = 500) String justificativa) {}
+      LocalDate data,
+      SituacaoEncontro situacao,
+      @Size(max = 500) String justificativa,
+      @Size(max = 500) String observacao) {}
 
   public record ChamadaRequest(@NotNull List<@NotNull @Valid FrequenciaRequest> frequencias) {}
 
@@ -110,6 +113,7 @@ public class FrequenciaController {
       LocalDate data,
       SituacaoEncontro situacao,
       String justificativa,
+      String observacao,
       Instant criadoEm,
       Instant chamadaSalvaEm) {
     static EncontroResponse of(Encontro e) {
@@ -119,6 +123,7 @@ public class FrequenciaController {
           e.getData(),
           e.getSituacao(),
           e.getJustificativa(),
+          e.getObservacao(),
           e.getCriadoEm(),
           e.getChamadaSalvaEm());
     }

@@ -1,5 +1,5 @@
 import { request } from '@/shared/api/httpClient'
-import type { Pagina } from '@/shared/api/types'
+import type { FaixaEtaria, Pagina } from '@/shared/api/types'
 
 export type { Pagina }
 
@@ -68,6 +68,8 @@ export interface DiscipuladoResumo {
   id: number
   nome: string
   discipuladorNome?: string
+  faixaEtaria?: FaixaEtaria
+  coLideres?: Array<{ id: number; nome: string }>
   ativo?: boolean
 }
 

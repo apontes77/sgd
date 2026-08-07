@@ -71,6 +71,7 @@ public class FechamentoFrequenciaJob {
             null,
             SituacaoEncontro.NAO_REALIZADO,
             PrazoLancamentoFrequencia.JUSTIFICATIVA_AUTOMATICA,
+            encontro.getObservacao(),
             agora);
         auditar(encontro, "CONVERTER");
         fechados++;

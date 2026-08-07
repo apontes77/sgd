@@ -35,11 +35,13 @@ import {
 } from '@/features/frequencia/api'
 import { dentroDoPrazoLancamento, ehSexta } from '@/features/frequencia/prazoLancamento'
 import { ApiError } from '@/shared/api/httpClient'
-import { BOTTOM_NAV_OFFSET, EmptyState, SectionCard } from '@/shared/ui'
+import type { Discipulado } from '@/shared/api/types'
+import { BOTTOM_NAV_OFFSET, DiscipuladoLiderancaInfo, EmptyState, SectionCard } from '@/shared/ui'
 import { contatoMinimoValido, mensagemTelefoneInvalido, telefoneValido } from '@/shared/validation/telefone'
 
 interface Props {
   discipuladoId: number
+  discipulado?: Discipulado
   podeAdministrar?: boolean
   podeRegistrarNaoRealizacao?: boolean
 }
@@ -73,6 +75,7 @@ const visitanteVazio: DadosPessoaisAdolescente = {
 
 export default function FrequencyManagement({
   discipuladoId,
+  discipulado,
   podeAdministrar = false,
   podeRegistrarNaoRealizacao = false,
 }: Props) {
@@ -84,6 +87,7 @@ export default function FrequencyManagement({
   const [chamada, setChamada] = useState<Record<number, SituacaoFrequencia>>({})
   const [intencao, setIntencao] = useState<'escolha' | 'justificando'>('escolha')
   const [justificativa, setJustificativa] = useState('')
+  const [observacao, setObservacao] = useState('')
   const [alterado, setAlterado] = useState(false)
   const [carregando, setCarregando] = useState(false)
   const [salvando, setSalvando] = useState(false)
@@ -138,6 +142,7 @@ export default function FrequencyManagement({
       setSucesso('')
       setIntencao('escolha')
       setJustificativa('')
+      setObservacao('')
       setSelecionado(undefined)
       setParticipantes([])
       setChamada({})
@@ -152,6 +157,7 @@ export default function FrequencyManagement({
         const existente = encontros.find((e) => e.data === dataSelecionada)
         if (existente) {
           setSelecionado(existente)
+          setObservacao(existente.observacao ?? '')
           if (existente.situacao === 'REALIZADO') await carregarChamada(existente, pagina.content)
           else setJustificativa(existente.justificativa ?? '')
         }
@@ -219,13 +225,18 @@ export default function FrequencyManagement({
     setErro('')
     setSucesso('')
     try {
+      const atualizado = await frequenciaApi.atualizarEncontro(selecionado.id, {
+        observacao: observacao.trim() || null,
+      })
       await frequenciaApi.salvarChamada(
         selecionado.id,
         participantes.map((a) => ({ adolescenteId: a.id, situacao: chamada[a.id] ?? 'AUSENTE' })),
       )
-      setSelecionado((atual) =>
-        atual ? { ...atual, chamadaSalvaEm: atual.chamadaSalvaEm ?? new Date().toISOString() } : atual,
-      )
+      setSelecionado({
+        ...atualizado,
+        chamadaSalvaEm: atualizado.chamadaSalvaEm ?? new Date().toISOString(),
+      })
+      setObservacao(atualizado.observacao ?? '')
       setAlterado(false)
       setSucesso('Frequência salva.')
     } catch (e) {
@@ -534,6 +545,12 @@ export default function FrequencyManagement({
           icon={<CheckRounded />}
         >
           <Stack spacing={2.5}>
+            {discipulado && (
+              <DiscipuladoLiderancaInfo
+                discipuladorNome={discipulado.discipuladorNome}
+                coLideres={discipulado.coLideres}
+              />
+            )}
             {!editavel && (
               <Alert severity="info">
                 {selecionado.chamadaSalvaEm
@@ -541,6 +558,22 @@ export default function FrequencyManagement({
                   : 'Frequência em modo somente leitura: o prazo de lançamento desta sexta encerrou no domingo subsequente.'}
               </Alert>
             )}
+
+            <TextField
+              label="Observação"
+              placeholder="Ex.: Foi colocada a frequência, mas o menino só chegou na hora do culto"
+              value={observacao}
+              onChange={(e) => {
+                setObservacao(e.target.value)
+                setAlterado(true)
+              }}
+              multiline
+              minRows={2}
+              fullWidth
+              disabled={!editavel}
+              inputProps={{ maxLength: 500 }}
+              helperText={`${observacao.length}/500 caracteres`}
+            />
 
             <Stack
               direction={{ xs: 'column', sm: 'row' }}
