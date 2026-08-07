@@ -4,8 +4,21 @@ import {
   InsightsRounded,
   LockRounded,
   SecurityRounded,
+  VisibilityOffRounded,
+  VisibilityRounded,
 } from '@mui/icons-material'
-import { Alert, Box, Button, Card, CircularProgress, InputAdornment, Stack, TextField, Typography } from '@mui/material'
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CircularProgress,
+  IconButton,
+  InputAdornment,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material'
 import type { FormEvent } from 'react'
 import { useEffect, useState } from 'react'
 
@@ -37,6 +50,7 @@ export default function App() {
   const [passwordResetSuccess, setPasswordResetSuccess] = useState(initial.passwordResetSuccess)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [mostrarSenha, setMostrarSenha] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [currentUser, setCurrentUser] = useState<Usuario>()
@@ -288,7 +302,7 @@ export default function App() {
               <TextField
                 fullWidth
                 required
-                type="password"
+                type={mostrarSenha ? 'text' : 'password'}
                 label="Senha"
                 autoComplete="current-password"
                 value={password}
@@ -300,6 +314,18 @@ export default function App() {
                   startAdornment: (
                     <InputAdornment position="start">
                       <LockRounded fontSize="small" />
+                    </InputAdornment>
+                  ),
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        type="button"
+                        edge="end"
+                        aria-label={mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'}
+                        onClick={() => setMostrarSenha((atual) => !atual)}
+                      >
+                        {mostrarSenha ? <VisibilityOffRounded /> : <VisibilityRounded />}
+                      </IconButton>
                     </InputAdornment>
                   ),
                 }}

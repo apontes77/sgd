@@ -6,6 +6,28 @@ import App from '@/app/App'
 import { authApi } from '@/features/auth/api'
 import { render } from '@/test/test-utils'
 
+describe('login', () => {
+  beforeEach(() => {
+    sessionStorage.clear()
+    window.history.replaceState({}, '', '/')
+    vi.restoreAllMocks()
+  })
+  afterEach(cleanup)
+
+  it('alterna a visibilidade da senha pelo botao do olho', async () => {
+    render(<App />)
+    const senha = screen.getByLabelText(/^Senha/)
+    expect(senha).toHaveAttribute('type', 'password')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Mostrar senha' }))
+    expect(senha).toHaveAttribute('type', 'text')
+    expect(screen.getByRole('button', { name: 'Ocultar senha' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ocultar senha' }))
+    expect(senha).toHaveAttribute('type', 'password')
+  })
+})
+
 describe('recuperacao publica de senha', () => {
   beforeEach(() => {
     sessionStorage.clear()
