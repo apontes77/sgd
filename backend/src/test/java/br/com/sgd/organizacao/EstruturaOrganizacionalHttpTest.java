@@ -119,6 +119,7 @@ class EstruturaOrganizacionalHttpTest {
         .andExpect(jsonPath("$.gerenciaId").value(gerenciaId))
         .andExpect(jsonPath("$.faixaEtaria").value("DE_09_A_11"))
         .andExpect(jsonPath("$.discipuladorId").value(discipuladorId))
+        .andExpect(jsonPath("$.discipuladorNome").value("Discipulador"))
         .andExpect(jsonPath("$.coLideres[0].id").value(coLiderId));
   }
 

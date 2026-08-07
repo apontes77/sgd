@@ -67,6 +67,7 @@ export interface Vinculo {
 export interface DiscipuladoResumo {
   id: number
   nome: string
+  discipuladorNome?: string
   ativo?: boolean
 }
 

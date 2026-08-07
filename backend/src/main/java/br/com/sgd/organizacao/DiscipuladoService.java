@@ -88,7 +88,11 @@ public class DiscipuladoService {
     if (ativo != null) filtro = filtro.and((root, query, cb) -> cb.equal(root.get("ativo"), ativo));
     filtro = filtro.and(noEscopo(usuario));
     Page<Discipulado> result = discipulados.findAll(filtro, pageable);
-    result.forEach(discipulado -> discipulado.getCoLideres().forEach(User::getPerfis));
+    result.forEach(
+        discipulado -> {
+          discipulado.getDiscipulador().getNome();
+          discipulado.getCoLideres().forEach(User::getPerfis);
+        });
     return result;
   }
 

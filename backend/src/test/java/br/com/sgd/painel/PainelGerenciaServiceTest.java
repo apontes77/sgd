@@ -111,10 +111,13 @@ class PainelGerenciaServiceTest {
 
   private Discipulado discipulado(long id, String nome, boolean ativo) {
     Discipulado item = mock(Discipulado.class);
+    User discipulador = mock(User.class);
+    when(discipulador.getNome()).thenReturn("Discipulador " + nome);
     when(item.getId()).thenReturn(id);
     when(item.getNome()).thenReturn(nome);
     when(item.isAtivo()).thenReturn(ativo);
     when(item.getSexo()).thenReturn(Sexo.MASCULINO);
+    when(item.getDiscipulador()).thenReturn(discipulador);
     return item;
   }
 }
