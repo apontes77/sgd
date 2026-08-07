@@ -163,7 +163,7 @@ function mapAdmin(response: PainelAdminResponse): VisaoDados {
       referencia: item.referencia,
       percentualPresenca: item.percentualPresenca,
     })),
-    rankingLabel: 'Top gerências por presença',
+    rankingLabel: 'Gerências por presença',
     heatmapLabel: 'Presença por gerência × mês',
     detalheLabel: 'Abrir painel detalhado',
   }
@@ -189,7 +189,7 @@ function mapGerencia(response: PainelGerenciaResponse): VisaoDados {
         percentualPresenca: mes.percentualPresenca,
       })),
     ),
-    rankingLabel: 'Top discipulados por presença',
+    rankingLabel: 'Discipulados por presença',
     heatmapLabel: 'Presença por discipulado × mês',
     detalheLabel: 'Abrir minha gerência',
   }
@@ -225,10 +225,11 @@ function GradeExecutiva({ dados, onAbrirDetalhe }: { dados: VisaoDados; onAbrirD
     () => normalizarMeses(dados.dataInicio, dados.dataFim, dados.evolucao),
     [dados.dataInicio, dados.dataFim, dados.evolucao],
   )
-  const topRanking = useMemo(
-    () => [...dados.ranking].sort((a, b) => b.percentualPresenca - a.percentualPresenca).slice(0, 8),
+  const rankingOrdenado = useMemo(
+    () => [...dados.ranking].sort((a, b) => b.percentualPresenca - a.percentualPresenca),
     [dados.ranking],
   )
+  const nomesHeatmap = useMemo(() => rankingOrdenado.map((item) => item.nome), [rankingOrdenado])
   const semVolume = dados.resumo.encontrosRealizados === 0 && dados.encontrosNaoRealizados === 0
   const semComposicao = dados.resumo.presentes + dados.resumo.ausentes + dados.resumo.visitantes === 0
 
@@ -290,10 +291,18 @@ function GradeExecutiva({ dados, onAbrirDetalhe }: { dados: VisaoDados; onAbrirD
           onAbrirDetalhe ? 'Clique em uma barra para abrir o detalhe.' : 'Ranking por percentual de presença.'
         }
         chart={
-          <RankingBarras dados={topRanking} vazio={`Sem itens com registros no período.`} onSelect={onAbrirDetalhe} />
+          <RankingBarras
+            dados={rankingOrdenado}
+            vazio={`Sem itens com registros no período.`}
+            onSelect={onAbrirDetalhe}
+          />
         }
         table={
-          <TabelaRanking dados={topRanking} vazio={`Sem itens com registros no período.`} onSelect={onAbrirDetalhe} />
+          <TabelaRanking
+            dados={rankingOrdenado}
+            vazio={`Sem itens com registros no período.`}
+            onSelect={onAbrirDetalhe}
+          />
         }
       />
       <AnalyticsCard
@@ -307,6 +316,7 @@ function GradeExecutiva({ dados, onAbrirDetalhe }: { dados: VisaoDados; onAbrirD
             inicio={dados.dataInicio}
             fim={dados.dataFim}
             dados={dados.heatmap}
+            nomes={nomesHeatmap}
             vazio="Sem histórico mensal no período."
             onSelect={onAbrirDetalhe}
           />
@@ -316,6 +326,7 @@ function GradeExecutiva({ dados, onAbrirDetalhe }: { dados: VisaoDados; onAbrirD
             inicio={dados.dataInicio}
             fim={dados.dataFim}
             dados={dados.heatmap}
+            nomes={nomesHeatmap}
             vazio="Sem histórico mensal no período."
             onSelect={onAbrirDetalhe}
           />
@@ -668,18 +679,23 @@ function HeatmapSeries({
   inicio,
   fim,
   dados,
+  nomes: nomesBase,
   vazio,
   onSelect,
 }: {
   inicio: string
   fim: string
   dados: HeatmapItem[]
+  nomes?: string[]
   vazio: string
   onSelect?: () => void
 }) {
   const mobile = useMediaQuery('(max-width:599.95px)')
   const colors = useChartColors()
-  const { meses, nomes, cells } = useMemo(() => montarHeatmap(inicio, fim, dados), [inicio, fim, dados])
+  const { meses, nomes, cells } = useMemo(
+    () => montarHeatmap(inicio, fim, dados, nomesBase),
+    [inicio, fim, dados, nomesBase],
+  )
 
   if (nomes.length === 0 || meses.length === 0) {
     return <EmptyState title="Sem mapa de calor" description={vazio} />
@@ -758,16 +774,18 @@ function TabelaHeatmap({
   inicio,
   fim,
   dados,
+  nomes: nomesBase,
   vazio,
   onSelect,
 }: {
   inicio: string
   fim: string
   dados: HeatmapItem[]
+  nomes?: string[]
   vazio: string
   onSelect?: () => void
 }) {
-  const { meses, nomes } = useMemo(() => montarHeatmap(inicio, fim, dados), [inicio, fim, dados])
+  const { meses, nomes } = useMemo(() => montarHeatmap(inicio, fim, dados, nomesBase), [inicio, fim, dados, nomesBase])
   const mapa = useMemo(
     () => new Map(dados.map((item) => [`${item.nome}|${item.referencia}`, item.percentualPresenca])),
     [dados],
@@ -817,10 +835,10 @@ function TabelaHeatmap({
   )
 }
 
-function montarHeatmap(inicio: string, fim: string, dados: HeatmapItem[]) {
+function montarHeatmap(inicio: string, fim: string, dados: HeatmapItem[], nomesBase?: string[]) {
   const mesesBase = normalizarMeses(inicio, fim, [])
   const meses = mesesBase.map((item) => item.referencia)
-  const nomes = [...new Set(dados.map((item) => item.nome))]
+  const nomes = nomesBase && nomesBase.length > 0 ? [...nomesBase] : [...new Set(dados.map((item) => item.nome))]
   const mapa = new Map(dados.map((item) => [`${item.nome}|${item.referencia}`, item.percentualPresenca]))
   const cells: Array<[number, number, number | null]> = []
   nomes.forEach((nome, y) => {

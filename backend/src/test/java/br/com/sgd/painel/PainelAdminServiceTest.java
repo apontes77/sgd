@@ -73,6 +73,19 @@ class PainelAdminServiceTest {
   }
 
   @Test
+  void mantemGerenciasSemFrequenciaNoPeriodo() {
+    var comDados = gerencia(1L, "Com dados", 4L, 1L);
+    var semDados = gerencia(2L, "Sem dados", 0L, 0L);
+    when(repository.porGerencia(inicio, fim)).thenReturn(List.of(comDados, semDados));
+
+    var resposta = service.consultar(inicio, fim);
+    assertThat(resposta.gerencias())
+        .extracting(PainelAdminService.GerenciaIndicador::nome)
+        .containsExactly("Com dados", "Sem dados");
+    assertThat(resposta.gerencias().getLast().percentualPresenca()).isEqualByComparingTo("0.00");
+  }
+
+  @Test
   void incluiNaoRealizadosESerieMensalPorGerencia() {
     when(repository.encontrosNaoRealizados(inicio, fim)).thenReturn(3L);
     var mensal = mock(PainelAdminRepository.ContagemGerenciaMensal.class);

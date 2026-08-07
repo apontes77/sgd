@@ -67,7 +67,7 @@ describe('visão executiva', () => {
     expect(await screen.findByTestId('grade-executiva')).toBeInTheDocument()
     expect(await screen.findAllByTestId('grafico')).toHaveLength(6)
     expect(screen.getByText('Presença geral')).toBeInTheDocument()
-    expect(screen.getByText('Top gerências por presença')).toBeInTheDocument()
+    expect(screen.getByText('Gerências por presença')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Imprimir / PDF' })).toBeInTheDocument()
   })
 
@@ -77,7 +77,7 @@ describe('visão executiva', () => {
       new Response(JSON.stringify(respostaGerencia), { status: 200, headers: { 'Content-Type': 'application/json' } }),
     )
     render(<ExecutiveDashboard escopo="gerencia" onAbrirDetalhe={onAbrirDetalhe} />)
-    expect(await screen.findByText('Top discipulados por presença')).toBeInTheDocument()
+    expect(await screen.findByText('Discipulados por presença')).toBeInTheDocument()
     expect(screen.getByText('Presença por discipulado × mês')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Abrir minha gerência' }))
     expect(onAbrirDetalhe).toHaveBeenCalledOnce()

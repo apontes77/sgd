@@ -61,11 +61,13 @@ public interface PainelAdminRepository extends Repository<Encontro, Long> {
         select g.id as id, g.nome as nome,
                coalesce(sum(case when f.situacao = 'PRESENTE' then 1 else 0 end), 0) as presentes,
                coalesce(sum(case when f.situacao = 'AUSENTE' then 1 else 0 end), 0) as ausentes
-          from encontros e
-          join discipulados d on d.id = e.discipulado_id
-          join gerencias g on g.id = d.gerencia_id
+          from gerencias g
+          left join discipulados d on d.gerencia_id = g.id
+          left join encontros e on e.discipulado_id = d.id
+           and e.situacao = 'REALIZADO'
+           and e.data between :inicio and :fim
           left join frequencias f on f.encontro_id = e.id
-         where e.situacao = 'REALIZADO' and e.data between :inicio and :fim
+         where g.ativo = true
          group by g.id, g.nome
          order by g.nome
         """,
@@ -80,11 +82,14 @@ public interface PainelAdminRepository extends Repository<Encontro, Long> {
                substring(cast(e.data as varchar), 1, 7) as referencia,
                coalesce(sum(case when f.situacao = 'PRESENTE' then 1 else 0 end), 0) as presentes,
                coalesce(sum(case when f.situacao = 'AUSENTE' then 1 else 0 end), 0) as ausentes
-          from encontros e
-          join discipulados d on d.id = e.discipulado_id
-          join gerencias g on g.id = d.gerencia_id
+          from gerencias g
+          left join discipulados d on d.gerencia_id = g.id
+          left join encontros e on e.discipulado_id = d.id
+           and e.situacao = 'REALIZADO'
+           and e.data between :inicio and :fim
           left join frequencias f on f.encontro_id = e.id
-         where e.situacao = 'REALIZADO' and e.data between :inicio and :fim
+         where g.ativo = true
+           and e.data is not null
          group by g.id, g.nome, substring(cast(e.data as varchar), 1, 7)
          order by g.nome, referencia
         """,
