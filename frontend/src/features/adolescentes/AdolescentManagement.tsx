@@ -230,16 +230,11 @@ export default function AdolescentManagement({
   const discipulos = useMemo(() => items.filter((a) => (a.categoria ?? 'DISCIPULO') === 'DISCIPULO'), [items])
   const visitantes = useMemo(() => items.filter((a) => a.categoria === 'VISITANTE'), [items])
   const goe = useMemo(() => items.filter((a) => a.categoria === 'DISCIPULO_GOE'), [items])
-  const discipuladoSelecionado = filtro || discipulados[0]?.id || 0
-  const discipuladoAtual = useMemo(
-    () => discipulados.find((d) => d.id === discipuladoSelecionado),
-    [discipulados, discipuladoSelecionado],
-  )
-  const podeCadastrar = podeEditar && discipuladoSelecionado > 0
+  const discipuladoAtual = useMemo(() => discipulados.find((d) => d.id === filtro), [discipulados, filtro])
+  const podeCadastrar = podeEditar && filtro > 0
 
   function novo() {
-    const discipuladoId = discipuladoSelecionado
-    if (!discipuladoId) {
+    if (!filtro) {
       setErro('Selecione um discipulado para cadastrar.')
       return
     }
@@ -247,7 +242,7 @@ export default function AdolescentManagement({
     setForm({
       ...vazio,
       consentimentoEm: hoje(),
-      discipuladoId,
+      discipuladoId: filtro,
       categoria: 'DISCIPULO',
     })
     setSucesso('')
@@ -511,7 +506,7 @@ export default function AdolescentManagement({
         </Stack>
       </FilterToolbar>
 
-      {!discipuladoSelecionado && discipulados.length > 1 ? (
+      {filtro === 0 ? (
         <EmptyState
           title="Selecione um discipulado"
           description="Gerentes e administradores visualizam o cadastro por discipulado."
