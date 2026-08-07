@@ -39,7 +39,7 @@ public class AuditoriaController {
                 entidade,
                 usuarioId,
                 PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "data_hora")))
-            .map(this::response));
+            .map(linha -> response(linha)));
   }
 
   private AuditoriaResponse response(AuditoriaConsultaRepository.LinhaAuditoria a) {
