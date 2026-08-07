@@ -13,6 +13,7 @@ const encontro = {
   data: hoje,
   situacao: 'REALIZADO',
   justificativa: null,
+  observacao: null as string | null,
   criadoEm: new Date().toISOString(),
   chamadaSalvaEm: null as string | null,
 }
@@ -33,14 +34,35 @@ describe('registro de frequência', () => {
         return json({ content: [{ id: 1, nome: 'Ana' }], page: 0, size: 100, totalElements: 1, totalPages: 1 })
       if (url.endsWith('/encontros') && method === 'POST') return json(encontro, 201)
       if (url.includes('/encontros?')) return json([])
+      if (url.endsWith('/encontros/10') && method === 'PATCH') {
+        const body = JSON.parse(String(init?.body ?? '{}')) as { observacao?: string | null }
+        return json({ ...encontro, observacao: body.observacao ?? null })
+      }
       if (url.endsWith('/encontros/10/frequencias') && method === 'GET') return json([])
       if (url.endsWith('/encontros/10/frequencias') && method === 'PUT') return json([])
       throw new Error(`Requisição inesperada: ${method} ${url}`)
     })
 
-    render(<FrequencyManagement discipuladoId={1} />)
+    render(
+      <FrequencyManagement
+        discipuladoId={1}
+        discipulado={{
+          id: 1,
+          nome: 'Discipulado Teste',
+          sexo: 'MASCULINO',
+          faixaEtaria: 'DE_15_MAIS',
+          gerenciaId: 1,
+          discipuladorId: 2,
+          discipuladorNome: 'João Discipulador',
+          coLideres: [{ id: 3, nome: 'Maria Co-líder', email: 'm@sgd.local', perfis: ['CO_LIDER'] }],
+        }}
+      />,
+    )
     await userEvent.click(await screen.findByRole('button', { name: /Houve discipulado/i }))
 
+    expect(await screen.findByText(/Discipulador:/i)).toBeInTheDocument()
+    expect(screen.getByText(/João Discipulador/)).toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText(/Observação/), 'Chegou só no culto')
     await userEvent.click(await screen.findByRole('button', { name: /Ana: ausente/i }))
     await userEvent.click(screen.getByRole('button', { name: 'Salvar frequência' }))
     expect(await screen.findByText('Frequência salva.')).toBeInTheDocument()
@@ -49,6 +71,11 @@ describe('registro de frequência', () => {
     expect(String(listagem?.[0])).toContain('categoria=DISCIPULO')
     expect(String(listagem?.[0])).toContain('categoria=VISITANTE')
     expect(String(listagem?.[0])).not.toContain('DISCIPULO_GOE')
+
+    const observacaoPatch = fetchMock.mock.calls.find(
+      ([url, init]) => String(url).endsWith('/encontros/10') && init?.method === 'PATCH',
+    )
+    expect(JSON.parse(String(observacaoPatch?.[1]?.body))).toMatchObject({ observacao: 'Chegou só no culto' })
 
     const salvamento = fetchMock.mock.calls.find(
       ([url, init]) => String(url).endsWith('/encontros/10/frequencias') && init?.method === 'PUT',
@@ -169,6 +196,7 @@ describe('registro de frequência', () => {
         )
       if (url.endsWith('/encontros') && method === 'POST') return json(encontro, 201)
       if (url.includes('/encontros?')) return json([])
+      if (url.endsWith('/encontros/10') && method === 'PATCH') return json(encontro)
       if (url.endsWith('/encontros/10/frequencias') && method === 'GET') return json([])
       if (url.endsWith('/encontros/10/frequencias') && method === 'PUT') return json([])
       throw new Error(`Requisição inesperada: ${method} ${url}`)

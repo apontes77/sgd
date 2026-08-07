@@ -9,6 +9,7 @@ export interface Encontro {
   data: string
   situacao: SituacaoEncontro
   justificativa: string | null
+  observacao?: string | null
   criadoEm: string
   chamadaSalvaEm: string | null
 }
@@ -34,8 +35,10 @@ export const frequenciaApi = {
   },
   criarEncontro: (body: { discipuladoId: number; data: string; situacao: SituacaoEncontro; justificativa?: string }) =>
     request<Encontro>('/encontros', { method: 'POST', body: JSON.stringify(body) }),
-  atualizarEncontro: (id: number, body: { data?: string; situacao?: SituacaoEncontro; justificativa?: string }) =>
-    request<Encontro>(`/encontros/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  atualizarEncontro: (
+    id: number,
+    body: { data?: string; situacao?: SituacaoEncontro; justificativa?: string; observacao?: string | null },
+  ) => request<Encontro>(`/encontros/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   listarChamada: (id: number) => request<Frequencia[]>(`/encontros/${id}/frequencias`),
   salvarChamada: (id: number, frequencias: Array<{ adolescenteId: number; situacao: SituacaoFrequencia }>) =>
     request<Frequencia[]>(`/encontros/${id}/frequencias`, { method: 'PUT', body: JSON.stringify({ frequencias }) }),

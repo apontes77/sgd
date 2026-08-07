@@ -32,6 +32,9 @@ public class Encontro {
   @Column(length = 500)
   private String justificativa;
 
+  @Column(length = 500)
+  private String observacao;
+
   @Column(name = "criado_em", nullable = false)
   private Instant criadoEm = Instant.now();
 
@@ -65,10 +68,15 @@ public class Encontro {
   }
 
   public void atualizar(
-      LocalDate data, SituacaoEncontro situacao, String justificativa, Instant agora) {
+      LocalDate data,
+      SituacaoEncontro situacao,
+      String justificativa,
+      String observacao,
+      Instant agora) {
     if (data != null) this.data = data;
     if (situacao != null) this.situacao = situacao;
     this.justificativa = justificativa;
+    this.observacao = observacao;
     this.atualizadoEm = agora;
   }
 
@@ -98,6 +106,10 @@ public class Encontro {
 
   public String getJustificativa() {
     return justificativa;
+  }
+
+  public String getObservacao() {
+    return observacao;
   }
 
   public Instant getCriadoEm() {

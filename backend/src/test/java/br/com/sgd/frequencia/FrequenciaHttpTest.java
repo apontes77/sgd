@@ -209,6 +209,34 @@ class FrequenciaHttpTest {
   }
 
   @Test
+  void permiteObservacaoEmEncontroRealizado() throws Exception {
+    String token = token(discipulador);
+    long encontroId = criarEncontro(token, proprio.getId(), "2026-07-21", 201);
+
+    mvc.perform(
+            patch("/api/v1/encontros/{id}", encontroId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"observacao\":\"  Foi colocada a frequência, mas o menino só chegou na hora do culto  \"}"))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$.observacao")
+                .value("Foi colocada a frequência, mas o menino só chegou na hora do culto"));
+
+    mvc.perform(
+            get("/api/v1/encontros")
+                .param("discipuladoId", proprio.getId().toString())
+                .param("dataInicio", "2026-07-21")
+                .param("dataFim", "2026-07-21")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token)))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$[0].observacao")
+                .value("Foi colocada a frequência, mas o menino só chegou na hora do culto"));
+  }
+
+  @Test
   void discipuloGoeNaoEntraNaChamadaDeParticipantesAtuais() throws Exception {
     String token = token(discipulador);
     long anaId = criarAdolescente(token, "Ana");

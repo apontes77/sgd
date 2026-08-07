@@ -33,6 +33,7 @@ import { adolescentesApi } from '@/features/adolescentes/api'
 import { labelDiscipulado } from '@/shared/api/types'
 import {
   DataTableCard,
+  DiscipuladoLiderancaInfo,
   EmptyState,
   FilterToolbar,
   FormSheet,
@@ -230,6 +231,10 @@ export default function AdolescentManagement({
   const visitantes = useMemo(() => items.filter((a) => a.categoria === 'VISITANTE'), [items])
   const goe = useMemo(() => items.filter((a) => a.categoria === 'DISCIPULO_GOE'), [items])
   const discipuladoSelecionado = filtro || discipulados[0]?.id || 0
+  const discipuladoAtual = useMemo(
+    () => discipulados.find((d) => d.id === discipuladoSelecionado),
+    [discipulados, discipuladoSelecionado],
+  )
   const podeCadastrar = podeEditar && discipuladoSelecionado > 0
 
   function novo() {
@@ -460,37 +465,46 @@ export default function AdolescentManagement({
           alignItems={{ sm: 'center' }}
           gap={2}
         >
-          <Autocomplete
-            sx={{ minWidth: { xs: '100%', sm: 320 }, width: { xs: '100%', sm: 'auto' } }}
-            options={discipulados}
-            value={discipulados.find((d) => d.id === filtro) ?? null}
-            onChange={(_, value) => {
-              setFiltro(value?.id ?? 0)
-              setIgnoradosGoe([])
-            }}
-            getOptionLabel={labelDiscipulado}
-            isOptionEqualToValue={(option, value) => option.id === value.id}
-            noOptionsText="Nenhum discipulado encontrado"
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Discipulado"
-                placeholder="Pesquisar discipulado ou discipulador"
-                required={discipulados.length > 1}
-                InputProps={{
-                  ...params.InputProps,
-                  startAdornment: (
-                    <>
-                      <InputAdornment position="start">
-                        <SearchRounded fontSize="small" color="action" />
-                      </InputAdornment>
-                      {params.InputProps.startAdornment}
-                    </>
-                  ),
-                }}
+          <Stack spacing={1.25} sx={{ minWidth: { xs: '100%', sm: 320 }, width: { xs: '100%', sm: 'auto' } }}>
+            <Autocomplete
+              options={discipulados}
+              value={discipulados.find((d) => d.id === filtro) ?? null}
+              onChange={(_, value) => {
+                setFiltro(value?.id ?? 0)
+                setIgnoradosGoe([])
+              }}
+              getOptionLabel={labelDiscipulado}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              noOptionsText="Nenhum discipulado encontrado"
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Discipulado"
+                  placeholder="Pesquisar discipulado ou discipulador"
+                  required={discipulados.length > 1}
+                  InputProps={{
+                    ...params.InputProps,
+                    startAdornment: (
+                      <>
+                        <InputAdornment position="start">
+                          <SearchRounded fontSize="small" color="action" />
+                        </InputAdornment>
+                        {params.InputProps.startAdornment}
+                      </>
+                    ),
+                  }}
+                />
+              )}
+            />
+            {discipuladoAtual && (
+              <DiscipuladoLiderancaInfo
+                discipuladorNome={discipuladoAtual.discipuladorNome}
+                coLideres={discipuladoAtual.coLideres}
+                faixaEtaria={discipuladoAtual.faixaEtaria}
+                showFaixaEtaria
               />
             )}
-          />
+          </Stack>
           <Typography variant="body2" color="text.secondary">
             {items.length} adolescente{items.length === 1 ? '' : 's'}
           </Typography>

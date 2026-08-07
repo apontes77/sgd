@@ -33,7 +33,8 @@ public class AuditLog {
   @Column(nullable = false)
   private String acao;
 
-  @Column private String detalhes;
+  @Column(columnDefinition = "TEXT")
+  private String detalhes;
 
   protected AuditLog() {}
 

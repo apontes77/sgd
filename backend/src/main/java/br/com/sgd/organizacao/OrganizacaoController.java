@@ -180,7 +180,7 @@ public class OrganizacaoController {
       Long gerenciaId,
       Long discipuladorId,
       String discipuladorNome,
-      Set<AuthController.UserResponse> coLideres) {
+      List<AuthController.UserResponse> coLideres) {
     static DiscipuladoResponse of(Discipulado d) {
       return new DiscipuladoResponse(
           d.getId(),
@@ -191,9 +191,7 @@ public class OrganizacaoController {
           d.getGerencia().getId(),
           d.getDiscipulador().getId(),
           d.getDiscipulador().getNome(),
-          d.getCoLideres().stream()
-              .map(AuthController.UserResponse::of)
-              .collect(java.util.stream.Collectors.toSet()));
+          d.getCoLideres().stream().map(AuthController.UserResponse::of).toList());
     }
   }
 }
