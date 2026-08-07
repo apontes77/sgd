@@ -47,7 +47,7 @@ import { organizationApi } from '@/features/organizacao/api'
 import OrganizationManagement from '@/features/organizacao/OrganizationManagement'
 import { userManagementClient } from '@/features/users/api'
 import UserManagement from '@/features/users/UserManagement'
-import type { Discipulado, Perfil, Usuario } from '@/shared/api/types'
+import { type Discipulado, labelDiscipulado, type Perfil, type Usuario } from '@/shared/api/types'
 import { BOTTOM_NAV_OFFSET, EmptyState, LoadingState, PageHeader } from '@/shared/ui'
 
 const ExecutiveDashboard = lazy(() => import('@/features/dashboards/ExecutiveDashboard'))
@@ -617,7 +617,7 @@ function FrequencyPage({ currentUser }: { currentUser: Usuario }) {
               >
                 {discipulados.map((item) => (
                   <MenuItem key={item.id} value={item.id}>
-                    {item.nome}
+                    {labelDiscipulado(item)}
                   </MenuItem>
                 ))}
               </Select>

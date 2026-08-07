@@ -1,6 +1,7 @@
-import { AddRounded } from '@mui/icons-material'
+import { AddRounded, SearchRounded } from '@mui/icons-material'
 import {
   Alert,
+  Autocomplete,
   Button,
   Checkbox,
   Dialog,
@@ -9,6 +10,7 @@ import {
   DialogTitle,
   FormControl,
   FormControlLabel,
+  InputAdornment,
   InputLabel,
   MenuItem,
   Select,
@@ -28,6 +30,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AdolescenteFormFields } from '@/features/adolescentes/AdolescenteFormFields'
 import type { Adolescente, AdolescenteInput, AlertaGoe, DiscipuladoResumo } from '@/features/adolescentes/api'
 import { adolescentesApi } from '@/features/adolescentes/api'
+import { labelDiscipulado } from '@/shared/api/types'
 import {
   DataTableCard,
   EmptyState,
@@ -457,24 +460,37 @@ export default function AdolescentManagement({
           alignItems={{ sm: 'center' }}
           gap={2}
         >
-          <FormControl sx={{ minWidth: { xs: '100%', sm: 320 } }} required={discipulados.length > 1}>
-            <InputLabel>Discipulado</InputLabel>
-            <Select
-              label="Discipulado"
-              value={filtro}
-              onChange={(e) => {
-                setFiltro(Number(e.target.value))
-                setIgnoradosGoe([])
-              }}
-            >
-              {discipulados.length > 1 && <MenuItem value={0}>Selecione um discipulado</MenuItem>}
-              {discipulados.map((d) => (
-                <MenuItem key={d.id} value={d.id}>
-                  {d.nome}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <Autocomplete
+            sx={{ minWidth: { xs: '100%', sm: 320 }, width: { xs: '100%', sm: 'auto' } }}
+            options={discipulados}
+            value={discipulados.find((d) => d.id === filtro) ?? null}
+            onChange={(_, value) => {
+              setFiltro(value?.id ?? 0)
+              setIgnoradosGoe([])
+            }}
+            getOptionLabel={labelDiscipulado}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            noOptionsText="Nenhum discipulado encontrado"
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Discipulado"
+                placeholder="Pesquisar discipulado ou discipulador"
+                required={discipulados.length > 1}
+                InputProps={{
+                  ...params.InputProps,
+                  startAdornment: (
+                    <>
+                      <InputAdornment position="start">
+                        <SearchRounded fontSize="small" color="action" />
+                      </InputAdornment>
+                      {params.InputProps.startAdornment}
+                    </>
+                  ),
+                }}
+              />
+            )}
+          />
           <Typography variant="body2" color="text.secondary">
             {items.length} adolescente{items.length === 1 ? '' : 's'}
           </Typography>
@@ -541,7 +557,7 @@ export default function AdolescentManagement({
           >
             {discipulados.map((d) => (
               <MenuItem key={d.id} value={d.id}>
-                {d.nome}
+                {labelDiscipulado(d)}
               </MenuItem>
             ))}
           </Select>
@@ -566,7 +582,7 @@ export default function AdolescentManagement({
                   .filter((d) => d.id !== transferindo?.discipuladoId)
                   .map((d) => (
                     <MenuItem key={d.id} value={d.id}>
-                      {d.nome}
+                      {labelDiscipulado(d)}
                     </MenuItem>
                   ))}
               </Select>

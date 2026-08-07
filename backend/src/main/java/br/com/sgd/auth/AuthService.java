@@ -6,7 +6,6 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
-import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -136,7 +135,7 @@ public class AuthService {
               "Administrador",
               properties.adminEmail(),
               passwords.encode(properties.adminPassword()),
-              Set.of(Role.ADMIN)));
+              java.util.EnumSet.of(Role.ADMIN)));
     }
   }
 

@@ -179,6 +179,7 @@ public class OrganizacaoController {
       boolean ativo,
       Long gerenciaId,
       Long discipuladorId,
+      String discipuladorNome,
       Set<AuthController.UserResponse> coLideres) {
     static DiscipuladoResponse of(Discipulado d) {
       return new DiscipuladoResponse(
@@ -189,6 +190,7 @@ public class OrganizacaoController {
           d.isAtivo(),
           d.getGerencia().getId(),
           d.getDiscipulador().getId(),
+          d.getDiscipulador().getNome(),
           d.getCoLideres().stream()
               .map(AuthController.UserResponse::of)
               .collect(java.util.stream.Collectors.toSet()));

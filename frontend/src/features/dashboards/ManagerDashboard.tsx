@@ -20,6 +20,7 @@ import ReactECharts from 'echarts-for-react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { type DiscipuladoPainel, painelApi, type PainelGerenciaResponse } from '@/features/dashboards/api'
+import { labelDiscipulado } from '@/shared/api/types'
 import { axisLabelStyle, seriesLabelStyle, useChartColors } from '@/shared/charts/chartTheme'
 import { FiltroPeriodo, KpisPresenca, PainelEvolucao } from '@/shared/dashboard-ui'
 import { normalizarMeses, percentual, periodoPadrao } from '@/shared/dashboard-utils'
@@ -118,7 +119,7 @@ export default function ManagerDashboard() {
                       >
                         {dados.discipulados.map((item) => (
                           <MenuItem value={item.id} key={item.id}>
-                            {item.nome}
+                            {labelDiscipulado(item)}
                             {item.ativo ? '' : ' (inativo)'}
                           </MenuItem>
                         ))}

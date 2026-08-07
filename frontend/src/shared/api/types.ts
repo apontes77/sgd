@@ -58,8 +58,13 @@ export interface Discipulado {
   faixaEtaria: FaixaEtaria
   gerenciaId: number
   discipuladorId: number
+  discipuladorNome?: string
   ativo?: boolean
   coLideres: Usuario[]
+}
+
+export function labelDiscipulado(d: { nome: string; discipuladorNome?: string }): string {
+  return d.discipuladorNome ? `${d.nome} — ${d.discipuladorNome}` : d.nome
 }
 
 export interface DiscipuladoRequest {

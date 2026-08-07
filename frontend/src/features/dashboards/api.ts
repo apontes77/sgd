@@ -49,6 +49,7 @@ export interface DiscipuladoPainel {
   nome: string
   sexo: 'MASCULINO' | 'FEMININO'
   ativo: boolean
+  discipuladorNome?: string
   resumo: ResumoPainel
   evolucao: EvolucaoMensal[]
 }

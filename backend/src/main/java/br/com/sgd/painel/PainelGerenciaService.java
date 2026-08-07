@@ -142,7 +142,13 @@ public class PainelGerenciaService {
               .toList();
       indicadores.add(
           new DiscipuladoIndicador(
-              d.getId(), d.getNome(), d.getSexo().name(), d.isAtivo(), itemResumo, serie));
+              d.getId(),
+              d.getNome(),
+              d.getSexo().name(),
+              d.isAtivo(),
+              d.getDiscipulador().getNome(),
+              itemResumo,
+              serie));
     }
     indicadores.sort(
         Comparator.comparing((DiscipuladoIndicador d) -> d.resumo().percentualPresenca())
@@ -264,6 +270,7 @@ public class PainelGerenciaService {
       String nome,
       String sexo,
       boolean ativo,
+      String discipuladorNome,
       Resumo resumo,
       List<EvolucaoMensal> evolucao) {}
 
