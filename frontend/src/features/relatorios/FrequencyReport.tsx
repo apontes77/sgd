@@ -1,15 +1,12 @@
 import { PrintRounded, SearchRounded } from '@mui/icons-material'
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Chip,
-  FormControl,
   GlobalStyles,
-  InputLabel,
-  MenuItem,
   Paper,
-  Select,
   Stack,
   Table,
   TableBody,
@@ -20,23 +17,33 @@ import {
   Typography,
 } from '@mui/material'
 import type { FormEvent } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { organizationApi } from '@/features/organizacao/api'
 import { relatorioApi, type RelatorioEncontro, type RelatorioPeriodoResponse } from '@/features/relatorios/api'
-import type { Discipulado, Usuario } from '@/shared/api/types'
+import { type Discipulado, labelDiscipulado, type Usuario } from '@/shared/api/types'
 import { DataTableCard, FilterToolbar, PageHeader } from '@/shared/ui'
+
+type OpcaoDiscipulado = Discipulado | { id: 0; nome: string }
+
+const OPCAO_TODOS: OpcaoDiscipulado = { id: 0, nome: 'Todos' }
 
 export default function FrequencyReport({ currentUser }: { currentUser: Usuario }) {
   const podeFiltrarDiscipulado = currentUser.perfis.includes('GERENTE') || currentUser.perfis.includes('ADMIN')
   const hoje = dataAtual()
   const [dataInicio, setDataInicio] = useState(hoje)
   const [dataFim, setDataFim] = useState(hoje)
-  const [discipuladoId, setDiscipuladoId] = useState('')
+  const [discipuladoId, setDiscipuladoId] = useState(0)
   const [discipulados, setDiscipulados] = useState<Discipulado[]>([])
   const [dados, setDados] = useState<RelatorioPeriodoResponse>()
   const [erro, setErro] = useState('')
   const [carregando, setCarregando] = useState(false)
+
+  const opcoesDiscipulado = useMemo<OpcaoDiscipulado[]>(() => [OPCAO_TODOS, ...discipulados], [discipulados])
+  const discipuladoSelecionado = useMemo(
+    () => opcoesDiscipulado.find((item) => item.id === discipuladoId) ?? OPCAO_TODOS,
+    [opcoesDiscipulado, discipuladoId],
+  )
 
   useEffect(() => {
     if (!podeFiltrarDiscipulado) return
@@ -69,7 +76,7 @@ export default function FrequencyReport({ currentUser }: { currentUser: Usuario 
     }
     setCarregando(true)
     try {
-      const filtroDiscipulado = discipuladoId ? Number(discipuladoId) : undefined
+      const filtroDiscipulado = discipuladoId || undefined
       setDados(await relatorioApi.consultarFrequencia(dataInicio, dataFim, filtroDiscipulado))
     } catch (e) {
       setDados(undefined)
@@ -135,22 +142,18 @@ export default function FrequencyReport({ currentUser }: { currentUser: Usuario 
             sx={{ width: { xs: '100%', sm: 'auto' } }}
           />
           {podeFiltrarDiscipulado && (
-            <FormControl sx={{ minWidth: { xs: '100%', sm: 220 }, width: { xs: '100%', sm: 'auto' } }}>
-              <InputLabel id="relatorio-discipulado-label">Discipulado</InputLabel>
-              <Select
-                labelId="relatorio-discipulado-label"
-                label="Discipulado"
-                value={discipuladoId}
-                onChange={(event) => setDiscipuladoId(event.target.value)}
-              >
-                <MenuItem value="">Todos</MenuItem>
-                {discipulados.map((item) => (
-                  <MenuItem key={item.id} value={String(item.id)}>
-                    {item.nome}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Autocomplete
+              sx={{ minWidth: { xs: '100%', sm: 280 }, width: { xs: '100%', sm: 'auto' }, flex: { sm: 1 } }}
+              options={opcoesDiscipulado}
+              value={discipuladoSelecionado}
+              onChange={(_, value) => setDiscipuladoId(value?.id ?? 0)}
+              getOptionLabel={(item) => (item.id === 0 ? item.nome : labelDiscipulado(item))}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              noOptionsText="Nenhum discipulado encontrado"
+              renderInput={(params) => (
+                <TextField {...params} label="Discipulado" placeholder="Pesquisar discipulado ou discipulador" />
+              )}
+            />
           )}
           <Button
             type="submit"

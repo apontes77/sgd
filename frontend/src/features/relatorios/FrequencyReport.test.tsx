@@ -184,6 +184,7 @@ describe('relatório diário de frequência', () => {
                 faixaEtaria: 'DE_15_MAIS',
                 gerenciaId: 1,
                 discipuladorId: 3,
+                discipuladorNome: 'Líder Alpha',
                 coLideres: [],
               },
               {
@@ -193,6 +194,7 @@ describe('relatório diário de frequência', () => {
                 faixaEtaria: 'DE_13_A_15',
                 gerenciaId: 1,
                 discipuladorId: 8,
+                discipuladorNome: 'Líder Beta',
                 coLideres: [],
               },
             ],
@@ -212,13 +214,64 @@ describe('relatório diário de frequência', () => {
 
     render(<FrequencyReport currentUser={gerenteUser} />)
 
-    expect(await screen.findByLabelText(/^Discipulado/)).toBeInTheDocument()
-    await userEvent.click(screen.getByLabelText(/^Discipulado/))
-    await userEvent.click(await screen.findByRole('option', { name: 'Alpha' }))
+    const campo = await screen.findByPlaceholderText('Pesquisar discipulado ou discipulador')
+    await userEvent.clear(campo)
+    await userEvent.type(campo, 'Líder Alpha')
+    await userEvent.click(await screen.findByRole('option', { name: /Líder Alpha/ }))
     await userEvent.click(screen.getByRole('button', { name: 'Consultar' }))
 
     expect(await screen.findByRole('table', { name: 'Frequência do Alpha em 21/07/2026' })).toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/v1/relatorios/frequencia?'), expect.anything())
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('discipuladoId=2'))).toBe(true)
+  })
+
+  it('permite buscar discipulado por parte do nome do discipulador no relatório', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/discipulados')) {
+        return new Response(
+          JSON.stringify({
+            content: [
+              {
+                id: 2,
+                nome: 'Alpha',
+                sexo: 'MASCULINO',
+                faixaEtaria: 'DE_15_MAIS',
+                gerenciaId: 1,
+                discipuladorId: 3,
+                discipuladorNome: 'Maria Silva',
+                coLideres: [],
+              },
+              {
+                id: 7,
+                nome: 'Beta',
+                sexo: 'FEMININO',
+                faixaEtaria: 'DE_13_A_15',
+                gerenciaId: 1,
+                discipuladorId: 8,
+                discipuladorNome: 'João Costa',
+                coLideres: [],
+              },
+            ],
+            page: 0,
+            size: 100,
+            totalElements: 2,
+            totalPages: 1,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        )
+      }
+      return new Response(JSON.stringify({ ...relatorio, relatorios: [relatorio.relatorios[1]] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    render(<FrequencyReport currentUser={adminUser} />)
+
+    const campo = await screen.findByPlaceholderText('Pesquisar discipulado ou discipulador')
+    await userEvent.type(campo, 'João')
+    expect(await screen.findByRole('option', { name: /João Costa/ })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: /Maria Silva/ })).not.toBeInTheDocument()
   })
 })

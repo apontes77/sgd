@@ -14,22 +14,20 @@ import {
 } from '@mui/icons-material'
 import {
   AppBar,
+  Autocomplete,
   Avatar,
   BottomNavigation,
   BottomNavigationAction,
   Box,
   Divider,
   Drawer,
-  FormControl,
   IconButton,
-  InputLabel,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  MenuItem,
-  Select,
   Stack,
+  TextField,
   Toolbar,
   Tooltip,
   Typography,
@@ -608,20 +606,18 @@ function FrequencyPage({ currentUser }: { currentUser: Usuario }) {
         description="Escolha a data e informe se houve discipulado."
         action={
           mostrarSeletor ? (
-            <FormControl sx={{ minWidth: { xs: '100%', sm: 320 }, width: { xs: '100%', sm: 'auto' } }}>
-              <InputLabel>Discipulado</InputLabel>
-              <Select
-                label="Discipulado"
-                value={discipuladoId || ''}
-                onChange={(event) => setDiscipuladoId(Number(event.target.value))}
-              >
-                {discipulados.map((item) => (
-                  <MenuItem key={item.id} value={item.id}>
-                    {labelDiscipulado(item)}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Autocomplete
+              sx={{ minWidth: { xs: '100%', sm: 320 }, width: { xs: '100%', sm: 'auto' } }}
+              options={discipulados}
+              value={discipulados.find((item) => item.id === discipuladoId) ?? null}
+              onChange={(_, value) => setDiscipuladoId(value?.id ?? 0)}
+              getOptionLabel={labelDiscipulado}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              noOptionsText="Nenhum discipulado encontrado"
+              renderInput={(params) => (
+                <TextField {...params} label="Discipulado" placeholder="Pesquisar discipulado ou discipulador" />
+              )}
+            />
           ) : undefined
         }
       />

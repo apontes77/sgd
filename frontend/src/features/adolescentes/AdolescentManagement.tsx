@@ -143,6 +143,7 @@ export default function AdolescentManagement({
   podeEditar?: boolean
 }) {
   const [items, setItems] = useState<Adolescente[]>([])
+  const [totalAtivos, setTotalAtivos] = useState(0)
   const [discipulados, setDiscipulados] = useState<DiscipuladoResumo[]>([])
   const [filtro, setFiltro] = useState<number>(0)
   const [form, setForm] = useState<AdolescenteInput>(vazio)
@@ -181,7 +182,8 @@ export default function AdolescentManagement({
   const carregar = useCallback(async () => {
     try {
       setErro('')
-      const pagina = await adolescentesApi.listar(filtro || undefined)
+      const pagina = await adolescentesApi.listar(filtro || undefined, true)
+      setTotalAtivos(pagina.totalElements)
       setItems(
         pagina.content.map((a) => ({
           ...a,
@@ -501,7 +503,7 @@ export default function AdolescentManagement({
             )}
           </Stack>
           <Typography variant="body2" color="text.secondary">
-            {items.length} adolescente{items.length === 1 ? '' : 's'}
+            {totalAtivos} adolescente{totalAtivos === 1 ? '' : 's'}
           </Typography>
         </Stack>
       </FilterToolbar>

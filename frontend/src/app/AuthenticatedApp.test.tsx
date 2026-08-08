@@ -221,6 +221,63 @@ describe('navegação autenticada', () => {
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/discipulados/liderados?ativo=true'))).toBe(true)
   })
 
+  it('permite buscar discipulado por parte do nome do discipulador no registro de frequência', async () => {
+    const fetchMock = vi.mocked(globalThis.fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      const body = url.includes('/painel/admin')
+        ? emptyDashboard
+        : url.includes('/discipulados?') && url.includes('ativo=true')
+          ? {
+              ...emptyPage,
+              content: [
+                {
+                  id: 1,
+                  nome: 'Grupo Alpha',
+                  sexo: 'MASCULINO',
+                  gerenciaId: 1,
+                  discipuladorId: 10,
+                  discipuladorNome: 'Maria Silva',
+                  ativo: true,
+                  coLideres: [],
+                },
+                {
+                  id: 2,
+                  nome: 'Grupo Beta',
+                  sexo: 'FEMININO',
+                  gerenciaId: 1,
+                  discipuladorId: 11,
+                  discipuladorNome: 'João Costa',
+                  ativo: true,
+                  coLideres: [],
+                },
+              ],
+              totalElements: 2,
+              totalPages: 1,
+            }
+          : url.includes('/encontros?discipuladoId=2')
+            ? []
+            : url.includes('/adolescentes?discipuladoId=2')
+              ? emptyPage
+              : url.includes('/encontros?discipuladoId=1')
+                ? []
+                : url.includes('/adolescentes?discipuladoId=1')
+                  ? emptyPage
+                  : emptyPage
+      return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    })
+
+    render(<AuthenticatedApp currentUser={user(['ADMIN'])} onLogout={() => undefined} />)
+    await userEvent.click(screen.getByRole('tab', { name: 'Encontros e frequência' }))
+
+    const campo = await screen.findByPlaceholderText('Pesquisar discipulado ou discipulador')
+    await userEvent.clear(campo)
+    await userEvent.type(campo, 'João')
+    await userEvent.click(await screen.findByRole('option', { name: /João Costa/ }))
+
+    expect(await screen.findByRole('button', { name: /^Houve discipulado/ })).toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/encontros?discipuladoId=2'))).toBe(true)
+  })
+
   it('co-líder também pode registrar que não houve discipulado', async () => {
     vi.mocked(globalThis.fetch).mockImplementation(async (input) => {
       const url = String(input)
