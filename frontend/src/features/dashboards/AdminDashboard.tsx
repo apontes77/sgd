@@ -20,7 +20,7 @@ import { FiltroPeriodo, KpisPresenca, PainelEvolucao } from '@/shared/dashboard-
 import { normalizarMeses, percentual, periodoPadrao } from '@/shared/dashboard-utils'
 import { AnalyticsCard, DataTableCard, LoadingState, PageHeader } from '@/shared/ui'
 
-type Ordenacao = 'nome' | 'percentual' | 'volume'
+type Ordenacao = 'nome' | 'percentual'
 
 export default function AdminDashboard() {
   const inicial = periodoPadrao()
@@ -105,13 +105,13 @@ function Conteudo({ dados }: { dados: PainelAdminResponse }) {
       >
         <AnalyticsCard
           title="Presença por gerência"
-          description="Percentual acompanhado do volume total de registros."
+          description="Percentual de presença com base em presentes e ausentes."
           chart={<GraficoGerencias dados={gerencias} />}
           table={<TabelaGerencias dados={gerencias} ordenacao={ordenacao} onOrdenacao={setOrdenacao} />}
         />
         <AnalyticsCard
           title="Presença por sexo do discipulado"
-          description="Comparação de percentuais e volumes."
+          description="Comparação de percentuais de presença."
           chart={<GraficoSexos dados={dados} />}
           table={<TabelaSexos dados={dados} />}
         />
@@ -122,11 +122,7 @@ function Conteudo({ dados }: { dados: PainelAdminResponse }) {
 
 function ordenarGerencias(dados: IndicadorGerencia[], ordenacao: Ordenacao) {
   return [...dados].sort((a, b) =>
-    ordenacao === 'nome'
-      ? a.nome.localeCompare(b.nome, 'pt-BR')
-      : ordenacao === 'volume'
-        ? b.presentes + b.ausentes - (a.presentes + a.ausentes)
-        : b.percentualPresenca - a.percentualPresenca,
+    ordenacao === 'nome' ? a.nome.localeCompare(b.nome, 'pt-BR') : b.percentualPresenca - a.percentualPresenca,
   )
 }
 
@@ -211,11 +207,6 @@ function TabelaGerencias({
             <TableCell>Presentes</TableCell>
             <TableCell>Ausentes</TableCell>
             <TableCell>
-              <BotaoOrdenacao ativo={ordenacao === 'volume'} onClick={() => onOrdenacao('volume')}>
-                Volume
-              </BotaoOrdenacao>
-            </TableCell>
-            <TableCell>
               <BotaoOrdenacao ativo={ordenacao === 'percentual'} onClick={() => onOrdenacao('percentual')}>
                 Presença
               </BotaoOrdenacao>
@@ -230,7 +221,6 @@ function TabelaGerencias({
               </TableCell>
               <TableCell>{item.presentes}</TableCell>
               <TableCell>{item.ausentes}</TableCell>
-              <TableCell>{item.presentes + item.ausentes}</TableCell>
               <TableCell>{percentual(item.percentualPresenca)}</TableCell>
             </TableRow>
           ))}
@@ -315,7 +305,6 @@ function TabelaSexos({ dados }: { dados: PainelAdminResponse }) {
             <TableCell scope="col">Sexo</TableCell>
             <TableCell scope="col">Presentes</TableCell>
             <TableCell scope="col">Ausentes</TableCell>
-            <TableCell scope="col">Volume</TableCell>
             <TableCell scope="col">Presença</TableCell>
           </TableRow>
         </TableHead>
@@ -327,7 +316,6 @@ function TabelaSexos({ dados }: { dados: PainelAdminResponse }) {
               </TableCell>
               <TableCell>{item.presentes}</TableCell>
               <TableCell>{item.ausentes}</TableCell>
-              <TableCell>{item.presentes + item.ausentes}</TableCell>
               <TableCell>{percentual(item.percentualPresenca)}</TableCell>
             </TableRow>
           ))}
