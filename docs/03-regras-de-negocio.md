@@ -133,6 +133,8 @@ RN037 - Administradores podem marcar um encontro como não realizado em qualquer
 
 RN038 - Todo encontro não realizado deve possuir uma justificativa de até 500 caracteres, preservada no histórico e na auditoria.
 
-RN039 - Gerentes consultam os encontros não realizados e suas justificativas somente nos discipulados da própria gerência; essas ocorrências não compõem indicadores nem o relatório diário de frequência.
+RN039 - Gerentes consultam os encontros não realizados e suas justificativas somente nos discipulados da própria gerência; essas ocorrências não compõem indicadores nem o relatório diário de frequência. O painel administrativo (`GET /painel/admin`) e o painel da gerência (`GET /painel/gerencia`) listam apenas gerências ativas e expõem o nome do discipulador em cada indicador de discipulado do painel da gerência.
 
 RN040 - Um discipulado possui no máximo um encontro por data, independentemente da situação. Não é possível registrar chamada ou visitantes em encontro não realizado.
+
+RN050 - Um encontro pode armazenar uma observação opcional de até 500 caracteres (texto livre sobre o encontro, distinta da justificativa de não realização). A observação é criada/alterada via `PATCH /encontros/{id}` por quem já pode alterar o encontro; string vazia ou só espaços é persistida como nula. Alterações entram na auditoria do encontro.

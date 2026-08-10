@@ -21,13 +21,15 @@ Administrador, Discipulador ou Co-líder
 Fluxo:
 
 1. Acessar cadastro.
-2. Informar dados.
-3. Para discipulador ou co-líder, usar obrigatoriamente o próprio discipulado.
-4. Salvar.
+2. Selecionar o discipulado (ADMIN/GERENTE usam busca tipável por nome do grupo ou do discipulador; líderes usam o próprio grupo).
+3. Conferir o contexto de liderança exibido (discipulador, co-líderes e, quando aplicável, faixa etária).
+4. Informar dados e categoria; contatos familiares ou telefone podem ser omitidos quando marcado que não possui (RN048).
+5. Salvar.
 
 Fluxo alternativo:
 
 - Se o líder informar outro discipulado, rejeitar com `403` sem persistir o adolescente ou vínculo.
+- Sem discipulado selecionado (ADMIN/GERENTE), a tela mostra apenas o total de adolescentes ativos; o detalhe por categoria exige seleção.
 
 ---
 
@@ -41,12 +43,14 @@ Fluxo:
 1. Selecionar data.
 2. Informar situação.
 3. Salvar.
+4. Opcionalmente, informar ou editar a observação do encontro (até 500 caracteres) ao atualizar o registro.
 
 Fluxo alternativo:
 
 - O administrador ou o discipulador do próprio grupo pode selecionar “Não realizado”, sendo obrigatório informar uma justificativa.
 - O administrador ou o discipulador responsável pode corrigir a justificativa; somente o administrador pode voltar o encontro para “Realizado”, desde que não haja chamada ou visitantes registrados.
 - Gerentes consultam as não realizações da própria gerência no painel, sem permissão de alteração.
+- A observação é independente da justificativa: pode existir em encontros realizados ou não realizados e não substitui a justificativa obrigatória de não realização.
 
 ---
 
@@ -70,10 +74,12 @@ Todos
 
 Fluxo:
 
-1. Selecionar período.
+1. Selecionar período (máximo 24 meses nos painéis).
 2. Visualizar métricas.
 
-O acesso é cumulativo: `GERENTE + DISCIPULADOR` visualiza “Minha gerência” e “Meu discipulado”; `ADMIN + DISCIPULADOR` visualiza o painel administrativo e “Meu discipulado”. Co-líder possui a mesma visão histórica do próprio grupo.
+O acesso é cumulativo: `GERENTE + DISCIPULADOR` visualiza “Minha gerência” e “Meu discipulado”; `ADMIN + DISCIPULADOR` visualiza o painel administrativo (visão executiva) e “Meu discipulado”. Co-líder possui a mesma visão histórica do próprio grupo.
+
+A visão executiva administrativa consome `GET /painel/admin` (gerências ativas, evolução, ranking e encontros não realizados no período). A visão de gerência consome `GET /painel/gerencia` e inclui o nome do discipulador em cada grupo.
 
 ---
 
