@@ -33,7 +33,7 @@ pnpm run dev
 
 ## Deploy em produção
 
-O deploy recomendado usa Render para o frontend estático, a API Docker e o PostgreSQL gerenciado. Consulte [Deploy no Render](docs/deploy-render.md) para provisionamento e operação e [Observabilidade](docs/observability.md) para OTLP, dashboards, alertas e proteção de dados.
+O deploy recomendado usa Render para o frontend estático, a API Docker e o PostgreSQL gerenciado. Consulte [Deploy no Render](docs/deploy-render.md) para provisionamento e operação e [Observabilidade](docs/observability.md) para correlação de erros e saúde operacional.
 
 ## Convenções iniciais
 

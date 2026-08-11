@@ -18,21 +18,6 @@ if [ -n "${DATABASE_URL:-}" ]; then
   esac
 fi
 
-resource_attributes="deployment.environment.name=${DEPLOYMENT_ENVIRONMENT:-local}"
-if [ -n "${RENDER_GIT_COMMIT:-}" ]; then
-  resource_attributes="${resource_attributes},service.version=${RENDER_GIT_COMMIT}"
-fi
-if [ -n "${OTEL_RESOURCE_ATTRIBUTES:-}" ]; then
-  resource_attributes="${resource_attributes},${OTEL_RESOURCE_ATTRIBUTES}"
-fi
-export OTEL_RESOURCE_ATTRIBUTES=$resource_attributes
-
-if [ -z "${OTEL_EXPORTER_OTLP_ENDPOINT:-}" ]; then
-  export OTEL_TRACES_EXPORTER=${OTEL_TRACES_EXPORTER:-none}
-  export OTEL_METRICS_EXPORTER=${OTEL_METRICS_EXPORTER:-none}
-  export OTEL_LOGS_EXPORTER=${OTEL_LOGS_EXPORTER:-none}
-fi
-
-export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-} -javaagent:/otel/opentelemetry-javaagent.jar -XX:MaxRAMPercentage=70.0"
+export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-} -XX:MaxRAMPercentage=70.0"
 
 exec java -jar /app/app.jar

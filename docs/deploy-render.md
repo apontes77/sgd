@@ -11,7 +11,6 @@ O arquivo `render.yaml` cria os três recursos de produção do SGD:
 1. Repositório conectado ao Render e ao GitHub Actions.
 2. Workspace Render com cobrança habilitada, porque o banco gratuito não possui recuperação adequada para produção.
 3. Provedor SMTP configurado.
-4. Vendor de observabilidade que aceite OTLP HTTP/protobuf para traces, métricas e logs.
 
 ## Primeiro deploy
 
@@ -26,8 +25,6 @@ O arquivo `render.yaml` cria os três recursos de produção do SGD:
    | `SMTP_HOST` | Host SMTP |
    | `SMTP_USERNAME` | Usuário SMTP |
    | `SMTP_PASSWORD` | Senha SMTP |
-   | `OTEL_EXPORTER_OTLP_ENDPOINT` | Endpoint OTLP base do vendor |
-   | `OTEL_EXPORTER_OTLP_HEADERS` | Headers exigidos pelo vendor, no formato `chave=valor` |
 
 3. Aguarde primeiro o banco e depois a API. O Flyway aplica as migrações no startup; a API só fica pronta quando a aplicação e o indicador `db` estiverem saudáveis.
 4. Aguarde o build do frontend. `VITE_API_ORIGIN` é preenchida com a URL pública da API pelo próprio Blueprint.
@@ -54,7 +51,6 @@ Não use curingas no CORS e não coloque segredos em variáveis `VITE_*`, pois e
 3. Login, renovação de token e logout funcionam pelo frontend.
 4. Uma escrita simples persiste e pode ser lida novamente.
 5. O fluxo de recuperação envia e-mail e abre a URL correta do frontend.
-6. Uma requisição aparece no vendor como trace, métricas e logs correlacionados pelo mesmo `traceId`.
 
 ## Banco, migrações e restauração
 
@@ -70,4 +66,3 @@ Não use curingas no CORS e não coloque segredos em variáveis `VITE_*`, pois e
 - O deploy automático ocorre apenas depois que a CI passa. Se uma release falhar, use o rollback do serviço no Render.
 - Rollback de código não desfaz migração; por isso as migrações precisam ser retrocompatíveis.
 - Para rotacionar o banco, crie uma nova credencial gerenciada, sincronize o Blueprint, redeploye a API, confirme que as conexões antigas cessaram e só então revogue a credencial anterior.
-- Para trocar o vendor de observabilidade, altere apenas `OTEL_EXPORTER_OTLP_ENDPOINT` e `OTEL_EXPORTER_OTLP_HEADERS`, redeploye a API e recrie os dashboards no destino.
