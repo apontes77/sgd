@@ -65,6 +65,7 @@ describe('navegação autenticada', () => {
   beforeEach(() => {
     mockViewport(1200)
     window.history.replaceState({}, '', '/')
+    localStorage.clear()
     sessionStorage.setItem('sgd.access-token', 'token')
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input)
@@ -85,6 +86,7 @@ describe('navegação autenticada', () => {
   afterEach(() => {
     cleanup()
     vi.restoreAllMocks()
+    localStorage.clear()
     sessionStorage.clear()
     window.history.replaceState({}, '', '/')
   })
@@ -326,6 +328,38 @@ describe('navegação autenticada', () => {
     expect(within(moreSheet).getByRole('button', { name: 'Estrutura' })).toBeInTheDocument()
     await userEvent.click(within(moreSheet).getByRole('button', { name: 'Sair' }))
     expect(onLogout).toHaveBeenCalledOnce()
+  })
+
+  it('recolhe e expande a barra lateral no desktop e persiste o estado', async () => {
+    const { unmount } = render(<AuthenticatedApp currentUser={user(['ADMIN'])} onLogout={() => undefined} />)
+
+    expect(screen.getByRole('tab', { name: 'Painel' })).toBeInTheDocument()
+    const recolher = screen.getByRole('button', { name: 'Recolher menu' })
+    expect(recolher).toHaveAttribute('aria-expanded', 'true')
+    await userEvent.click(recolher)
+
+    expect(screen.queryByRole('tab', { name: 'Painel' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: 'Navegação principal' })).not.toBeInTheDocument()
+    const expandir = screen.getByRole('button', { name: 'Expandir menu' })
+    expect(expandir).toHaveAttribute('aria-expanded', 'false')
+    expect(localStorage.getItem('sgd:sidebar-collapsed')).toBe('true')
+
+    unmount()
+    render(<AuthenticatedApp currentUser={user(['ADMIN'])} onLogout={() => undefined} />)
+
+    expect(screen.queryByRole('tab', { name: 'Painel' })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Expandir menu' }))
+    expect(screen.getByRole('tab', { name: 'Painel' })).toBeInTheDocument()
+    expect(localStorage.getItem('sgd:sidebar-collapsed')).toBe('false')
+  })
+
+  it('permite recolher a barra lateral pelo teclado', async () => {
+    render(<AuthenticatedApp currentUser={user(['ADMIN'])} onLogout={() => undefined} />)
+    screen.getByRole('button', { name: 'Recolher menu' }).focus()
+    await userEvent.keyboard('{Enter}')
+    expect(screen.getByRole('button', { name: 'Expandir menu' })).toBeInTheDocument()
+    await userEvent.keyboard('{Enter}')
+    expect(screen.getByRole('button', { name: 'Recolher menu' })).toBeInTheDocument()
   })
 })
 

@@ -1,5 +1,5 @@
 export { AnalyticsCard } from './AnalyticsCard'
-export { BOTTOM_NAV_OFFSET } from './constants'
+export { BOTTOM_NAV_OFFSET, DRAWER_WIDTH } from './constants'
 export { DataTableCard } from './DataTableCard'
 export { DiscipuladoLiderancaInfo } from './DiscipuladoLiderancaInfo'
 export { EmptyState } from './EmptyState'

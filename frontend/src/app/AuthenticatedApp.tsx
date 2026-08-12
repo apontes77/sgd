@@ -3,6 +3,8 @@ import {
   AssessmentRounded,
   Brightness4Rounded,
   Brightness7Rounded,
+  ChevronLeftRounded,
+  ChevronRightRounded,
   DashboardRounded,
   Diversity3Rounded,
   FactCheckRounded,
@@ -32,13 +34,15 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
+import type { Theme } from '@mui/material/styles'
 import { alpha } from '@mui/material/styles'
 import { motion, useReducedMotion } from 'framer-motion'
-import type { ReactNode } from 'react'
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import type { ReactNode, Ref } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 
 import { type AppSection, navigateToSection, resolveInitialSection } from '@/app/appNavigation'
 import { useColorMode } from '@/app/useColorMode'
+import { useSidebarCollapsed } from '@/app/useSidebarCollapsed'
 import AdolescentManagement from '@/features/adolescentes/AdolescentManagement'
 import FrequencyManagement from '@/features/frequencia/FrequencyManagement'
 import { organizationApi } from '@/features/organizacao/api'
@@ -46,7 +50,7 @@ import OrganizationManagement from '@/features/organizacao/OrganizationManagemen
 import { userManagementClient } from '@/features/users/api'
 import UserManagement from '@/features/users/UserManagement'
 import { type Discipulado, labelDiscipulado, type Perfil, type Usuario } from '@/shared/api/types'
-import { BOTTOM_NAV_OFFSET, EmptyState, LoadingState, PageHeader } from '@/shared/ui'
+import { BOTTOM_NAV_OFFSET, DRAWER_WIDTH, EmptyState, LoadingState, PageHeader } from '@/shared/ui'
 
 const ExecutiveDashboard = lazy(() => import('@/features/dashboards/ExecutiveDashboard'))
 const AdminDashboard = lazy(() => import('@/features/dashboards/AdminDashboard'))
@@ -58,12 +62,24 @@ const LeadershipAttendance = lazy(() => import('@/features/lideranca/LeadershipA
 type Section = AppSection
 type NavGroup = 'Dashboards & BI' | 'Cadastros' | 'Operações' | 'Relatórios'
 type NavItem = { value: Section; label: string; shortLabel?: string; group: NavGroup; icon: ReactNode }
-const drawerWidth = 264
 const roleLabel: Record<Perfil, string> = {
   ADMIN: 'Administrador',
   GERENTE: 'Gerente',
   DISCIPULADOR: 'Discipulador',
   CO_LIDER: 'Co-líder',
+}
+
+function sidebarShiftSx(collapsed: boolean, reducedMotion: boolean | null) {
+  return {
+    ml: { md: collapsed ? 0 : `${DRAWER_WIDTH}px` },
+    transition: (theme: Theme) =>
+      reducedMotion
+        ? 'none'
+        : theme.transitions.create(['width', 'margin'], {
+            easing: collapsed ? theme.transitions.easing.sharp : theme.transitions.easing.easeOut,
+            duration: collapsed ? theme.transitions.duration.leavingScreen : theme.transitions.duration.enteringScreen,
+          }),
+  }
 }
 
 function primaryBottomItems(items: NavItem[]): NavItem[] {
@@ -76,7 +92,11 @@ function primaryBottomItems(items: NavItem[]): NavItem[] {
 
 export default function AuthenticatedApp({ currentUser, onLogout }: { currentUser: Usuario; onLogout: () => void }) {
   const { mode, toggleMode } = useColorMode()
+  const { collapsed, toggleCollapsed } = useSidebarCollapsed()
   const reducedMotion = useReducedMotion()
+  const expandButtonRef = useRef<HTMLButtonElement>(null)
+  const collapseButtonRef = useRef<HTMLButtonElement>(null)
+  const shouldRestoreFocus = useRef(false)
   const isAdmin = currentUser.perfis.includes('ADMIN')
   const isGerente = currentUser.perfis.includes('GERENTE')
   const sections = useMemo(() => {
@@ -186,6 +206,18 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
     setMoreOpen(false)
   }
 
+  function handleToggleSidebar() {
+    shouldRestoreFocus.current = true
+    toggleCollapsed()
+  }
+
+  useEffect(() => {
+    if (!shouldRestoreFocus.current) return
+    shouldRestoreFocus.current = false
+    if (collapsed) expandButtonRef.current?.focus()
+    else collapseButtonRef.current?.focus()
+  }, [collapsed])
+
   const navigation = (
     <Navigation
       items={sections}
@@ -193,6 +225,8 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
       currentUser={currentUser}
       onNavigate={navigate}
       onLogout={onLogout}
+      onCollapse={handleToggleSidebar}
+      collapseButtonRef={collapseButtonRef}
     />
   )
   return (
@@ -202,8 +236,8 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
         color="inherit"
         elevation={0}
         sx={{
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-          ml: { md: `${drawerWidth}px` },
+          ...sidebarShiftSx(collapsed, reducedMotion),
+          width: { md: collapsed ? '100%' : `calc(100% - ${DRAWER_WIDTH}px)` },
           borderBottom: '1px solid',
           borderColor: (theme) => theme.app.border.subtle,
           bgcolor: (theme) => theme.app.surface.glass,
@@ -212,6 +246,9 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
         }}
       >
         <Toolbar sx={{ minHeight: { xs: 64, md: 68 }, px: { xs: 2, md: 3 } }}>
+          {collapsed ? (
+            <SidebarToggle collapsed onToggle={handleToggleSidebar} placement="appbar" buttonRef={expandButtonRef} />
+          ) : null}
           <Box sx={{ flexGrow: 1 }}>
             <Typography variant="body2" color="text.secondary">
               {currentSection.group} / {currentSection.label}
@@ -225,18 +262,25 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
           </Tooltip>
         </Toolbar>
       </AppBar>
-      <Box component="nav" aria-label="Navegação principal" sx={{ display: { xs: 'none', md: 'block' } }}>
+      <Box
+        component="nav"
+        id="app-sidebar"
+        aria-label="Navegação principal"
+        aria-hidden={collapsed || undefined}
+        sx={{ display: { xs: 'none', md: 'block' } }}
+      >
         <Drawer
-          variant="permanent"
+          variant="persistent"
+          open={!collapsed}
+          transitionDuration={reducedMotion ? 0 : undefined}
           sx={{
             '& .MuiDrawer-paper': {
-              width: drawerWidth,
+              width: DRAWER_WIDTH,
               boxSizing: 'border-box',
               borderRightColor: (theme) => theme.app.border.subtle,
               boxShadow: (theme) => theme.app.shadow.drawer,
             },
           }}
-          open
         >
           {navigation}
         </Drawer>
@@ -244,7 +288,7 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
       <Box
         component="main"
         sx={{
-          ml: { md: `${drawerWidth}px` },
+          ...sidebarShiftSx(collapsed, reducedMotion),
           pt: { xs: '64px', md: '68px' },
           pb: { xs: BOTTOM_NAV_OFFSET, md: 0 },
           minHeight: '100vh',
@@ -429,18 +473,53 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
   )
 }
 
+function SidebarToggle({
+  collapsed,
+  onToggle,
+  placement,
+  buttonRef,
+}: {
+  collapsed: boolean
+  onToggle: () => void
+  placement: 'sidebar' | 'appbar'
+  buttonRef?: Ref<HTMLButtonElement>
+}) {
+  const label = collapsed ? 'Expandir menu' : 'Recolher menu'
+  return (
+    <Tooltip title={label}>
+      <IconButton
+        ref={buttonRef}
+        color="inherit"
+        onClick={onToggle}
+        aria-label={label}
+        aria-expanded={!collapsed}
+        aria-controls="app-sidebar"
+        edge={placement === 'appbar' ? 'start' : undefined}
+        size={placement === 'sidebar' ? 'small' : 'medium'}
+        sx={placement === 'appbar' ? { display: { xs: 'none', md: 'inline-flex' }, mr: 1 } : undefined}
+      >
+        {collapsed ? <ChevronRightRounded /> : <ChevronLeftRounded />}
+      </IconButton>
+    </Tooltip>
+  )
+}
+
 function Navigation({
   items,
   current,
   currentUser,
   onNavigate,
   onLogout,
+  onCollapse,
+  collapseButtonRef,
 }: {
   items: NavItem[]
   current: Section
   currentUser: Usuario
   onNavigate: (value: Section) => void
   onLogout: () => void
+  onCollapse: () => void
+  collapseButtonRef: Ref<HTMLButtonElement>
 }) {
   const groups: NavGroup[] = ['Dashboards & BI', 'Cadastros', 'Operações', 'Relatórios']
   return (
@@ -454,36 +533,40 @@ function Navigation({
       <Stack
         direction="row"
         alignItems="center"
-        spacing={1.4}
-        sx={{ height: 76, px: 2.5, borderBottom: '1px solid', borderColor: 'divider' }}
+        spacing={1}
+        sx={{ height: 76, px: 1.5, pr: 1, borderBottom: '1px solid', borderColor: 'divider' }}
       >
-        <Box
-          sx={{
-            width: 42,
-            height: 42,
-            borderRadius: 2.5,
-            display: 'grid',
-            placeItems: 'center',
-            color: 'primary.contrastText',
-            bgcolor: 'primary.main',
-          }}
-        >
-          <Diversity3Rounded />
-        </Box>
-        <Box>
-          <Typography
-            variant="h6"
+        <Stack direction="row" alignItems="center" spacing={1.4} sx={{ minWidth: 0, flexGrow: 1, px: 1 }}>
+          <Box
             sx={{
-              color: (theme) =>
-                theme.palette.mode === 'dark' ? theme.palette.common.white : theme.palette.primary.dark,
+              width: 42,
+              height: 42,
+              borderRadius: 2.5,
+              display: 'grid',
+              placeItems: 'center',
+              color: 'primary.contrastText',
+              bgcolor: 'primary.main',
+              flexShrink: 0,
             }}
           >
-            SGD
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Gestão de discipulados
-          </Typography>
-        </Box>
+            <Diversity3Rounded />
+          </Box>
+          <Box minWidth={0}>
+            <Typography
+              variant="h6"
+              sx={{
+                color: (theme) =>
+                  theme.palette.mode === 'dark' ? theme.palette.common.white : theme.palette.primary.dark,
+              }}
+            >
+              SGD
+            </Typography>
+            <Typography variant="caption" color="text.secondary" noWrap>
+              Gestão de discipulados
+            </Typography>
+          </Box>
+        </Stack>
+        <SidebarToggle collapsed={false} onToggle={onCollapse} placement="sidebar" buttonRef={collapseButtonRef} />
       </Stack>
       <List role="tablist" sx={{ flexGrow: 1, overflowY: 'auto', px: 1.5, py: 2 }}>
         {groups.map((group) => {
