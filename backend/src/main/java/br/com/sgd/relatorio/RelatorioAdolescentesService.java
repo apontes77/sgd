@@ -82,26 +82,24 @@ public class RelatorioAdolescentesService {
       Discipulado d = vinculo.getDiscipulado();
       escreverLinha(
           writer,
-          new String[] {
-            texto(a.getNome()),
-            texto(a.getDataNascimento()),
-            String.valueOf(idade(a.getDataNascimento(), hoje)),
-            texto(a.getTelefone()),
-            texto(a.getInstagram()),
-            a.getCategoria() == null ? "" : a.getCategoria().name(),
-            simNao(a.isAtivo()),
-            texto(a.getEstrutura()),
-            texto(a.getMotivoAfastamento()),
-            texto(a.getNomeMae()),
-            texto(a.getTelefoneMae()),
-            texto(a.getNomePai()),
-            texto(a.getTelefonePai()),
-            texto(a.getResponsavelNome()),
-            texto(a.getResponsavelTelefone()),
-            texto(d.getNome()),
-            texto(d.getDiscipulador().getNome()),
-            texto(d.getGerencia().getNome())
-          });
+          texto(a.getNome()),
+          texto(a.getDataNascimento()),
+          String.valueOf(idade(a.getDataNascimento(), hoje)),
+          texto(a.getTelefone()),
+          texto(a.getInstagram()),
+          a.getCategoria() == null ? "" : a.getCategoria().name(),
+          simNao(a.isAtivo()),
+          texto(a.getEstrutura()),
+          texto(a.getMotivoAfastamento()),
+          texto(a.getNomeMae()),
+          texto(a.getTelefoneMae()),
+          texto(a.getNomePai()),
+          texto(a.getTelefonePai()),
+          texto(a.getResponsavelNome()),
+          texto(a.getResponsavelTelefone()),
+          texto(d.getNome()),
+          texto(d.getDiscipulador().getNome()),
+          texto(d.getGerencia().getNome()));
     }
     writer.flush();
   }
@@ -119,7 +117,7 @@ public class RelatorioAdolescentesService {
     return valor == null ? "" : String.valueOf(valor);
   }
 
-  private static void escreverLinha(Writer writer, String[] campos) throws IOException {
+  private static void escreverLinha(Writer writer, String... campos) throws IOException {
     for (int i = 0; i < campos.length; i++) {
       if (i > 0) writer.write(',');
       writer.write(escaparCsv(campos[i]));
