@@ -79,13 +79,20 @@ public interface PainelAdminRepository extends Repository<Encontro, Long> {
       value =
           """
         select g.id as id,
-               coalesce(sum(v.quantidade), 0) as visitantes
+               count(distinct case
+                 when f.situacao = 'PRESENTE' and vin.adolescente_id is not null
+                 then f.adolescente_id
+               end) as visitantes
           from gerencias g
           left join discipulados d on d.gerencia_id = g.id
           left join encontros e on e.discipulado_id = d.id
            and e.situacao = 'REALIZADO'
            and e.data between :inicio and :fim
-          left join visitantes v on v.encontro_id = e.id
+          left join frequencias f on f.encontro_id = e.id
+          left join vinculos_adolescente_discipulado vin
+            on vin.adolescente_id = f.adolescente_id
+           and vin.discipulado_id = e.discipulado_id
+           and vin.data_inicio = e.data
          where g.ativo = true
          group by g.id
         """,
