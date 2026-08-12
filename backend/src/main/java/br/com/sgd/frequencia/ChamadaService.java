@@ -87,6 +87,7 @@ public class ChamadaService {
       }
     }
     e.marcarChamadaSalva(agora);
+    encontros.salvar(e);
     if (!mudancas.isEmpty())
       encontros.auditar(
           ator,
@@ -112,17 +113,21 @@ public class ChamadaService {
     var e = encontros.encontro(encontroId);
     encontros.exigirEditavel(ator, e);
     if (quantidade < 0) throw new IllegalArgumentException("A quantidade não pode ser negativa.");
+    var agora = clock.instant();
     var existente = visitantes.findByEncontroId(encontroId);
     int anterior = existente.map(Visitante::getQuantidade).orElse(0);
-    var v = existente.orElseGet(() -> new Visitante(e, quantidade, clock.instant()));
-    if (existente.isPresent()) v.atualizar(quantidade, clock.instant());
+    var v = existente.orElseGet(() -> new Visitante(e, quantidade, agora));
+    if (existente.isPresent()) v.atualizar(quantidade, agora);
     visitantes.save(v);
-    if (anterior != quantidade)
+    if (anterior != quantidade) {
+      e.registrarAlteracao(agora);
+      encontros.salvar(e);
       encontros.auditar(
           ator,
           "VISITANTE",
           "ALTERAR",
           Map.of("encontroId", encontroId, "anterior", anterior, "novo", quantidade));
+    }
     return quantidade;
   }
 

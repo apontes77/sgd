@@ -25,6 +25,7 @@ export interface DiscipuloPainel extends Omit<IndicadorFrequencia, 'percentualPr
 export interface IndicadorGerencia extends IndicadorFrequencia {
   id: number
   nome: string
+  visitantes: number
 }
 export interface IndicadorGerenciaMensal extends IndicadorFrequencia {
   gerenciaId: number

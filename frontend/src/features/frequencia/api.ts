@@ -11,6 +11,7 @@ export interface Encontro {
   justificativa: string | null
   observacao?: string | null
   criadoEm: string
+  atualizadoEm: string
   chamadaSalvaEm: string | null
 }
 export interface Frequencia {

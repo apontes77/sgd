@@ -25,6 +25,7 @@ class PainelAdminServiceTest {
     when(repository.frequenciasMensais(inicio, fim)).thenReturn(List.of());
     when(repository.visitantesMensais(inicio, fim)).thenReturn(List.of());
     when(repository.porGerencia(inicio, fim)).thenReturn(List.of());
+    when(repository.visitantesPorGerencia(inicio, fim)).thenReturn(List.of());
     when(repository.porGerenciaMensal(inicio, fim)).thenReturn(List.of());
     when(repository.porSexo(inicio, fim)).thenReturn(List.of());
     when(repository.encontrosNaoRealizados(inicio, fim)).thenReturn(0L);
@@ -70,6 +71,20 @@ class PainelAdminServiceTest {
     assertThat(service.consultar(inicio, fim).gerencias())
         .extracting(PainelAdminService.GerenciaIndicador::nome)
         .containsExactly("Maior", "Menor");
+  }
+
+  @Test
+  void agregaVisitantesPorGerenciaNoIndicador() {
+    var centro = gerencia(1L, "Centro", 4L, 1L);
+    when(repository.porGerencia(inicio, fim)).thenReturn(List.of(centro));
+    var visitantes = mock(PainelAdminRepository.VisitantesGerencia.class);
+    when(visitantes.getId()).thenReturn(1L);
+    when(visitantes.getVisitantes()).thenReturn(7L);
+    when(repository.visitantesPorGerencia(inicio, fim)).thenReturn(List.of(visitantes));
+
+    var indicador = service.consultar(inicio, fim).gerencias().getFirst();
+    assertThat(indicador.visitantes()).isEqualTo(7);
+    assertThat(indicador.presentes()).isEqualTo(4);
   }
 
   @Test

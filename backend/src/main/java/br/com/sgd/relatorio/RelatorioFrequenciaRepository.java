@@ -16,6 +16,7 @@ public interface RelatorioFrequenciaRepository extends JpaRepository<Encontro, L
       attributePaths = {
         "discipulado",
         "discipulado.gerencia",
+        "discipulado.gerencia.gerente",
         "discipulado.discipulador",
         "discipulado.coLideres"
       })
@@ -27,6 +28,7 @@ public interface RelatorioFrequenciaRepository extends JpaRepository<Encontro, L
       attributePaths = {
         "discipulado",
         "discipulado.gerencia",
+        "discipulado.gerencia.gerente",
         "discipulado.discipulador",
         "discipulado.coLideres"
       })
@@ -40,13 +42,10 @@ public interface RelatorioFrequenciaRepository extends JpaRepository<Encontro, L
   @Query(
       value =
           """
-        select e.id as encontroId, count(distinct f.adolescente_id) as visitantes
-          from encontros e
-          join frequencias f on f.encontro_id = e.id and f.situacao = 'PRESENTE'
-          join vinculos_adolescente_discipulado vin on vin.adolescente_id = f.adolescente_id
-           and vin.discipulado_id = e.discipulado_id and vin.data_inicio = e.data
-         where e.id in :encontroIds
-         group by e.id
+        select v.encontro_id as encontroId, coalesce(sum(v.quantidade), 0) as visitantes
+          from visitantes v
+         where v.encontro_id in :encontroIds
+         group by v.encontro_id
         """,
       nativeQuery = true)
   List<VisitantesPorEncontro> contarVisitantesPorEncontro(
@@ -55,6 +54,6 @@ public interface RelatorioFrequenciaRepository extends JpaRepository<Encontro, L
   interface VisitantesPorEncontro {
     Long getEncontroId();
 
-    Integer getVisitantes();
+    Number getVisitantes();
   }
 }

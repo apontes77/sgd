@@ -1,13 +1,16 @@
 package br.com.sgd.relatorio;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Set;
 import java.util.UUID;
 
@@ -196,9 +199,10 @@ class RelatorioFrequenciaHttpTest {
         .andExpect(jsonPath("$.relatorios[0].data").value(DATA.toString()))
         .andExpect(jsonPath("$.relatorios[0].participantes[0].situacao").value("AUSENTE"))
         .andExpect(jsonPath("$.relatorios[0].participantes[1].nome").value("Bia"))
-        .andExpect(jsonPath("$.relatorios[0].visitantes").value(1))
+        .andExpect(jsonPath("$.relatorios[0].visitantes").value(3))
         .andExpect(jsonPath("$.relatorios[0].resumo.presentes").value(1))
         .andExpect(jsonPath("$.relatorios[0].resumo.ausentes").value(1))
+        .andExpect(jsonPath("$.relatorios[0].resumo.visitantes").value(3))
         .andExpect(jsonPath("$.relatorios[0].resumo.percentualPresenca").value(50.00))
         .andExpect(jsonPath("$.relatorios[0].coLideres[0].nome").value("Co-líder Alpha"));
     consultar(tokenCoLider)
@@ -251,6 +255,34 @@ class RelatorioFrequenciaHttpTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.relatorios.length()").value(1))
         .andExpect(jsonPath("$.relatorios[0].discipulado.nome").value("Alpha"));
+  }
+
+  @Test
+  void exportaFrequenciasEmExcel() throws Exception {
+    byte[] corpo =
+        mvc.perform(
+                get("/api/v1/relatorios/frequencia/export")
+                    .param("dataInicio", DATA.toString())
+                    .param("dataFim", DATA.toString())
+                    .header(HttpHeaders.AUTHORIZATION, bearer(token(admin))))
+            .andExpect(status().isOk())
+            .andExpect(
+                header()
+                    .string(
+                        HttpHeaders.CONTENT_TYPE,
+                        org.hamcrest.Matchers.containsString(
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")))
+            .andExpect(
+                header()
+                    .string(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        org.hamcrest.Matchers.containsString("frequencias-")))
+            .andReturn()
+            .getResponse()
+            .getContentAsByteArray();
+    assertThat(corpo.length).isGreaterThan(100);
+    assertThat(corpo[0]).isEqualTo((byte) 0x50);
+    assertThat(corpo[1]).isEqualTo((byte) 0x4b);
   }
 
   @Test
@@ -321,6 +353,33 @@ class RelatorioFrequenciaHttpTest {
                 .param("dataFim", DATA.plusMonths(12).plusDays(1).toString())
                 .header(HttpHeaders.AUTHORIZATION, bearer(token)))
         .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void exportaExcelComCabecalhosEAnexo() throws Exception {
+    String hoje = LocalDate.now(ZoneId.of("America/Sao_Paulo")).toString();
+    byte[] corpo =
+        mvc.perform(
+                get("/api/v1/relatorios/frequencia/export")
+                    .param("dataInicio", DATA.toString())
+                    .param("dataFim", DATA.toString())
+                    .header(HttpHeaders.AUTHORIZATION, bearer(token(liderAlpha))))
+            .andExpect(status().isOk())
+            .andExpect(
+                header()
+                    .string(
+                        HttpHeaders.CONTENT_TYPE,
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+            .andExpect(
+                header()
+                    .string(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"frequencias-" + hoje + ".xlsx\""))
+            .andReturn()
+            .getResponse()
+            .getContentAsByteArray();
+    org.assertj.core.api.Assertions.assertThat(corpo.length).isGreaterThan(100);
+    org.assertj.core.api.Assertions.assertThat(corpo[0]).isEqualTo((byte) 0x50); // 'P' de PK zip
   }
 
   private org.springframework.test.web.servlet.ResultActions consultar(String token)

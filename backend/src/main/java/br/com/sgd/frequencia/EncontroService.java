@@ -237,6 +237,10 @@ public class EncontroService {
     return vinculos.atuais(e.getDiscipulado().getId());
   }
 
+  void salvar(Encontro e) {
+    encontros.save(e);
+  }
+
   void auditar(User ator, String entidade, String acao, Object detalhes) {
     try {
       auditoria.save(new AuditLog(ator, entidade, acao, json.writeValueAsString(detalhes)));

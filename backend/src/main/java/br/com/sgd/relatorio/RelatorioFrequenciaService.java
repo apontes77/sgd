@@ -1,5 +1,7 @@
 package br.com.sgd.relatorio;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Clock;
@@ -13,6 +15,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -83,6 +88,57 @@ public class RelatorioFrequenciaService {
         inicio, fim, clock.instant(), montarRelatorios(encontrados));
   }
 
+  public void exportarExcel(
+      User usuario, LocalDate inicio, LocalDate fim, Long discipuladoId, OutputStream out)
+      throws IOException {
+    RelatorioPeriodoResponse periodo = consultarPeriodo(usuario, inicio, fim, discipuladoId);
+    try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+      Sheet sheet = workbook.createSheet("Frequências");
+      Row cabecalho = sheet.createRow(0);
+      String[] colunas = {
+        "Discipulador(a)",
+        "Gerente",
+        "Data",
+        "Presentes",
+        "Ausentes",
+        "Visitantes",
+        "Total de presentes",
+        "Observação do discipulador",
+        "Observação estrutura"
+      };
+      for (int i = 0; i < colunas.length; i++) {
+        cabecalho.createCell(i).setCellValue(colunas[i]);
+      }
+      int linha = 1;
+      for (RelatorioEncontro item : periodo.relatorios()) {
+        boolean naoRealizado = item.situacao() == SituacaoEncontro.NAO_REALIZADO;
+        long presentes = naoRealizado ? 0 : item.resumo().presentes();
+        long ausentes = naoRealizado ? 0 : item.resumo().ausentes();
+        int visitantes = naoRealizado ? 0 : item.visitantes();
+        String observacaoDiscipulador = item.observacao();
+        if ((observacaoDiscipulador == null || observacaoDiscipulador.isBlank())
+            && naoRealizado
+            && item.justificativa() != null) {
+          observacaoDiscipulador = item.justificativa();
+        }
+        Row row = sheet.createRow(linha++);
+        row.createCell(0).setCellValue(item.discipulador().nome());
+        row.createCell(1).setCellValue(item.gerenteNome());
+        row.createCell(2)
+            .setCellValue(
+                item.data().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+        row.createCell(3).setCellValue(presentes);
+        row.createCell(4).setCellValue(ausentes);
+        row.createCell(5).setCellValue(visitantes);
+        row.createCell(6).setCellValue(presentes + visitantes);
+        row.createCell(7)
+            .setCellValue(observacaoDiscipulador == null ? "" : observacaoDiscipulador);
+        row.createCell(8).setCellValue("");
+      }
+      workbook.write(out);
+    }
+  }
+
   private Set<Long> resolverDiscipuladosConsulta(
       boolean administrador, Escopo escopo, Long discipuladoId) {
     if (discipuladoId == null) {
@@ -133,20 +189,28 @@ public class RelatorioFrequenciaService {
             .stream()
             .collect(Collectors.groupingBy(f -> f.getEncontro().getId()));
     Map<Long, Integer> visitantesPorEncontro =
-        encontros.contarVisitantesPorEncontro(encontroIds).stream()
-            .collect(
-                Collectors.toMap(
-                    v -> v.getEncontroId(),
-                    v -> v.getVisitantes() == null ? 0 : v.getVisitantes()));
+        encontroIds.isEmpty()
+            ? Map.of()
+            : encontros.contarVisitantesPorEncontro(encontroIds).stream()
+                .collect(
+                    Collectors.toMap(
+                        RelatorioFrequenciaRepository.VisitantesPorEncontro::getEncontroId,
+                        v -> {
+                          Number valor = v.getVisitantes();
+                          return valor == null ? 0 : valor.intValue();
+                        }));
 
     List<RelatorioEncontro> resultado = new ArrayList<>();
     for (Encontro encontro : encontrados) {
       var discipulado = encontro.getDiscipulado();
+      var gerencia = discipulado.getGerencia();
       List<LiderInfo> coLideres =
           discipulado.getCoLideres().stream()
               .map(u -> new LiderInfo(u.getId(), u.getNome()))
               .sorted(Comparator.comparing(LiderInfo::nome, String.CASE_INSENSITIVE_ORDER))
               .toList();
+      String gerenteNome =
+          gerencia.getGerente() == null ? gerencia.getNome() : gerencia.getGerente().getNome();
       if (encontro.getSituacao() == SituacaoEncontro.NAO_REALIZADO) {
         resultado.add(
             new RelatorioEncontro(
@@ -154,12 +218,13 @@ public class RelatorioFrequenciaService {
                 encontro.getData(),
                 encontro.getSituacao(),
                 encontro.getJustificativa(),
-                new GerenciaInfo(
-                    discipulado.getGerencia().getId(), discipulado.getGerencia().getNome()),
+                encontro.getObservacao(),
+                new GerenciaInfo(gerencia.getId(), gerencia.getNome()),
                 new DiscipuladoInfo(
                     discipulado.getId(), discipulado.getNome(), discipulado.getSexo().name()),
                 new LiderInfo(
                     discipulado.getDiscipulador().getId(), discipulado.getDiscipulador().getNome()),
+                gerenteNome,
                 coLideres,
                 List.of(),
                 0,
@@ -188,12 +253,13 @@ public class RelatorioFrequenciaService {
               encontro.getData(),
               encontro.getSituacao(),
               null,
-              new GerenciaInfo(
-                  discipulado.getGerencia().getId(), discipulado.getGerencia().getNome()),
+              encontro.getObservacao(),
+              new GerenciaInfo(gerencia.getId(), gerencia.getNome()),
               new DiscipuladoInfo(
                   discipulado.getId(), discipulado.getNome(), discipulado.getSexo().name()),
               new LiderInfo(
                   discipulado.getDiscipulador().getId(), discipulado.getDiscipulador().getNome()),
+              gerenteNome,
               coLideres,
               participantes,
               quantidadeVisitantes,
@@ -232,9 +298,11 @@ public class RelatorioFrequenciaService {
       LocalDate data,
       SituacaoEncontro situacao,
       String justificativa,
+      String observacao,
       GerenciaInfo gerencia,
       DiscipuladoInfo discipulado,
       LiderInfo discipulador,
+      String gerenteNome,
       List<LiderInfo> coLideres,
       List<ParticipanteInfo> participantes,
       int visitantes,

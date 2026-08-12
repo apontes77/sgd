@@ -80,12 +80,19 @@ public class Encontro {
     this.atualizadoEm = agora;
   }
 
-  /** Define a âncora da janela de 3h apenas no primeiro salvamento da chamada. */
+  /**
+   * Define a âncora da janela de 3h apenas no primeiro salvamento; sempre atualiza atualizadoEm.
+   */
   public void marcarChamadaSalva(Instant agora) {
     if (chamadaSalvaEm == null) {
       chamadaSalvaEm = agora;
-      atualizadoEm = agora;
     }
+    atualizadoEm = agora;
+  }
+
+  /** Atualiza o instante da última alteração (ex.: mudança de visitantes). */
+  public void registrarAlteracao(Instant agora) {
+    this.atualizadoEm = agora;
   }
 
   public Long getId() {
@@ -114,6 +121,10 @@ public class Encontro {
 
   public Instant getCriadoEm() {
     return criadoEm;
+  }
+
+  public Instant getAtualizadoEm() {
+    return atualizadoEm;
   }
 
   public Instant getChamadaSalvaEm() {

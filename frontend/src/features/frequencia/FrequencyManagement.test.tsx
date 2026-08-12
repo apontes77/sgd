@@ -15,6 +15,7 @@ const encontro = {
   justificativa: null,
   observacao: null as string | null,
   criadoEm: new Date().toISOString(),
+  atualizadoEm: new Date().toISOString(),
   chamadaSalvaEm: null as string | null,
 }
 const json = (body: unknown, status = 200) =>
@@ -181,6 +182,7 @@ describe('registro de frequência', () => {
     render(<FrequencyManagement discipuladoId={1} />)
     expect(await screen.findByRole('button', { name: /Ana: presente/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Houve discipulado/i })).not.toBeInTheDocument()
+    expect(screen.getByText(/Registrado\/alterado em/i)).toBeInTheDocument()
   })
 
   it('adiciona um visitante como adolescente presente e o inclui no salvamento', async () => {

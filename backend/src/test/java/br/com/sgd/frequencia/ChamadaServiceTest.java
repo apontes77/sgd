@@ -134,6 +134,7 @@ class ChamadaServiceTest {
     assertThat(salvas).hasSize(2);
     assertThat(historica.getSituacao()).isEqualTo(SituacaoFrequencia.AUSENTE);
     verify(encontro).marcarChamadaSalva(AGORA);
+    verify(encontros).salvar(encontro);
     verify(encontros).auditar(eq(ator), eq("FREQUENCIA"), eq("SUBSTITUIR_CHAMADA"), any());
     verify(adolescentes).promoverVisitanteSeElegivel(ator, 1L);
     verify(adolescentes, never()).promoverVisitanteSeElegivel(ator, 2L);
@@ -229,13 +230,16 @@ class ChamadaServiceTest {
     when(visitantes.findByEncontroId(1L)).thenReturn(Optional.empty());
     assertThat(service.salvarVisitantes(ator, 1L, 3)).isEqualTo(3);
     verify(visitantes).save(any(Visitante.class));
+    verify(encontro).registrarAlteracao(AGORA);
+    verify(encontros).salvar(encontro);
     verify(encontros).auditar(eq(ator), eq("VISITANTE"), eq("ALTERAR"), any());
 
     Visitante existente = new Visitante(encontro, 3, AGORA.minusSeconds(60));
-    org.mockito.Mockito.clearInvocations(encontros, visitantes);
+    org.mockito.Mockito.clearInvocations(encontros, visitantes, encontro);
     when(encontros.encontro(1L)).thenReturn(encontro);
     when(visitantes.findByEncontroId(1L)).thenReturn(Optional.of(existente));
     service.salvarVisitantes(ator, 1L, 3);
+    verify(encontro, never()).registrarAlteracao(any());
     verify(encontros, never()).auditar(any(), any(), any(), any());
   }
 

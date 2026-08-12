@@ -27,6 +27,7 @@ export interface RelatorioEncontro {
   data: string
   situacao: SituacaoEncontroRelatorio
   justificativa: string | null
+  observacao?: string | null
   gerencia: IdentificacaoRelatorio
   discipulado: DiscipuladoRelatorio
   discipulador: IdentificacaoRelatorio
@@ -60,6 +61,22 @@ export const relatorioApi = {
     const params = new URLSearchParams({ dataInicio, dataFim })
     if (discipuladoId != null) params.set('discipuladoId', String(discipuladoId))
     return request<RelatorioPeriodoResponse>(`/relatorios/frequencia?${params}`)
+  },
+  exportarFrequencia: async (dataInicio: string, dataFim: string, discipuladoId?: number) => {
+    const params = new URLSearchParams({ dataInicio, dataFim })
+    if (discipuladoId != null) params.set('discipuladoId', String(discipuladoId))
+    const { blob, filename } = await requestBlob(`/relatorios/frequencia/export?${params}`)
+    const url = URL.createObjectURL(blob)
+    try {
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename ?? 'frequencias.xlsx'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    } finally {
+      URL.revokeObjectURL(url)
+    }
   },
   exportarAdolescentes: async (filtro: { discipuladoId?: number; ativo?: FiltroAtivoExport } = {}) => {
     const params = new URLSearchParams()
