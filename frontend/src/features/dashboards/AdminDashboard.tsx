@@ -105,7 +105,7 @@ function Conteudo({ dados }: { dados: PainelAdminResponse }) {
       >
         <AnalyticsCard
           title="Presença por gerência"
-          description="Percentual de presença com base em presentes e ausentes."
+          description="Percentual de presença com base em presentes e ausentes. Total = presentes + visitantes."
           chart={<GraficoGerencias dados={gerencias} />}
           table={<TabelaGerencias dados={gerencias} ordenacao={ordenacao} onOrdenacao={setOrdenacao} />}
         />
@@ -144,7 +144,7 @@ function GraficoGerencias({ dados }: { dados: IndicadorGerencia[] }) {
             formatter: (params: Array<{ dataIndex: number; value: number }>) => {
               const item = dados[params[0]?.dataIndex]
               return item
-                ? `${item.nome}<br/>Presença: ${percentual(item.percentualPresenca)}<br/>Registros: ${item.presentes + item.ausentes}`
+                ? `${item.nome}<br/>Presença: ${percentual(item.percentualPresenca)}<br/>Presentes: ${item.presentes}<br/>Visitantes: ${item.visitantes}<br/>Total: ${item.presentes + item.visitantes}`
                 : ''
             },
           },
@@ -206,6 +206,8 @@ function TabelaGerencias({
             </TableCell>
             <TableCell>Presentes</TableCell>
             <TableCell>Ausentes</TableCell>
+            <TableCell>Visitantes</TableCell>
+            <TableCell>Total</TableCell>
             <TableCell>
               <BotaoOrdenacao ativo={ordenacao === 'percentual'} onClick={() => onOrdenacao('percentual')}>
                 Presença
@@ -221,6 +223,8 @@ function TabelaGerencias({
               </TableCell>
               <TableCell>{item.presentes}</TableCell>
               <TableCell>{item.ausentes}</TableCell>
+              <TableCell>{item.visitantes}</TableCell>
+              <TableCell>{item.presentes + item.visitantes}</TableCell>
               <TableCell>{percentual(item.percentualPresenca)}</TableCell>
             </TableRow>
           ))}

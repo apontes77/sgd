@@ -108,7 +108,9 @@ describe('relatório diário de frequência', () => {
     render(<FrequencyReport currentUser={adminUser} />)
 
     const imprimir = screen.getByRole('button', { name: 'Imprimir / salvar como PDF' })
+    const exportar = screen.getByRole('button', { name: 'Exportar Excel' })
     expect(imprimir).toBeDisabled()
+    expect(exportar).toBeDisabled()
     expect(await screen.findByLabelText(/^Discipulado/)).toBeInTheDocument()
     const dataInicial = screen.getByLabelText(/^Data inicial/)
     const dataFinal = screen.getByLabelText(/^Data final/)
@@ -140,6 +142,7 @@ describe('relatório diário de frequência', () => {
 
     await userEvent.click(imprimir)
     expect(printMock).toHaveBeenCalledOnce()
+    expect(exportar).toBeEnabled()
   })
 
   it('informa quando não há encontros e mantém a impressão desabilitada', async () => {
@@ -168,6 +171,7 @@ describe('relatório diário de frequência', () => {
 
     expect(await screen.findByText(/Não há registros de frequência no seu escopo/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Imprimir / salvar como PDF' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Exportar Excel' })).toBeDisabled()
   })
 
   it('permite ao gerente filtrar o relatório por discipulado', async () => {

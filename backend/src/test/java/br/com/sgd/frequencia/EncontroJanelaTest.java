@@ -15,11 +15,15 @@ class EncontroJanelaTest {
         new Encontro(
             nullSafeDiscipulado(), LocalDate.of(2026, 7, 11), SituacaoEncontro.REALIZADO, criado);
     assertEquals(criado, encontro.getCriadoEm());
+    assertEquals(criado, encontro.getAtualizadoEm());
     assertEquals(null, encontro.getChamadaSalvaEm());
     encontro.marcarChamadaSalva(chamada);
     assertEquals(chamada, encontro.getChamadaSalvaEm());
-    encontro.marcarChamadaSalva(chamada.plusSeconds(60));
+    assertEquals(chamada, encontro.getAtualizadoEm());
+    var segunda = chamada.plusSeconds(60);
+    encontro.marcarChamadaSalva(segunda);
     assertEquals(chamada, encontro.getChamadaSalvaEm());
+    assertEquals(segunda, encontro.getAtualizadoEm());
   }
 
   private static br.com.sgd.organizacao.Discipulado nullSafeDiscipulado() {

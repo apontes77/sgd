@@ -115,6 +115,7 @@ public class FrequenciaController {
       String justificativa,
       String observacao,
       Instant criadoEm,
+      Instant atualizadoEm,
       Instant chamadaSalvaEm) {
     static EncontroResponse of(Encontro e) {
       return new EncontroResponse(
@@ -125,6 +126,7 @@ public class FrequenciaController {
           e.getJustificativa(),
           e.getObservacao(),
           e.getCriadoEm(),
+          e.getAtualizadoEm(),
           e.getChamadaSalvaEm());
     }
   }

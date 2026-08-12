@@ -11,7 +11,7 @@ const resposta = {
   dataFim: '2026-07-01',
   resumo: { encontrosRealizados: 2, presentes: 3, ausentes: 1, visitantes: 7, percentualPresenca: 75 },
   evolucao: [{ referencia: '2026-06', presentes: 3, ausentes: 1, visitantes: 7, percentualPresenca: 75 }],
-  gerencias: [{ id: 1, nome: 'Gerência Centro', presentes: 3, ausentes: 1, percentualPresenca: 75 }],
+  gerencias: [{ id: 1, nome: 'Gerência Centro', presentes: 3, ausentes: 1, visitantes: 2, percentualPresenca: 75 }],
   sexos: [
     { sexo: 'MASCULINO', presentes: 2, ausentes: 1, percentualPresenca: 66.67 },
     { sexo: 'FEMININO', presentes: 1, ausentes: 0, percentualPresenca: 100 },

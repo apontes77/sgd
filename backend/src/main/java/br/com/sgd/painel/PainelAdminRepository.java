@@ -78,6 +78,24 @@ public interface PainelAdminRepository extends Repository<Encontro, Long> {
   @Query(
       value =
           """
+        select g.id as id,
+               coalesce(sum(v.quantidade), 0) as visitantes
+          from gerencias g
+          left join discipulados d on d.gerencia_id = g.id
+          left join encontros e on e.discipulado_id = d.id
+           and e.situacao = 'REALIZADO'
+           and e.data between :inicio and :fim
+          left join visitantes v on v.encontro_id = e.id
+         where g.ativo = true
+         group by g.id
+        """,
+      nativeQuery = true)
+  List<VisitantesGerencia> visitantesPorGerencia(
+      @Param("inicio") LocalDate inicio, @Param("fim") LocalDate fim);
+
+  @Query(
+      value =
+          """
         select g.id as gerenciaId, g.nome as gerenciaNome,
                substring(cast(e.data as varchar), 1, 7) as referencia,
                coalesce(sum(case when f.situacao = 'PRESENTE' then 1 else 0 end), 0) as presentes,
@@ -135,6 +153,12 @@ public interface PainelAdminRepository extends Repository<Encontro, Long> {
     Long getPresentes();
 
     Long getAusentes();
+  }
+
+  interface VisitantesGerencia {
+    Long getId();
+
+    Long getVisitantes();
   }
 
   interface ContagemGerenciaMensal {

@@ -234,6 +234,7 @@ export default function FrequencyManagement({
       )
       setSelecionado({
         ...atualizado,
+        atualizadoEm: atualizado.atualizadoEm ?? new Date().toISOString(),
         chamadaSalvaEm: atualizado.chamadaSalvaEm ?? new Date().toISOString(),
       })
       setObservacao(atualizado.observacao ?? '')
@@ -541,7 +542,17 @@ export default function FrequencyManagement({
       {selecionado?.situacao === 'REALIZADO' && (
         <SectionCard
           title={`Frequência de ${dataFormatada}`}
-          description={editavel ? 'Marque quem esteve presente.' : 'Consulta em modo somente leitura.'}
+          description={
+            <>
+              {editavel ? 'Marque quem esteve presente.' : 'Consulta em modo somente leitura.'}
+              {(selecionado.atualizadoEm || selecionado.chamadaSalvaEm) && (
+                <>
+                  {' '}
+                  Registrado/alterado em {formatarDataHora(selecionado.atualizadoEm ?? selecionado.chamadaSalvaEm!)}.
+                </>
+              )}
+            </>
+          }
           icon={<CheckRounded />}
         >
           <Stack spacing={2.5}>
@@ -812,4 +823,11 @@ function mensagem(e: unknown) {
 }
 function formatarData(data: string) {
   return new Intl.DateTimeFormat('pt-BR').format(new Date(`${data}T12:00:00`))
+}
+function formatarDataHora(data: string) {
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+    timeZone: 'America/Sao_Paulo',
+  }).format(new Date(data))
 }

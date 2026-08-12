@@ -1,4 +1,4 @@
-import { PrintRounded, SearchRounded } from '@mui/icons-material'
+import { FileDownloadRounded, PrintRounded, SearchRounded } from '@mui/icons-material'
 import {
   Alert,
   Autocomplete,
@@ -38,6 +38,7 @@ export default function FrequencyReport({ currentUser }: { currentUser: Usuario 
   const [dados, setDados] = useState<RelatorioPeriodoResponse>()
   const [erro, setErro] = useState('')
   const [carregando, setCarregando] = useState(false)
+  const [exportando, setExportando] = useState(false)
 
   const opcoesDiscipulado = useMemo<OpcaoDiscipulado[]>(() => [OPCAO_TODOS, ...discipulados], [discipulados])
   const discipuladoSelecionado = useMemo(
@@ -83,6 +84,26 @@ export default function FrequencyReport({ currentUser }: { currentUser: Usuario 
       setErro(e instanceof Error ? e.message : 'Não foi possível consultar o relatório.')
     } finally {
       setCarregando(false)
+    }
+  }
+
+  async function exportarExcel() {
+    setErro('')
+    if (dataInicio > dataFim) {
+      setErro('A data inicial não pode ser posterior à data final.')
+      return
+    }
+    if (dataFim > somarMeses(dataInicio, 12)) {
+      setErro('O período do relatório deve ser de no máximo 12 meses.')
+      return
+    }
+    setExportando(true)
+    try {
+      await relatorioApi.exportarFrequencia(dataInicio, dataFim, discipuladoId || undefined)
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não foi possível exportar o relatório.')
+    } finally {
+      setExportando(false)
     }
   }
   return (
@@ -174,6 +195,16 @@ export default function FrequencyReport({ currentUser }: { currentUser: Usuario 
             sx={{ width: { xs: '100%', sm: 'auto' } }}
           >
             Imprimir / salvar como PDF
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<FileDownloadRounded />}
+            disabled={!dados?.relatorios.length || exportando}
+            onClick={() => void exportarExcel()}
+            fullWidth
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
+          >
+            {exportando ? 'Exportando...' : 'Exportar Excel'}
           </Button>
         </Stack>
       </FilterToolbar>

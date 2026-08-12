@@ -8,11 +8,14 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import br.com.sgd.painel.PainelAdminRepository.VisitantesGerencia;
 
 @Service
 @Transactional(readOnly = true)
@@ -85,6 +88,11 @@ public class PainelAdminService {
   }
 
   private List<GerenciaIndicador> gerencias(LocalDate inicio, LocalDate fim) {
+    Map<Long, Long> visitantes =
+        repository.visitantesPorGerencia(inicio, fim).stream()
+            .collect(
+                Collectors.toMap(
+                    VisitantesGerencia::getId, item -> valor(item.getVisitantes()), (a, b) -> a));
     return repository.porGerencia(inicio, fim).stream()
         .map(
             item ->
@@ -93,6 +101,7 @@ public class PainelAdminService {
                     item.getNome(),
                     valor(item.getPresentes()),
                     valor(item.getAusentes()),
+                    visitantes.getOrDefault(item.getId(), 0L),
                     percentual(item.getPresentes(), item.getAusentes())))
         .sorted(
             Comparator.comparing(GerenciaIndicador::percentualPresenca)
@@ -192,7 +201,12 @@ public class PainelAdminService {
       BigDecimal percentualPresenca) {}
 
   public record GerenciaIndicador(
-      long id, String nome, long presentes, long ausentes, BigDecimal percentualPresenca) {}
+      long id,
+      String nome,
+      long presentes,
+      long ausentes,
+      long visitantes,
+      BigDecimal percentualPresenca) {}
 
   public record GerenciaMensalIndicador(
       long gerenciaId,
