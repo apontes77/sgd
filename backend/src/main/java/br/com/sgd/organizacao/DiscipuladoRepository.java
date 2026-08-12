@@ -43,4 +43,7 @@ public interface DiscipuladoRepository
 
   @EntityGraph(attributePaths = {"gerencia", "discipulador"})
   Page<Discipulado> findAllByGerenciaIdAndAtivo(Long gerenciaId, boolean ativo, Pageable pageable);
+
+  @EntityGraph(attributePaths = {"gerencia", "discipulador", "coLideres"})
+  List<Discipulado> findAllByAtivoTrue();
 }
