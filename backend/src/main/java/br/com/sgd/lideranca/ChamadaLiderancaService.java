@@ -21,6 +21,7 @@ import org.springframework.web.server.ResponseStatusException;
 import br.com.sgd.frequencia.SituacaoFrequencia;
 import br.com.sgd.organizacao.Discipulado;
 import br.com.sgd.organizacao.DiscipuladoRepository;
+import br.com.sgd.organizacao.Sexo;
 import br.com.sgd.user.Role;
 import br.com.sgd.user.User;
 import br.com.sgd.user.UserRepository;
@@ -119,7 +120,7 @@ public class ChamadaLiderancaService {
       novosItens.add(item);
     }
 
-    chamada.substituirItens(novosItens, agora);
+    chamada.mesclarItens(novosItens, agora);
     chamadas.save(chamada);
     return consultar(ator, comando.data());
   }
@@ -190,7 +191,7 @@ public class ChamadaLiderancaService {
                         PapelLideranca.CO_LIDER,
                         situacoes.get(co.getId()))));
     return new DiscipuladoChamadaResponse(
-        d.getId(), d.getNome(), d.getGerencia().getNome(), observacao, presencas);
+        d.getId(), d.getNome(), d.getSexo(), d.getGerencia().getNome(), observacao, presencas);
   }
 
   private static void exigirAdmin(User ator) {
@@ -224,6 +225,7 @@ public class ChamadaLiderancaService {
   public record DiscipuladoChamadaResponse(
       long discipuladoId,
       String discipuladoNome,
+      Sexo sexo,
       String gerenciaNome,
       String observacao,
       List<PresencaResponse> presencas) {}

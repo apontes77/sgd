@@ -13,12 +13,21 @@ const grade = {
     {
       discipuladoId: 10,
       discipuladoNome: 'Alpha',
+      sexo: 'MASCULINO',
       gerenciaNome: 'Centro',
       observacao: null,
       presencas: [
         { usuarioId: 1, nome: 'Líder Alpha', papel: 'DISCIPULADOR', situacao: null },
         { usuarioId: 2, nome: 'Co Alpha', papel: 'CO_LIDER', situacao: null },
       ],
+    },
+    {
+      discipuladoId: 11,
+      discipuladoNome: 'Beta',
+      sexo: 'FEMININO',
+      gerenciaNome: 'Centro',
+      observacao: null,
+      presencas: [{ usuarioId: 3, nome: 'Líder Beta', papel: 'DISCIPULADOR', situacao: null }],
     },
   ],
 }
@@ -78,6 +87,13 @@ describe('chamada de liderança', () => {
 
     expect(await screen.findByRole('heading', { name: 'Chamada de liderança' })).toBeInTheDocument()
     expect(await screen.findByText('Alpha')).toBeInTheDocument()
+    expect(screen.getByText('Beta')).toBeInTheDocument()
+
+    await user.click(screen.getByLabelText('Sexo'))
+    await user.click(await screen.findByRole('option', { name: 'Masculino' }))
+    expect(screen.getByText('Alpha')).toBeInTheDocument()
+    expect(screen.queryByText('Beta')).not.toBeInTheDocument()
+
     expect(screen.getByText('Líder Alpha')).toBeInTheDocument()
     expect(screen.getByText('Co Alpha')).toBeInTheDocument()
 
@@ -94,6 +110,8 @@ describe('chamada de liderança', () => {
     expect(putCall).toBeTruthy()
     const payload = JSON.parse(String(putCall?.[1]?.body))
     expect(payload.observacaoGeral).toBe('Culto tranquilo')
+    expect(payload.discipulados).toHaveLength(1)
+    expect(payload.discipulados[0].discipuladoId).toBe(10)
     expect(payload.discipulados[0].observacao).toBe('Chegou atrasado')
     expect(payload.discipulados[0].presencas).toEqual([
       { usuarioId: 1, papel: 'DISCIPULADOR', situacao: 'PRESENTE' },

@@ -84,6 +84,9 @@ class ChamadaLiderancaHttpTest {
         .andExpect(jsonPath("$.data").value(DATA.toString()))
         .andExpect(jsonPath("$.discipulados[?(@.discipuladoNome == 'Alpha CL')]").isNotEmpty())
         .andExpect(
+            jsonPath("$.discipulados[?(@.discipuladoNome == 'Alpha CL')].sexo")
+                .value(org.hamcrest.Matchers.hasItem("MASCULINO")))
+        .andExpect(
             jsonPath("$.discipulados[?(@.discipuladoNome == 'Alpha CL')].presencas.length()")
                 .value(org.hamcrest.Matchers.hasItem(2)));
 

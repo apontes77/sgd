@@ -53,11 +53,12 @@ public class ChamadaLideranca {
     this.atualizadoEm = agora;
   }
 
-  public void substituirItens(List<ChamadaLiderancaDiscipulado> novos, Instant agora) {
-    itens.clear();
-    for (ChamadaLiderancaDiscipulado item : novos) {
-      item.vincularChamada(this);
-      itens.add(item);
+  public void mesclarItens(List<ChamadaLiderancaDiscipulado> atualizacoes, Instant agora) {
+    for (ChamadaLiderancaDiscipulado novo : atualizacoes) {
+      Long discipuladoId = novo.getDiscipulado().getId();
+      itens.removeIf(item -> item.getDiscipulado().getId().equals(discipuladoId));
+      novo.vincularChamada(this);
+      itens.add(novo);
     }
     this.atualizadoEm = agora;
   }

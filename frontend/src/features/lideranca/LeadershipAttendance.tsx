@@ -1,11 +1,25 @@
 import { CheckRounded, CloseRounded, SaveRounded } from '@mui/icons-material'
-import { Alert, Box, Button, Paper, Stack, TextField, Typography, useMediaQuery } from '@mui/material'
+import {
+  Alert,
+  Box,
+  Button,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
+  Stack,
+  TextField,
+  Typography,
+  useMediaQuery,
+} from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 
 import {
   type ChamadaLiderancaResponse,
   type DiscipuladoChamadaLideranca,
+  type FiltroSexoLideranca,
   liderancaApi,
   type SituacaoPresencaLideranca,
 } from '@/features/lideranca/api'
@@ -16,12 +30,19 @@ const hojeLocal = () => {
   return `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}-${String(agora.getDate()).padStart(2, '0')}`
 }
 
+const SEXO_OPCOES: { value: FiltroSexoLideranca; label: string }[] = [
+  { value: 'TODOS', label: 'Todos' },
+  { value: 'MASCULINO', label: 'Masculino' },
+  { value: 'FEMININO', label: 'Feminino' },
+]
+
 type PresencasState = Record<number, Record<number, SituacaoPresencaLideranca | null>>
 type ObservacoesState = Record<number, string>
 
 export default function LeadershipAttendance() {
   const mobile = useMediaQuery('(max-width:599.95px)')
   const [data, setData] = useState(hojeLocal)
+  const [filtroSexo, setFiltroSexo] = useState<FiltroSexoLideranca>('TODOS')
   const [grade, setGrade] = useState<ChamadaLiderancaResponse>()
   const [presencas, setPresencas] = useState<PresencasState>({})
   const [observacoes, setObservacoes] = useState<ObservacoesState>({})
@@ -70,10 +91,15 @@ export default function LeadershipAttendance() {
     void carregar(data)
   }, [carregar, data])
 
+  const discipuladosVisiveis = useMemo(() => {
+    if (!grade) return []
+    if (filtroSexo === 'TODOS') return grade.discipulados
+    return grade.discipulados.filter((d) => d.sexo === filtroSexo)
+  }, [grade, filtroSexo])
+
   const incompleto = useMemo(() => {
-    if (!grade) return true
-    return grade.discipulados.some((d) => d.presencas.some((p) => !presencas[d.discipuladoId]?.[p.usuarioId]))
-  }, [grade, presencas])
+    return discipuladosVisiveis.some((d) => d.presencas.some((p) => !presencas[d.discipuladoId]?.[p.usuarioId]))
+  }, [discipuladosVisiveis, presencas])
 
   function marcar(discipuladoId: number, usuarioId: number, situacao: SituacaoPresencaLideranca) {
     setPresencas((prev) => ({
@@ -89,8 +115,12 @@ export default function LeadershipAttendance() {
     if (!grade) return
     setErro('')
     setSucesso('')
+    if (discipuladosVisiveis.length === 0) {
+      setErro('Nenhum discipulado no filtro atual para salvar.')
+      return
+    }
     if (incompleto) {
-      setErro('Marque presença ou ausência para todos os líderes e co-líderes.')
+      setErro('Marque presença ou ausência para todos os líderes e co-líderes visíveis.')
       return
     }
     setSalvando(true)
@@ -98,7 +128,7 @@ export default function LeadershipAttendance() {
       const resposta = await liderancaApi.salvar({
         data: grade.data,
         observacaoGeral: observacaoGeral.trim() || null,
-        discipulados: grade.discipulados.map((d) => ({
+        discipulados: discipuladosVisiveis.map((d) => ({
           discipuladoId: d.discipuladoId,
           observacao: observacoes[d.discipuladoId]?.trim() || null,
           presencas: d.presencas.map((p) => ({
@@ -125,7 +155,13 @@ export default function LeadershipAttendance() {
         eyebrow="Operações"
       />
       <FilterToolbar>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1.5}
+          alignItems={{ sm: 'center' }}
+          flexWrap="wrap"
+          useFlexGap
+        >
           <TextField
             type="date"
             label="Data"
@@ -134,6 +170,21 @@ export default function LeadershipAttendance() {
             slotProps={{ inputLabel: { shrink: true } }}
             sx={{ width: { xs: '100%', sm: 220 } }}
           />
+          <FormControl sx={{ minWidth: { xs: '100%', sm: 180 } }}>
+            <InputLabel id="filtro-sexo-lideranca">Sexo</InputLabel>
+            <Select
+              labelId="filtro-sexo-lideranca"
+              label="Sexo"
+              value={filtroSexo}
+              onChange={(e) => setFiltroSexo(e.target.value as FiltroSexoLideranca)}
+            >
+              {SEXO_OPCOES.map((opcao) => (
+                <MenuItem key={opcao.value} value={opcao.value}>
+                  {opcao.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <Button
             type="submit"
             variant="contained"
@@ -147,9 +198,12 @@ export default function LeadershipAttendance() {
       {erro && <Alert severity="error">{erro}</Alert>}
       {sucesso && <Alert severity="success">{sucesso}</Alert>}
       {carregando && <Alert severity="info">Carregando chamada...</Alert>}
-      {grade && (
+      {grade && discipuladosVisiveis.length === 0 && !carregando && (
+        <Alert severity="info">Nenhum discipulado ativo para o filtro de sexo selecionado.</Alert>
+      )}
+      {grade && discipuladosVisiveis.length > 0 && (
         <Stack spacing={2}>
-          {grade.discipulados.map((d) => (
+          {discipuladosVisiveis.map((d) => (
             <DiscipuladoCard
               key={d.discipuladoId}
               item={d}
@@ -213,7 +267,7 @@ function DiscipuladoCard({
         <Box>
           <Typography variant="h6">{item.discipuladoNome}</Typography>
           <Typography variant="body2" color="text.secondary">
-            {item.gerenciaNome}
+            {item.gerenciaNome} · {item.sexo === 'MASCULINO' ? 'Masculino' : 'Feminino'}
           </Typography>
         </Box>
         <Stack spacing={1.25}>

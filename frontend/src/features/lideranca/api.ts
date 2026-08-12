@@ -1,7 +1,9 @@
 import { request } from '@/shared/api/httpClient'
+import type { SexoOrganizacional } from '@/shared/api/types'
 
 export type PapelLideranca = 'DISCIPULADOR' | 'CO_LIDER'
 export type SituacaoPresencaLideranca = 'PRESENTE' | 'AUSENTE'
+export type FiltroSexoLideranca = 'TODOS' | SexoOrganizacional
 
 export interface PresencaLideranca {
   usuarioId: number
@@ -13,6 +15,7 @@ export interface PresencaLideranca {
 export interface DiscipuladoChamadaLideranca {
   discipuladoId: number
   discipuladoNome: string
+  sexo: SexoOrganizacional
   gerenciaNome: string
   observacao: string | null
   presencas: PresencaLideranca[]
