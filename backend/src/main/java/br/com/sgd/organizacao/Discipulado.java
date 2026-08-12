@@ -140,7 +140,8 @@ public class Discipulado {
     if (novosCoLideres == null)
       throw new IllegalArgumentException("A lista de co-líderes é obrigatória.");
     if (novosCoLideres.size() > MAX_CO_LIDERES) throw new CoLiderLimitExceededException();
-    this.coLideres = new LinkedHashSet<>(novosCoLideres);
+    this.coLideres.clear();
+    this.coLideres.addAll(novosCoLideres);
     this.atualizadoEm = Instant.now();
   }
 

@@ -33,6 +33,16 @@ export const organizationApi = {
     if (ativo !== undefined) params.set('ativo', String(ativo))
     return request<Pagina<Usuario>>(`/usuarios?${params}`)
   },
+  listarTodosUsuarios: async (ativo?: boolean) => {
+    const size = 100
+    const first = await organizationApi.listarUsuarios(0, size, ativo)
+    const pages = [first.content]
+    for (let page = 1; page < first.totalPages; page += 1) {
+      const next = await organizationApi.listarUsuarios(page, size, ativo)
+      pages.push(next.content)
+    }
+    return pages.flat()
+  },
   criarUsuario: (body: CriarUsuarioRequest) =>
     request<Usuario>('/usuarios', { method: 'POST', body: JSON.stringify(body) }),
   atualizarUsuario: (id: number, body: AtualizarUsuarioRequest) =>
