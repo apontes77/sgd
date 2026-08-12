@@ -94,3 +94,33 @@ export async function request<T>(path: string, options: RequestInit = {}, retry 
   if (response.status === 204) return undefined as T
   return response.json() as Promise<T>
 }
+
+export async function requestBlob(
+  path: string,
+  options: RequestInit = {},
+  retry = true,
+): Promise<{ blob: Blob; filename: string | null }> {
+  const token = getAccessToken()
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      Accept: '*/*',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    },
+  })
+
+  if (response.status === 401 && retry && path !== '/autenticacao/atualizar-token') {
+    if (await refreshSession()) return requestBlob(path, options, false)
+    clearSession()
+  }
+
+  if (!response.ok) {
+    const problem = (await response.json().catch(() => null)) as { detail?: string; title?: string } | null
+    throw new ApiError(problem?.detail ?? problem?.title ?? 'Não foi possível concluir a operação.', response.status)
+  }
+
+  const disposition = response.headers.get('Content-Disposition')
+  const filenameMatch = disposition?.match(/filename="?([^";]+)"?/i)
+  return { blob: await response.blob(), filename: filenameMatch?.[1] ?? null }
+}

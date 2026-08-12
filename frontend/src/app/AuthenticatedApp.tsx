@@ -52,7 +52,7 @@ const ExecutiveDashboard = lazy(() => import('@/features/dashboards/ExecutiveDas
 const AdminDashboard = lazy(() => import('@/features/dashboards/AdminDashboard'))
 const ManagerDashboard = lazy(() => import('@/features/dashboards/ManagerDashboard'))
 const LeaderDashboard = lazy(() => import('@/features/dashboards/LeaderDashboard'))
-const FrequencyReport = lazy(() => import('@/features/relatorios/FrequencyReport'))
+const ReportsPage = lazy(() => import('@/features/relatorios/ReportsPage'))
 
 type Section = AppSection
 type NavGroup = 'Dashboards & BI' | 'Cadastros' | 'Operações' | 'Relatórios'
@@ -266,7 +266,7 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
                 />
               )}
               {section === 'frequencia' && <FrequencyPage currentUser={currentUser} />}
-              {section === 'relatorios' && <FrequencyReport currentUser={currentUser} />}
+              {section === 'relatorios' && <ReportsPage currentUser={currentUser} />}
             </motion.div>
           </Suspense>
         </Box>
