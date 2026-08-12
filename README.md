@@ -1,23 +1,24 @@
 # SGD — Sistema de Gerenciamento de Discipulados
 
-Base do monorepo do SGD. A camada de domínio ainda não foi implementada; esta entrega prepara a execução local, o banco e a automação de qualidade.
+Monorepo do SGD: API Java/Spring, frontend React e documentação em `docs/`.
 
 ## Estrutura
 
-- `backend/`: API Java 21 com Spring Boot, Flyway, JPA e endpoint de saúde.
-- `frontend/`: aplicação React com TypeScript, Vite e Material UI.
-- `docs/`: documentação funcional e modelo de dados.
-- `compose.yaml`: ambiente local integrado com PostgreSQL, API e interface.
+- `backend/`: API Java 21 (Spring Boot, Flyway, JPA, Security/JWT).
+- `frontend/`: React + TypeScript + Vite + Material UI.
+- `docs/`: regras de negócio, modelo, OpenAPI e operação.
+- `scripts/`: seed de testes e carga de estrutura organizacional.
+- `compose.yaml`: PostgreSQL + API + interface em ambiente local.
 
 ## Executar com Docker
 
-1. Copie `.env.example` para `.env` e altere `POSTGRES_PASSWORD`.
+1. Copie `.env.example` para `.env` e altere `POSTGRES_PASSWORD`, `JWT_SECRET` e as credenciais do admin inicial.
 2. Execute `docker compose up --build` na raiz do repositório.
-3. Acesse a interface em `http://localhost:5173` e a saúde da API em `http://localhost:8080/api/health`.
+3. Interface: `http://localhost:5173`. Saúde da API: `http://localhost:8080/api/health`.
 
 ## Executar localmente
 
-O PostgreSQL deve estar disponível com as variáveis definidas em `.env` ou no ambiente. São necessários Java 21, Maven 3.9+ e Node.js 22+.
+PostgreSQL deve estar disponível com as variáveis de `.env`. São necessários Java 21, Maven 3.9+ e Node.js 22+.
 
 ```bash
 # terminal 1
@@ -31,47 +32,51 @@ pnpm install
 pnpm run dev
 ```
 
+Contrato da API (prefixo de negócio): `http://localhost:8080/api/v1`. Actuator em `/actuator`.
+
 ## Deploy em produção
 
-O deploy recomendado usa Render para o frontend estático, a API Docker e o PostgreSQL gerenciado. Consulte [Deploy no Render](docs/deploy-render.md) para provisionamento e operação e [Observabilidade](docs/observability.md) para correlação de erros e saúde operacional.
-
-## Convenções iniciais
-
-- Alterações no banco são feitas exclusivamente em `backend/src/main/resources/db/migration/`, em novas migrações Flyway.
-- Endpoints da aplicação usam o prefixo `/api`; endpoints operacionais do Spring Actuator ficam em `/actuator`.
-- Respostas de erro não expõem detalhes internos; exceções de domínio serão convertidas para o contrato de erro padrão.
-- O pipeline valida backend (`mvn verify`) e frontend (lint e build) em push e pull request.
+Deploy recomendado no Render (frontend estático, API Docker, Postgres gerenciado). Consulte [Deploy no Render](docs/deploy-render.md) e [Observabilidade](docs/observability.md).
 
 ## Autenticação
 
 Defina `ADMIN_INITIAL_EMAIL`, `ADMIN_INITIAL_PASSWORD` e `JWT_SECRET` no `.env` antes da primeira inicialização. A API cria o administrador somente se esse e-mail ainda não existir.
 
-- `POST /api/auth/login`: retorna access token e refresh token.
-- `POST /api/auth/refresh`: renova a sessão e invalida o refresh token anterior.
-- `POST /api/auth/forgot-password` e `POST /api/auth/reset-password`: fluxo de recuperação de senha.
-- `GET /api/auth/me`: retorna o usuário autenticado.
-- `/api/users/**`: gestão de usuários, restrita ao perfil `ADMIN`.
+Rotas (todas sob `/api/v1`):
 
-Os tokens de redefinição não são expostos pela API. A entrega por e-mail deve ser conectada a um provedor transacional antes da publicação em produção.
+- `POST /autenticacao/login` — access + refresh token
+- `POST /autenticacao/atualizar-token` — renova a sessão e invalida o refresh anterior
+- `POST /autenticacao/esqueci-a-senha` e `POST /autenticacao/redefinir-senha`
+- `GET /autenticacao/eu` — usuário autenticado
+- `/usuarios/**` — gestão de usuários (`ADMIN`)
 
-### Dados de teste para desenvolvimento e homologação
+Tokens de redefinição não são expostos pela API; em produção a entrega depende de provedor de e-mail transacional.
 
-Com a aplicação em execução, o script abaixo cria ou atualiza os usuários e a estrutura organizacional usados nos testes manuais:
+### Dados de teste
 
 ```bash
 python3 scripts/seed_test_data.py
 ```
 
-O script lê as credenciais do administrador inicial em `ADMIN_INITIAL_EMAIL` e `ADMIN_INITIAL_PASSWORD` no `.env`. Como alternativa, aceita `SGD_ADMIN_EMAIL` e `SGD_ADMIN_PASSWORD` no ambiente.
+O script lê `ADMIN_INITIAL_EMAIL` / `ADMIN_INITIAL_PASSWORD` (ou `SGD_ADMIN_EMAIL` / `SGD_ADMIN_PASSWORD`). Destinos remotos exigem HTTPS e `--allow-remote`. Ver também [carga de estrutura](scripts/data/README.md).
 
-Para executar contra o ambiente remoto de homologação, informe as credenciais por variáveis de ambiente e confirme explicitamente o destino remoto:
+## Convenções
 
-```bash
-SGD_ADMIN_EMAIL='admin@exemplo.com' \
-SGD_ADMIN_PASSWORD='senha-do-admin' \
-python3 scripts/seed_test_data.py \
-  --api-url 'https://api-homologacao.exemplo.com/api/v1' \
-  --allow-remote
-```
+- Migrações de banco somente em `backend/src/main/resources/db/migration/` (Flyway).
+- Endpoints de negócio: `/api/v1/...`. Operacionais Spring: `/actuator`.
+- Erros usam `application/problem+json` sem detalhes internos de stack.
+- CI valida backend (`mvn verify`) e frontend (lint/test/build) em push e PR.
+- Contrato executável: [docs/08-api.yaml](docs/08-api.yaml). Resumo: [docs/08-api.md](docs/08-api.md).
 
-Destinos remotos exigem HTTPS. O script não é executado automaticamente no deploy: ele deve ser acionado de forma consciente depois que a API estiver disponível.
+## Armadilhas comuns (desenvolvimento)
+
+| Sintoma | Causa provável | O que fazer |
+| --- | --- | --- |
+| `403` ao lançar frequência na segunda | Prazo sexta→domingo 23:59 (`America/Sao_Paulo`) | Use admin ou ajuste o relógio/data do encontro nos testes |
+| `403` após editar chamada | Janela de 3h a partir de `chamadaSalvaEm` | Somente `ADMIN` altera depois da janela |
+| GOE não aparece na chamada | `DISCIPULO_GOE` é excluído da lista atual | Esperado (RN049); histórico antigo continua editável |
+| Cadastro rejeita sem telefone/contato | Flags `naoPossuiTelefone` / `naoPossuiContatoFamiliar` | Enviar as flags explicitamente (RN048) |
+| Painel do gerente vazio / `404` | Gerência inativa ou mais de uma ativa | Ative exatamente uma gerência para o usuário |
+| Seed/carga remota recusada | Falta `--allow-remote` ou URL sem HTTPS | Siga `scripts/data/README.md` |
+
+Documentação funcional completa em `docs/` (visão, glossário, regras, casos de uso, modelo e arquitetura).

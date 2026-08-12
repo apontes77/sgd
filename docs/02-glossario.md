@@ -42,11 +42,15 @@ Categoria do adolescente que frequentou o discipulado com alguma constância e s
 
 ## Encontro
 
-Reunião realizada por um discipulado em determinada data.
+Reunião de um discipulado em determinada data. Pode ser realizado ou não realizado; admite justificativa (obrigatória se não realizado) e observação opcional.
 
 ## Frequência
 
 Registro de presença de um adolescente em um encontro.
+
+## Observação (encontro)
+
+Texto livre opcional (até 500 caracteres) associado ao encontro, distinto da justificativa de não realização. Usado para registrar ocorrências da chamada ou contexto pastoral do encontro.
 
 ## Visitante (encontro)
 

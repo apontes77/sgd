@@ -53,6 +53,7 @@ Os acessos são cumulativos: `GERENTE + DISCIPULADOR` recebe “Minha gerência�
 - Um adolescente possui somente um vínculo ativo por vez; transferências usam `POST /adolescentes/{adolescenteId}/vinculos` e preservam o histórico.
 - Um discipulado tem exatamente um discipulador e até dois co-líderes.
 - Um encontro é `REALIZADO` ou `NAO_REALIZADO`; há no máximo um encontro por discipulado/data. A não realização exige justificativa, pode ser registrada por `ADMIN` ou pelo `DISCIPULADOR` do próprio grupo e somente `ADMIN` pode revertê-la.
+- A observação do encontro (`observacao`, até 500 caracteres) é opcional, distinta da justificativa, e é alterada via `PATCH /encontros/{id}` com auditoria (RN050).
 - Há uma única frequência por adolescente e encontro.
 - A chamada usa os vínculos ativos atuais sem comparar a data de início do vínculo com a data do encontro; participantes anteriormente registrados permanecem disponíveis para preservar o histórico.
 - Discipulador e co-líder podem lançar a frequência de uma sexta até o domingo subsequente (23:59, `America/Sao_Paulo`). A janela de três horas para editar a chamada começa no primeiro `PUT /encontros/{id}/frequencias` (`chamadaSalvaEm`); após isso, somente `ADMIN` pode alterar. Sem lançamento até o prazo, o sistema fecha a sexta como `NAO_REALIZADO` com justificativa automática. Todas as alterações são auditadas.
@@ -71,8 +72,10 @@ Os acessos são cumulativos: `GERENTE + DISCIPULADOR` recebe “Minha gerência�
 | Estrutura | `/gerencias`, `/discipulados`, `/discipulados/liderados`, `/discipulados/{id}/co-lideres` |
 | Cadastro | `/adolescentes`, `/adolescentes/{id}/vinculos` |
 | Frequência | `/encontros`, `/encontros/{id}/frequencias`, `/encontros/{id}/visitantes` |
-| Indicadores | `/painel/lider`, `/painel/gerencia` |
-| Relatórios | `/relatorios/frequencia-diaria`, `/relatorios/mensal` |
+| Indicadores | `/painel/lider`, `/painel/gerencia`, `/painel/admin` |
+| Relatórios | `/relatorios/frequencia-diaria`, `/relatorios/frequencia` |
 | Auditoria | `/auditoria` |
+
+A listagem de discipulados inclui `discipuladorNome` para busca tipável e contexto de liderança na UI. Os painéis administrativo e de gerência consideram somente gerências ativas; o de gerência também devolve `discipuladorNome` por discipulado e a lista de encontros não realizados do período.
 
 Consulte o arquivo OpenAPI para payloads, enums, respostas e códigos de status completos.
