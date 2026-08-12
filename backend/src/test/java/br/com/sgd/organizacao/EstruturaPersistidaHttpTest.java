@@ -68,6 +68,21 @@ class EstruturaPersistidaHttpTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content[?(@.id == " + discipuladoId + ")]").isNotEmpty())
         .andExpect(jsonPath("$.content[?(@.coLideres[0].id == " + coLiderId + ")]").isNotEmpty());
+
+    long outroCoLiderId =
+        criarUsuario("Outro co-líder", "colider-2-" + suffix + "@sgd.local", "CO_LIDER");
+    mvc.perform(
+            org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put(
+                    "/api/v1/discipulados/{id}/co-lideres", discipuladoId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"usuarioIds\":[" + outroCoLiderId + "]}"))
+        .andExpect(status().isOk());
+    mvc.perform(get("/api/v1/discipulados").param("page", "0").param("size", "100"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[?(@.id == " + discipuladoId + ")]").isNotEmpty())
+        .andExpect(
+            jsonPath("$.content[?(@.coLideres[0].id == " + outroCoLiderId + ")]").isNotEmpty())
+        .andExpect(jsonPath("$.content[?(@.coLideres[0].id == " + coLiderId + ")]").isEmpty());
   }
 
   private long criarUsuario(String nome, String email, String perfil) throws Exception {

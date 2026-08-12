@@ -125,6 +125,65 @@ class EstruturaOrganizacionalHttpTest {
 
   @Test
   @WithMockUser(roles = "ADMIN")
+  void substituiERemoveCoLideresDeDiscipuladoExistente() throws Exception {
+    String sufixo = java.util.UUID.randomUUID().toString();
+    long gerenteId = criarUsuario("Gerente", "gerente-colider-" + sufixo + "@sgd.local", "GERENTE");
+    long gerenciaId =
+        idDaResposta(
+            post("/api/v1/gerencias"),
+            "{\"nome\":\"Gerência Co-líder\",\"sexo\":\"MASCULINO\",\"faixasEtarias\":[\"DE_15_MAIS\"],\"gerenteId\":"
+                + gerenteId
+                + "}");
+    long discipuladorId =
+        criarUsuario(
+            "Discipulador", "discipulador-colider-" + sufixo + "@sgd.local", "DISCIPULADOR");
+    long primeiroCoLiderId =
+        criarUsuario("Co-líder A", "colider-a-" + sufixo + "@sgd.local", "CO_LIDER");
+    long segundoCoLiderId =
+        criarUsuario("Co-líder B", "colider-b-" + sufixo + "@sgd.local", "CO_LIDER");
+    long discipuladoId =
+        idDaResposta(
+            post("/api/v1/discipulados"),
+            "{\"nome\":\"Discipulado Co-líder\",\"sexo\":\"MASCULINO\",\"faixaEtaria\":\"DE_15_MAIS\",\"gerenciaId\":"
+                + gerenciaId
+                + ",\"discipuladorId\":"
+                + discipuladorId
+                + "}");
+
+    mvc.perform(
+            put("/api/v1/discipulados/{id}/co-lideres", discipuladoId)
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"usuarioIds\":[" + primeiroCoLiderId + "]}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.coLideres.length()").value(1))
+        .andExpect(jsonPath("$.coLideres[0].id").value(primeiroCoLiderId));
+
+    mvc.perform(
+            put("/api/v1/discipulados/{id}/co-lideres", discipuladoId)
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"usuarioIds\":[" + segundoCoLiderId + "]}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.coLideres.length()").value(1))
+        .andExpect(jsonPath("$.coLideres[0].id").value(segundoCoLiderId));
+
+    mvc.perform(get("/api/v1/discipulados").param("page", "0").param("size", "100"))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$.content[?(@.coLideres[0].id == " + segundoCoLiderId + ")]").isNotEmpty());
+
+    mvc.perform(
+            put("/api/v1/discipulados/{id}/co-lideres", discipuladoId)
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"usuarioIds\":[]}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.coLideres.length()").value(0));
+  }
+
+  @Test
+  @WithMockUser(roles = "ADMIN")
   void rejeitaPerfilIncorretoComConflitoProblemDetails() throws Exception {
     long usuarioId = criarUsuario("Usuário", "sem-perfil@sgd.local", "CO_LIDER");
 

@@ -105,6 +105,22 @@ class DiscipuladoServiceTest {
   }
 
   @Test
+  void substituiCoLideresJaAssociadosMantendoNoMaximoDois() {
+    Discipulado discipulado = discipuladoExistente();
+    when(discipulados.findById(7L)).thenReturn(Optional.of(discipulado));
+    when(discipulador.getId()).thenReturn(2L);
+    configurarCoLider(primeiroCoLider, 3L);
+    configurarCoLider(segundoCoLider, 4L);
+    when(usuarios.findById(3L)).thenReturn(Optional.of(primeiroCoLider));
+    when(usuarios.findById(4L)).thenReturn(Optional.of(segundoCoLider));
+
+    service.replaceCoLideres(7L, List.of(3L));
+    Discipulado atualizado = service.replaceCoLideres(7L, List.of(4L));
+
+    assertThat(atualizado.getCoLideres()).containsExactly(segundoCoLider);
+  }
+
+  @Test
   void rejeitaMaisDeDoisCoLideresAntesDeModificarODiscipulado() {
     Set<Long> ids = new LinkedHashSet<>(Set.of(3L, 4L, 5L));
 

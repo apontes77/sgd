@@ -91,12 +91,12 @@ export default function OrganizationManagement() {
     setLoading(true)
     setError('')
     try {
-      const [userPage, gerenciaPage, discipuladoPage] = await Promise.all([
-        organizationApi.listarUsuarios(),
+      const [todosUsuarios, gerenciaPage, discipuladoPage] = await Promise.all([
+        organizationApi.listarTodosUsuarios(),
         organizationApi.listarGerencias(),
         organizationApi.listarDiscipulados(),
       ])
-      setUsers(userPage.content)
+      setUsers(todosUsuarios)
       setGerencias(gerenciaPage.content)
       setDiscipulados(discipuladoPage.content)
     } catch (reason) {
@@ -161,10 +161,7 @@ export default function OrganizationManagement() {
     [users],
   )
   const coLideres = useMemo(
-    () =>
-      users.filter(
-        (user) => user.ativo !== false && (user.perfis.includes('CO_LIDER') || user.perfis.includes('ADMIN')),
-      ),
+    () => users.filter((user) => user.ativo !== false && user.perfis.includes('CO_LIDER')),
     [users],
   )
 
@@ -706,8 +703,26 @@ function DiscipuladoDialog({
   const [faixaEtaria, setFaixaEtaria] = useState<FaixaEtaria>(item?.faixaEtaria ?? 'DE_15_MAIS')
   const [gerenciaId, setGerenciaId] = useState(String(item?.gerenciaId ?? ''))
   const [discipuladorId, setDiscipuladorId] = useState(String(item?.discipuladorId ?? ''))
-  const [coLiderIds, setCoLiderIds] = useState<number[]>(item?.coLideres.map((user) => user.id) ?? [])
+  const [coLiderId, setCoLiderId] = useState(String(item?.coLideres?.[0]?.id ?? ''))
+  const [coLiderTreinamentoId, setCoLiderTreinamentoId] = useState(String(item?.coLideres?.[1]?.id ?? ''))
   const [creatingRole, setCreatingRole] = useState<'DISCIPULADOR' | 'CO_LIDER'>()
+  const candidatosCoLider = useMemo(() => {
+    const byId = new Map<number, Usuario>()
+    for (const user of coLideres) byId.set(user.id, user)
+    for (const user of item?.coLideres ?? []) {
+      if (!byId.has(user.id)) byId.set(user.id, user)
+    }
+    return [...byId.values()]
+  }, [coLideres, item?.coLideres])
+  const opcoesCoLider = candidatosCoLider.filter(
+    (user) => user.id !== Number(discipuladorId) && String(user.id) !== coLiderTreinamentoId,
+  )
+  const opcoesTreinamento = candidatosCoLider.filter(
+    (user) => user.id !== Number(discipuladorId) && String(user.id) !== coLiderId,
+  )
+  function idsCoLideres() {
+    return [coLiderId, coLiderTreinamentoId].filter((id) => id !== '').map(Number)
+  }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     onSave(
@@ -719,13 +734,15 @@ function DiscipuladoDialog({
         discipuladorId: Number(discipuladorId),
         ativo: item?.ativo ?? true,
       },
-      coLiderIds,
+      idsCoLideres(),
     )
   }
-  function toggleCoLider(id: number) {
-    setCoLiderIds((ids) =>
-      ids.includes(id) ? ids.filter((value) => value !== id) : ids.length < 2 ? [...ids, id] : ids,
-    )
+  function preencherProximoSlotCoLider(userId: number) {
+    if (!coLiderId) {
+      setCoLiderId(String(userId))
+      return
+    }
+    if (!coLiderTreinamentoId) setCoLiderTreinamentoId(String(userId))
   }
   return (
     <>
@@ -794,30 +811,41 @@ function DiscipuladoDialog({
               Cadastrar novo discipulador
             </Button>
             <Box>
-              <Typography variant="subtitle2">Co-líderes (até 2)</Typography>
-              {coLideres.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                Co-líderes (até 2)
+              </Typography>
+              {candidatosCoLider.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                   Não há usuários com o perfil de co-líder.
                 </Typography>
               ) : (
-                coLideres.map((user) => (
-                  <FormControlLabel
-                    key={user.id}
-                    control={
-                      <Checkbox
-                        checked={coLiderIds.includes(user.id)}
-                        disabled={
-                          user.id === Number(discipuladorId) ||
-                          (!coLiderIds.includes(user.id) && coLiderIds.length >= 2)
-                        }
-                        onChange={() => toggleCoLider(user.id)}
-                      />
-                    }
-                    label={user.nome}
+                <Stack spacing={2}>
+                  <UserSelect
+                    label="Co-líder"
+                    value={coLiderId}
+                    users={opcoesCoLider}
+                    fullWidth
+                    onChange={(value) => {
+                      setCoLiderId(value)
+                      if (!value) setCoLiderTreinamentoId('')
+                    }}
                   />
-                ))
+                  <UserSelect
+                    label="Co-líder em treinamento"
+                    value={coLiderTreinamentoId}
+                    users={opcoesTreinamento}
+                    disabled={!coLiderId}
+                    fullWidth
+                    onChange={setCoLiderTreinamentoId}
+                  />
+                </Stack>
               )}
-              <Button type="button" disabled={coLiderIds.length >= 2} onClick={() => setCreatingRole('CO_LIDER')}>
+              <Button
+                type="button"
+                disabled={idsCoLideres().length >= 2}
+                onClick={() => setCreatingRole('CO_LIDER')}
+                sx={{ mt: 1 }}
+              >
                 Cadastrar novo co-líder
               </Button>
             </Box>
@@ -837,7 +865,7 @@ function DiscipuladoDialog({
           onCreate={async (body) => {
             const user = await onCreateUser(body)
             if (creatingRole === 'DISCIPULADOR') setDiscipuladorId(String(user.id))
-            else setCoLiderIds((ids) => [...ids, user.id])
+            else preencherProximoSlotCoLider(user.id)
             setCreatingRole(undefined)
           }}
         />
@@ -940,19 +968,30 @@ function UserSelect({
   value,
   users,
   required,
+  disabled,
+  fullWidth,
   onChange,
 }: {
   label: string
   value: string
   users: Usuario[]
   required?: boolean
+  disabled?: boolean
+  fullWidth?: boolean
   onChange: (value: string) => void
 }) {
   const labelId = `${label.toLowerCase().replaceAll(' ', '-')}-label`
   return (
-    <FormControl required={required}>
+    <FormControl required={required} disabled={disabled} fullWidth={fullWidth}>
       <InputLabel id={labelId}>{label}</InputLabel>
-      <Select labelId={labelId} label={label} value={value} onChange={(event) => onChange(event.target.value)}>
+      <Select
+        labelId={labelId}
+        label={label}
+        value={value}
+        displayEmpty={!required}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        {!required && <MenuItem value="">Nenhum</MenuItem>}
         {users.map((user) => (
           <MenuItem key={user.id} value={String(user.id)}>
             {user.nome} · {user.perfis.map((perfil) => roleLabel[perfil]).join(', ')}
