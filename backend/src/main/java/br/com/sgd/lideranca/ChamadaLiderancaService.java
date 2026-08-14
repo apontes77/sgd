@@ -127,50 +127,65 @@ public class ChamadaLiderancaService {
 
   private List<PresencaLideranca> montarPresencas(
       Discipulado discipulado, List<PresencaCommand> comandos) {
+    Map<Long, PresencaCommand> porUsuario = indexarPresencas(discipulado.getId(), comandos);
+    Long discipuladorId = discipulado.getDiscipulador().getId();
+    Set<Long> coLiderIds =
+        discipulado.getCoLideres().stream().map(User::getId).collect(Collectors.toSet());
+    exigirSomenteLideresAtuais(
+        discipulado.getNome(), porUsuario.keySet(), discipuladorId, coLiderIds);
+
+    List<PresencaLideranca> resultado = new ArrayList<>();
+    PresencaCommand cmdLider = porUsuario.get(discipuladorId);
+    if (cmdLider != null) {
+      resultado.add(
+          presencaDoPapel(
+              discipuladorId,
+              cmdLider,
+              PapelLideranca.DISCIPULADOR,
+              "O discipulador deve ter papel DISCIPULADOR."));
+    }
+    for (Long coId : coLiderIds.stream().sorted().toList()) {
+      PresencaCommand cmdCo = porUsuario.get(coId);
+      if (cmdCo == null) continue;
+      resultado.add(
+          presencaDoPapel(
+              coId, cmdCo, PapelLideranca.CO_LIDER, "Co-líder deve ter papel CO_LIDER."));
+    }
+    return resultado;
+  }
+
+  private static Map<Long, PresencaCommand> indexarPresencas(
+      Long discipuladoId, List<PresencaCommand> comandos) {
     Map<Long, PresencaCommand> porUsuario = new LinkedHashMap<>();
     for (PresencaCommand cmd : comandos) {
       if (cmd == null || cmd.usuarioId() == null || cmd.papel() == null || cmd.situacao() == null)
         throw badRequest("Cada presença precisa de usuarioId, papel e situacao.");
       if (porUsuario.put(cmd.usuarioId(), cmd) != null)
-        throw badRequest("Usuário duplicado nas presenças do discipulado " + discipulado.getId());
+        throw badRequest("Usuário duplicado nas presenças do discipulado " + discipuladoId);
     }
+    return porUsuario;
+  }
 
-    Long discipuladorId = discipulado.getDiscipulador().getId();
-    Set<Long> coLiderIds =
-        discipulado.getCoLideres().stream().map(User::getId).collect(Collectors.toSet());
-
+  private static void exigirSomenteLideresAtuais(
+      String discipuladoNome, Set<Long> enviados, Long discipuladorId, Set<Long> coLiderIds) {
     Set<Long> esperados = new HashSet<>();
     esperados.add(discipuladorId);
     esperados.addAll(coLiderIds);
-
-    if (!esperados.containsAll(porUsuario.keySet()))
+    if (!esperados.containsAll(enviados))
       throw badRequest(
           "As presenças do discipulado "
-              + discipulado.getNome()
+              + discipuladoNome
               + " devem conter somente o discipulador e os co-líderes atuais.");
+  }
 
-    List<PresencaLideranca> resultado = new ArrayList<>();
-    PresencaCommand cmdLider = porUsuario.get(discipuladorId);
-    if (cmdLider != null) {
-      if (cmdLider.papel() != PapelLideranca.DISCIPULADOR)
-        throw badRequest("O discipulador deve ter papel DISCIPULADOR.");
-      User lider =
-          usuarios
-              .findById(discipuladorId)
-              .orElseThrow(() -> notFound("Usuário não encontrado: " + discipuladorId));
-      resultado.add(new PresencaLideranca(lider, PapelLideranca.DISCIPULADOR, cmdLider.situacao()));
-    }
-
-    for (Long coId : coLiderIds.stream().sorted().toList()) {
-      PresencaCommand cmdCo = porUsuario.get(coId);
-      if (cmdCo == null) continue;
-      if (cmdCo.papel() != PapelLideranca.CO_LIDER)
-        throw badRequest("Co-líder deve ter papel CO_LIDER.");
-      User co =
-          usuarios.findById(coId).orElseThrow(() -> notFound("Usuário não encontrado: " + coId));
-      resultado.add(new PresencaLideranca(co, PapelLideranca.CO_LIDER, cmdCo.situacao()));
-    }
-    return resultado;
+  private PresencaLideranca presencaDoPapel(
+      Long usuarioId, PresencaCommand cmd, PapelLideranca esperado, String mensagemPapel) {
+    if (cmd.papel() != esperado) throw badRequest(mensagemPapel);
+    User usuario =
+        usuarios
+            .findById(usuarioId)
+            .orElseThrow(() -> notFound("Usuário não encontrado: " + usuarioId));
+    return new PresencaLideranca(usuario, esperado, cmd.situacao());
   }
 
   private static DiscipuladoChamadaResponse montarDiscipulado(
