@@ -56,11 +56,11 @@ describe('recuperacao publica de senha', () => {
     vi.spyOn(authApi, 'redefinirSenha').mockResolvedValue()
     render(<App />)
 
-    await userEvent.type(screen.getByLabelText(/Nova senha/), 'senha-nova-com-12')
-    await userEvent.type(screen.getByLabelText(/Confirmar senha/), 'senha-nova-com-12')
+    await userEvent.type(screen.getByLabelText(/Nova senha/), 'Senha1!')
+    await userEvent.type(screen.getByLabelText(/Confirmar senha/), 'Senha1!')
     await userEvent.click(screen.getByRole('button', { name: 'Redefinir senha' }))
 
-    expect(authApi.redefinirSenha).toHaveBeenCalledWith('token-da-url', 'senha-nova-com-12')
+    expect(authApi.redefinirSenha).toHaveBeenCalledWith('token-da-url', 'Senha1!')
     expect(window.location.pathname).toBe('/')
     expect(window.location.search).toBe('?senhaRedefinida=1')
     expect(sessionStorage.getItem('sgd.access-token')).toBeNull()
@@ -87,6 +87,9 @@ describe('recuperacao publica de senha', () => {
     await userEvent.type(screen.getByLabelText(/E-mail/), 'user@example.com')
     await userEvent.click(screen.getByRole('button', { name: 'Solicitar redefinição' }))
 
-    expect(await screen.findByText('Enviamos as instruções para o seu e-mail.')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Bem-vindo de volta' })).toBeInTheDocument()
+    expect(window.location.pathname).toBe('/')
+    expect(window.location.search).toBe('?recuperacaoEnviada=1')
+    expect(screen.getByText('Enviamos as instruções para o seu e-mail.')).toBeInTheDocument()
   })
 })

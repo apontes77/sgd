@@ -114,6 +114,33 @@ class AuthHttpTest {
   }
 
   @Test
+  void rejeitaNovaSenhaForaDaPoliticaNaRedefinicao() throws Exception {
+    mvc.perform(
+            post("/api/v1/autenticacao/redefinir-senha")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"token\":\"qualquer\",\"novaSenha\":\"abc\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.status").value(400));
+
+    mvc.perform(
+            post("/api/v1/autenticacao/redefinir-senha")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"token\":\"qualquer\",\"novaSenha\":\"abcdef\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.status").value(400));
+  }
+
+  @Test
+  void aceitaFormatoDaNovaSenhaERejeitaTokenInvalido() throws Exception {
+    mvc.perform(
+            post("/api/v1/autenticacao/redefinir-senha")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"token\":\"token-invalido\",\"novaSenha\":\"Ab1!xy\"}"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.status").value(401));
+  }
+
+  @Test
   void permitePreflightDoFrontendConfiguradoParaLogin() throws Exception {
     mvc.perform(
             options("/api/v1/autenticacao/login")

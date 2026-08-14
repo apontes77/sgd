@@ -30,17 +30,23 @@ import type { Usuario } from '@/shared/api/types'
 
 type PublicView = 'login' | 'forgot' | 'reset'
 
-function initialPublicState(): { view: PublicView; token: string; passwordResetSuccess: boolean } {
+function initialPublicState(): {
+  view: PublicView
+  token: string
+  passwordResetSuccess: boolean
+  passwordResetRequested: boolean
+} {
   const url = new URL(window.location.href)
   const token = url.searchParams.get('token') ?? ''
   const passwordResetSuccess = url.searchParams.get('senhaRedefinida') === '1'
+  const passwordResetRequested = url.searchParams.get('recuperacaoEnviada') === '1'
   if (url.pathname.endsWith('/redefinir-senha') && token) {
-    return { view: 'reset', token, passwordResetSuccess: false }
+    return { view: 'reset', token, passwordResetSuccess: false, passwordResetRequested: false }
   }
   if (url.pathname.endsWith('/esqueci-senha')) {
-    return { view: 'forgot', token: '', passwordResetSuccess: false }
+    return { view: 'forgot', token: '', passwordResetSuccess: false, passwordResetRequested: false }
   }
-  return { view: 'login', token: '', passwordResetSuccess }
+  return { view: 'login', token: '', passwordResetSuccess, passwordResetRequested }
 }
 
 export default function App() {
@@ -48,6 +54,7 @@ export default function App() {
   const [publicView, setPublicView] = useState<PublicView>(initial.view)
   const [resetToken, setResetToken] = useState(initial.token)
   const [passwordResetSuccess, setPasswordResetSuccess] = useState(initial.passwordResetSuccess)
+  const [passwordResetRequested, setPasswordResetRequested] = useState(initial.passwordResetRequested)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [mostrarSenha, setMostrarSenha] = useState(false)
@@ -60,27 +67,36 @@ export default function App() {
     reset: authApi.redefinirSenha,
   }
 
-  function navigatePublic(view: PublicView, token = '', options: { passwordResetSuccess?: boolean } = {}) {
+  function navigatePublic(
+    view: PublicView,
+    token = '',
+    options: { passwordResetSuccess?: boolean; passwordResetRequested?: boolean } = {},
+  ) {
     const path = view === 'forgot' ? '/esqueci-senha' : view === 'reset' ? '/redefinir-senha' : '/'
     const url = new URL(path, window.location.origin)
     if (view === 'reset' && token) url.searchParams.set('token', token)
     const showResetSuccess = view === 'login' && Boolean(options.passwordResetSuccess)
+    const showResetRequested = view === 'login' && Boolean(options.passwordResetRequested)
     if (showResetSuccess) url.searchParams.set('senhaRedefinida', '1')
+    if (showResetRequested) url.searchParams.set('recuperacaoEnviada', '1')
     window.history.pushState({}, '', url)
     setPublicView(view)
     setResetToken(token)
     setPasswordResetSuccess(showResetSuccess)
+    setPasswordResetRequested(showResetRequested)
     setError('')
   }
   function finishPasswordReset() {
     authApi.logoutLocal()
     navigatePublic('login', '', { passwordResetSuccess: true })
   }
-  function clearPasswordResetSuccess() {
-    if (!passwordResetSuccess) return
+  function clearLoginNotices() {
+    if (!passwordResetSuccess && !passwordResetRequested) return
     setPasswordResetSuccess(false)
+    setPasswordResetRequested(false)
     const url = new URL(window.location.href)
     url.searchParams.delete('senhaRedefinida')
+    url.searchParams.delete('recuperacaoEnviada')
     window.history.replaceState({}, '', url)
   }
   useEffect(() => {
@@ -103,6 +119,7 @@ export default function App() {
       setPublicView(state.view)
       setResetToken(state.token)
       setPasswordResetSuccess(state.passwordResetSuccess)
+      setPasswordResetRequested(state.passwordResetRequested)
       setError('')
     }
     window.addEventListener('popstate', navigateFromHistory)
@@ -111,7 +128,7 @@ export default function App() {
   async function login(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError('')
-    clearPasswordResetSuccess()
+    clearLoginNotices()
     setLoading(true)
     try {
       const user = await authApi.login(email, password)
@@ -144,7 +161,11 @@ export default function App() {
     return (
       <PublicRecoveryLayout>
         {publicView === 'forgot' ? (
-          <ForgotPassword client={passwordRecoveryClient} onBack={() => navigatePublic('login')} />
+          <ForgotPassword
+            client={passwordRecoveryClient}
+            onBack={() => navigatePublic('login')}
+            onSuccess={() => navigatePublic('login', '', { passwordResetRequested: true })}
+          />
         ) : (
           <ResetPassword client={passwordRecoveryClient} token={resetToken} onSuccess={finishPasswordReset} />
         )}
@@ -278,6 +299,7 @@ export default function App() {
               </Typography>
             </Box>
             {passwordResetSuccess && <Alert severity="success">Senha redefinida com sucesso. Faça login.</Alert>}
+            {passwordResetRequested && <Alert severity="success">Enviamos as instruções para o seu e-mail.</Alert>}
             {error && <Alert severity="error">{error}</Alert>}
             <Stack spacing={2}>
               <TextField
@@ -289,7 +311,7 @@ export default function App() {
                 value={email}
                 onChange={(event) => {
                   setEmail(event.target.value)
-                  clearPasswordResetSuccess()
+                  clearLoginNotices()
                 }}
                 InputProps={{
                   startAdornment: (
@@ -308,7 +330,7 @@ export default function App() {
                 value={password}
                 onChange={(event) => {
                   setPassword(event.target.value)
-                  clearPasswordResetSuccess()
+                  clearLoginNotices()
                 }}
                 InputProps={{
                   startAdornment: (

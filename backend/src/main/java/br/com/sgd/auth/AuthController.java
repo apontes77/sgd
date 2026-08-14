@@ -4,6 +4,7 @@ import java.util.Set;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import org.springframework.http.ResponseEntity;
@@ -65,7 +66,14 @@ public class AuthController {
   public record ForgotPasswordRequest(@Email @NotBlank String email) {}
 
   public record ResetPasswordRequest(
-      @NotBlank String token, @NotBlank @Size(min = 12, max = 128) String novaSenha) {}
+      @NotBlank String token,
+      @NotBlank
+          @Size(min = 6, max = 128)
+          @Pattern(
+              regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).*$",
+              message =
+                  "A senha deve conter letra maiuscula, minuscula, numero e caractere especial")
+          String novaSenha) {}
 
   public record TokenResponse(String accessToken, String refreshToken, UserResponse usuario) {
     static TokenResponse of(AuthService.Tokens t) {
