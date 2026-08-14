@@ -118,4 +118,65 @@ describe('chamada de liderança', () => {
       { usuarioId: 2, papel: 'CO_LIDER', situacao: 'AUSENTE' },
     ])
   })
+
+  it('salva somente os líderes já marcados', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input)
+      if (url.includes('/chamadas-lideranca') && (!init?.method || init.method === 'GET')) {
+        return new Response(JSON.stringify(grade), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      if (url.includes('/chamadas-lideranca') && init?.method === 'PUT') {
+        return new Response(JSON.stringify({ ...grade, id: 1 }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      return new Response('not found', { status: 404 })
+    })
+
+    render(<LeadershipAttendance />)
+    expect(await screen.findByText('Líder Alpha')).toBeInTheDocument()
+
+    await user.click(screen.getAllByRole('button', { name: 'Presente' })[0])
+    await user.click(screen.getByRole('button', { name: /Salvar/i }))
+
+    await waitFor(() => expect(screen.getByText('Chamada de liderança salva.')).toBeInTheDocument())
+    const putCall = fetchMock.mock.calls.find(([, init]) => init?.method === 'PUT')
+    const payload = JSON.parse(String(putCall?.[1]?.body))
+    expect(payload.discipulados).toEqual([
+      {
+        discipuladoId: 10,
+        observacao: null,
+        presencas: [{ usuarioId: 1, papel: 'DISCIPULADOR', situacao: 'PRESENTE' }],
+      },
+    ])
+  })
+
+  it('filtra a grade por parte do nome do discipulador ou co-líder', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input)
+      if (url.includes('/chamadas-lideranca') && (!init?.method || init.method === 'GET')) {
+        return new Response(JSON.stringify(grade), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      return new Response('not found', { status: 404 })
+    })
+
+    render(<LeadershipAttendance />)
+    expect(await screen.findByText('Alpha')).toBeInTheDocument()
+    expect(screen.getByText('Beta')).toBeInTheDocument()
+
+    await user.type(screen.getByPlaceholderText('Pesquisar discipulador ou co-líder'), 'Co Alp')
+    expect(screen.getByText('Alpha')).toBeInTheDocument()
+    expect(screen.getByText('Co Alpha')).toBeInTheDocument()
+    expect(screen.queryByText('Beta')).not.toBeInTheDocument()
+    expect(screen.queryByText('Líder Beta')).not.toBeInTheDocument()
+  })
 })

@@ -21,6 +21,7 @@ import {
   type DiscipuladoChamadaLideranca,
   type FiltroSexoLideranca,
   liderancaApi,
+  type SalvarChamadaLiderancaRequest,
   type SituacaoPresencaLideranca,
 } from '@/features/lideranca/api'
 import { FilterToolbar, PageHeader, SectionCard } from '@/shared/ui'
@@ -39,10 +40,40 @@ const SEXO_OPCOES: { value: FiltroSexoLideranca; label: string }[] = [
 type PresencasState = Record<number, Record<number, SituacaoPresencaLideranca | null>>
 type ObservacoesState = Record<number, string>
 
+function normalizarBusca(valor: string) {
+  return valor.trim().toLocaleLowerCase('pt-BR')
+}
+
+function combinaBusca(d: DiscipuladoChamadaLideranca, termo: string) {
+  const t = normalizarBusca(termo)
+  if (!t) return true
+  if (normalizarBusca(d.discipuladoNome).includes(t)) return true
+  return d.presencas.some((p) => normalizarBusca(p.nome).includes(t))
+}
+
+function discipuladosParaSalvar(
+  visiveis: DiscipuladoChamadaLideranca[],
+  presencas: PresencasState,
+  observacoes: ObservacoesState,
+): SalvarChamadaLiderancaRequest['discipulados'] {
+  return visiveis.flatMap((d) => {
+    const situacoes = presencas[d.discipuladoId] ?? {}
+    const marcadas = d.presencas.flatMap((p) => {
+      const situacao = situacoes[p.usuarioId]
+      if (!situacao) return []
+      return [{ usuarioId: p.usuarioId, papel: p.papel, situacao }]
+    })
+    const observacao = observacoes[d.discipuladoId]?.trim() || null
+    if (marcadas.length === 0 && observacao === (d.observacao ?? null)) return []
+    return [{ discipuladoId: d.discipuladoId, observacao, presencas: marcadas }]
+  })
+}
+
 export default function LeadershipAttendance() {
   const mobile = useMediaQuery('(max-width:599.95px)')
   const [data, setData] = useState(hojeLocal)
   const [filtroSexo, setFiltroSexo] = useState<FiltroSexoLideranca>('TODOS')
+  const [buscaNome, setBuscaNome] = useState('')
   const [grade, setGrade] = useState<ChamadaLiderancaResponse>()
   const [presencas, setPresencas] = useState<PresencasState>({})
   const [observacoes, setObservacoes] = useState<ObservacoesState>({})
@@ -93,13 +124,11 @@ export default function LeadershipAttendance() {
 
   const discipuladosVisiveis = useMemo(() => {
     if (!grade) return []
-    if (filtroSexo === 'TODOS') return grade.discipulados
-    return grade.discipulados.filter((d) => d.sexo === filtroSexo)
-  }, [grade, filtroSexo])
-
-  const incompleto = useMemo(() => {
-    return discipuladosVisiveis.some((d) => d.presencas.some((p) => !presencas[d.discipuladoId]?.[p.usuarioId]))
-  }, [discipuladosVisiveis, presencas])
+    return grade.discipulados.filter((d) => {
+      if (filtroSexo !== 'TODOS' && d.sexo !== filtroSexo) return false
+      return combinaBusca(d, buscaNome)
+    })
+  }, [grade, filtroSexo, buscaNome])
 
   function marcar(discipuladoId: number, usuarioId: number, situacao: SituacaoPresencaLideranca) {
     setPresencas((prev) => ({
@@ -115,28 +144,13 @@ export default function LeadershipAttendance() {
     if (!grade) return
     setErro('')
     setSucesso('')
-    if (discipuladosVisiveis.length === 0) {
-      setErro('Nenhum discipulado no filtro atual para salvar.')
-      return
-    }
-    if (incompleto) {
-      setErro('Marque presença ou ausência para todos os líderes e co-líderes visíveis.')
-      return
-    }
+    const payloadDiscipulados = discipuladosParaSalvar(discipuladosVisiveis, presencas, observacoes)
     setSalvando(true)
     try {
       const resposta = await liderancaApi.salvar({
         data: grade.data,
         observacaoGeral: observacaoGeral.trim() || null,
-        discipulados: discipuladosVisiveis.map((d) => ({
-          discipuladoId: d.discipuladoId,
-          observacao: observacoes[d.discipuladoId]?.trim() || null,
-          presencas: d.presencas.map((p) => ({
-            usuarioId: p.usuarioId,
-            papel: p.papel,
-            situacao: presencas[d.discipuladoId][p.usuarioId] as SituacaoPresencaLideranca,
-          })),
-        })),
+        discipulados: payloadDiscipulados,
       })
       aplicarGrade(resposta)
       setSucesso('Chamada de liderança salva.')
@@ -147,11 +161,16 @@ export default function LeadershipAttendance() {
     }
   }
 
+  const mensagemVazia =
+    normalizarBusca(buscaNome) !== ''
+      ? 'Nenhum discipulador ou co-líder encontrado para a busca.'
+      : 'Nenhum discipulado ativo para o filtro de sexo selecionado.'
+
   return (
     <Stack spacing={3} component="form" onSubmit={salvar}>
       <PageHeader
         title="Chamada de liderança"
-        description="Registre a presença dos discipuladores e co-líderes por discipulado na sexta-feira."
+        description="Registre a presença dos discipuladores e co-líderes por discipulado na sexta-feira. É possível salvar parcialmente e continuar depois."
         eyebrow="Operações"
       />
       <FilterToolbar>
@@ -185,11 +204,18 @@ export default function LeadershipAttendance() {
               ))}
             </Select>
           </FormControl>
+          <TextField
+            label="Busca"
+            placeholder="Pesquisar discipulador ou co-líder"
+            value={buscaNome}
+            onChange={(e) => setBuscaNome(e.target.value)}
+            sx={{ flex: { sm: 1 }, minWidth: { xs: '100%', sm: 240 } }}
+          />
           <Button
             type="submit"
             variant="contained"
             startIcon={<SaveRounded />}
-            disabled={salvando || carregando || !grade}
+            disabled={salvando || carregando || !grade || !alterado}
           >
             {salvando ? 'Salvando...' : alterado ? 'Salvar alterações' : 'Salvar'}
           </Button>
@@ -198,11 +224,9 @@ export default function LeadershipAttendance() {
       {erro && <Alert severity="error">{erro}</Alert>}
       {sucesso && <Alert severity="success">{sucesso}</Alert>}
       {carregando && <Alert severity="info">Carregando chamada...</Alert>}
-      {grade && discipuladosVisiveis.length === 0 && !carregando && (
-        <Alert severity="info">Nenhum discipulado ativo para o filtro de sexo selecionado.</Alert>
-      )}
-      {grade && discipuladosVisiveis.length > 0 && (
+      {grade && !carregando && (
         <Stack spacing={2}>
+          {discipuladosVisiveis.length === 0 && <Alert severity="info">{mensagemVazia}</Alert>}
           {discipuladosVisiveis.map((d) => (
             <DiscipuladoCard
               key={d.discipuladoId}

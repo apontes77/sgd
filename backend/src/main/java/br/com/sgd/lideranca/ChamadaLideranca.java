@@ -55,12 +55,23 @@ public class ChamadaLideranca {
 
   public void mesclarItens(List<ChamadaLiderancaDiscipulado> atualizacoes, Instant agora) {
     for (ChamadaLiderancaDiscipulado novo : atualizacoes) {
-      Long discipuladoId = novo.getDiscipulado().getId();
-      itens.removeIf(item -> item.getDiscipulado().getId().equals(discipuladoId));
-      novo.vincularChamada(this);
-      itens.add(novo);
+      ChamadaLiderancaDiscipulado existente = itemDoDiscipulado(novo.getDiscipulado().getId());
+      if (existente == null) {
+        novo.vincularChamada(this);
+        itens.add(novo);
+      } else {
+        existente.atualizarObservacao(novo.getObservacao());
+        existente.mesclarPresencas(novo.getPresencas());
+      }
     }
     this.atualizadoEm = agora;
+  }
+
+  private ChamadaLiderancaDiscipulado itemDoDiscipulado(Long discipuladoId) {
+    for (ChamadaLiderancaDiscipulado item : itens) {
+      if (item.getDiscipulado().getId().equals(discipuladoId)) return item;
+    }
+    return null;
   }
 
   private static String normalizar(String valor, int max) {

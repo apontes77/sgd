@@ -143,24 +143,27 @@ public class ChamadaLiderancaService {
     esperados.add(discipuladorId);
     esperados.addAll(coLiderIds);
 
-    if (!porUsuario.keySet().equals(esperados))
+    if (!esperados.containsAll(porUsuario.keySet()))
       throw badRequest(
           "As presenças do discipulado "
               + discipulado.getNome()
-              + " devem cobrir exatamente o discipulador e os co-líderes atuais.");
+              + " devem conter somente o discipulador e os co-líderes atuais.");
 
     List<PresencaLideranca> resultado = new ArrayList<>();
     PresencaCommand cmdLider = porUsuario.get(discipuladorId);
-    if (cmdLider.papel() != PapelLideranca.DISCIPULADOR)
-      throw badRequest("O discipulador deve ter papel DISCIPULADOR.");
-    User lider =
-        usuarios
-            .findById(discipuladorId)
-            .orElseThrow(() -> notFound("Usuário não encontrado: " + discipuladorId));
-    resultado.add(new PresencaLideranca(lider, PapelLideranca.DISCIPULADOR, cmdLider.situacao()));
+    if (cmdLider != null) {
+      if (cmdLider.papel() != PapelLideranca.DISCIPULADOR)
+        throw badRequest("O discipulador deve ter papel DISCIPULADOR.");
+      User lider =
+          usuarios
+              .findById(discipuladorId)
+              .orElseThrow(() -> notFound("Usuário não encontrado: " + discipuladorId));
+      resultado.add(new PresencaLideranca(lider, PapelLideranca.DISCIPULADOR, cmdLider.situacao()));
+    }
 
     for (Long coId : coLiderIds.stream().sorted().toList()) {
       PresencaCommand cmdCo = porUsuario.get(coId);
+      if (cmdCo == null) continue;
       if (cmdCo.papel() != PapelLideranca.CO_LIDER)
         throw badRequest("Co-líder deve ter papel CO_LIDER.");
       User co =
