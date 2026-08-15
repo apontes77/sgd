@@ -5,6 +5,7 @@ import { request } from '@/shared/api/httpClient'
 
 describe('cliente HTTP', () => {
   beforeEach(() => {
+    localStorage.clear()
     sessionStorage.clear()
     vi.restoreAllMocks()
   })
@@ -30,13 +31,41 @@ describe('cliente HTTP', () => {
         body: JSON.stringify({ email: 'admin@sgd.local', senha: 'senha-segura' }),
       }),
     )
-    expect(sessionStorage.getItem('sgd.access-token')).toBe('access')
-    expect(sessionStorage.getItem('sgd.refresh-token')).toBe('refresh')
+    expect(localStorage.getItem('sgd.access-token')).toBe('access')
+    expect(localStorage.getItem('sgd.refresh-token')).toBe('refresh')
+    expect(sessionStorage.getItem('sgd.access-token')).toBeNull()
+    expect(sessionStorage.getItem('sgd.refresh-token')).toBeNull()
+  })
+
+  it('restaura a sessão persistida depois de reabrir o navegador', async () => {
+    localStorage.setItem('sgd.access-token', 'access')
+    localStorage.setItem('sgd.refresh-token', 'refresh')
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ id: 1, nome: 'Admin', email: 'admin@sgd.local', ativo: true, perfis: ['ADMIN'] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    expect(authApi.hasSession()).toBe(true)
+    await expect(authApi.me()).resolves.toMatchObject({ email: 'admin@sgd.local' })
+    expect(localStorage.getItem('sgd.access-token')).toBe('access')
+  })
+
+  it('migra tokens legados do sessionStorage para o localStorage', async () => {
+    sessionStorage.setItem('sgd.access-token', 'legado-access')
+    sessionStorage.setItem('sgd.refresh-token', 'legado-refresh')
+
+    expect(authApi.hasSession()).toBe(true)
+    expect(localStorage.getItem('sgd.access-token')).toBe('legado-access')
+    expect(localStorage.getItem('sgd.refresh-token')).toBe('legado-refresh')
+    expect(sessionStorage.getItem('sgd.access-token')).toBeNull()
+    expect(sessionStorage.getItem('sgd.refresh-token')).toBeNull()
   })
 
   it('renova uma sessão expirada e repete a requisição uma vez', async () => {
-    sessionStorage.setItem('sgd.access-token', 'expirado')
-    sessionStorage.setItem('sgd.refresh-token', 'refresh-antigo')
+    localStorage.setItem('sgd.access-token', 'expirado')
+    localStorage.setItem('sgd.refresh-token', 'refresh-antigo')
     const fetchMock = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(new Response(null, { status: 401 }))
@@ -52,12 +81,15 @@ describe('cliente HTTP', () => {
 
     await expect(request<{ ok: boolean }>('/teste')).resolves.toEqual({ ok: true })
     expect(fetchMock).toHaveBeenCalledTimes(3)
-    expect(sessionStorage.getItem('sgd.access-token')).toBe('novo')
+    expect(localStorage.getItem('sgd.access-token')).toBe('novo')
+    expect(localStorage.getItem('sgd.refresh-token')).toBe('refresh-novo')
   })
 
   it('revoga o refresh token no logout e sempre limpa a sessão local', async () => {
-    sessionStorage.setItem('sgd.access-token', 'access')
-    sessionStorage.setItem('sgd.refresh-token', 'refresh')
+    localStorage.setItem('sgd.access-token', 'access')
+    localStorage.setItem('sgd.refresh-token', 'refresh')
+    sessionStorage.setItem('sgd.access-token', 'legado-access')
+    sessionStorage.setItem('sgd.refresh-token', 'legado-refresh')
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 204 }))
 
     await authApi.logout()
@@ -69,17 +101,19 @@ describe('cliente HTTP', () => {
         body: JSON.stringify({ refreshToken: 'refresh' }),
       }),
     )
+    expect(localStorage.getItem('sgd.access-token')).toBeNull()
+    expect(localStorage.getItem('sgd.refresh-token')).toBeNull()
     expect(sessionStorage.getItem('sgd.access-token')).toBeNull()
     expect(sessionStorage.getItem('sgd.refresh-token')).toBeNull()
   })
 
   it('limpa a sessão local mesmo quando o backend de logout falha', async () => {
-    sessionStorage.setItem('sgd.access-token', 'access')
-    sessionStorage.setItem('sgd.refresh-token', 'refresh')
+    localStorage.setItem('sgd.access-token', 'access')
+    localStorage.setItem('sgd.refresh-token', 'refresh')
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('indisponível'))
 
     await expect(authApi.logout()).rejects.toThrow('indisponível')
-    expect(sessionStorage.getItem('sgd.access-token')).toBeNull()
-    expect(sessionStorage.getItem('sgd.refresh-token')).toBeNull()
+    expect(localStorage.getItem('sgd.access-token')).toBeNull()
+    expect(localStorage.getItem('sgd.refresh-token')).toBeNull()
   })
 })

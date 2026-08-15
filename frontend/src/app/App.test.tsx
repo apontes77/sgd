@@ -8,6 +8,7 @@ import { render } from '@/test/test-utils'
 
 describe('login', () => {
   beforeEach(() => {
+    localStorage.clear()
     sessionStorage.clear()
     window.history.replaceState({}, '', '/')
     vi.restoreAllMocks()
@@ -30,6 +31,7 @@ describe('login', () => {
 
 describe('recuperacao publica de senha', () => {
   beforeEach(() => {
+    localStorage.clear()
     sessionStorage.clear()
     window.history.replaceState({}, '', '/')
     vi.restoreAllMocks()
@@ -51,6 +53,8 @@ describe('recuperacao publica de senha', () => {
   it('consome o token da URL e retorna ao login depois do sucesso', async () => {
     window.history.replaceState({}, '', '/redefinir-senha?token=token-da-url')
     expect(window.location.pathname).toBe('/redefinir-senha')
+    localStorage.setItem('sgd.access-token', 'sessao-antiga')
+    localStorage.setItem('sgd.refresh-token', 'refresh-antigo')
     sessionStorage.setItem('sgd.access-token', 'sessao-antiga')
     sessionStorage.setItem('sgd.refresh-token', 'refresh-antigo')
     vi.spyOn(authApi, 'redefinirSenha').mockResolvedValue()
@@ -63,6 +67,8 @@ describe('recuperacao publica de senha', () => {
     expect(authApi.redefinirSenha).toHaveBeenCalledWith('token-da-url', 'Senha1!')
     expect(window.location.pathname).toBe('/')
     expect(window.location.search).toBe('?senhaRedefinida=1')
+    expect(localStorage.getItem('sgd.access-token')).toBeNull()
+    expect(localStorage.getItem('sgd.refresh-token')).toBeNull()
     expect(sessionStorage.getItem('sgd.access-token')).toBeNull()
     expect(sessionStorage.getItem('sgd.refresh-token')).toBeNull()
     expect(await screen.findByRole('heading', { name: 'Bem-vindo de volta' })).toBeInTheDocument()
