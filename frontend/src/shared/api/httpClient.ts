@@ -25,23 +25,42 @@ export interface SessaoResponse {
   usuario: Usuario
 }
 
+function persistToken(key: string, value: string) {
+  localStorage.setItem(key, value)
+  sessionStorage.removeItem(key)
+}
+
+function readToken(key: string) {
+  const persisted = localStorage.getItem(key)
+  if (persisted) return persisted
+  const legacy = sessionStorage.getItem(key)
+  if (!legacy) return null
+  persistToken(key, legacy)
+  return legacy
+}
+
+function removeToken(key: string) {
+  localStorage.removeItem(key)
+  sessionStorage.removeItem(key)
+}
+
 export function saveSession(session: SessaoResponse) {
-  sessionStorage.setItem(ACCESS_TOKEN_KEY, session.accessToken)
-  sessionStorage.setItem(REFRESH_TOKEN_KEY, session.refreshToken)
+  persistToken(ACCESS_TOKEN_KEY, session.accessToken)
+  persistToken(REFRESH_TOKEN_KEY, session.refreshToken)
 }
 
 export function clearSession() {
-  sessionStorage.removeItem(ACCESS_TOKEN_KEY)
-  sessionStorage.removeItem(REFRESH_TOKEN_KEY)
+  removeToken(ACCESS_TOKEN_KEY)
+  removeToken(REFRESH_TOKEN_KEY)
   window.dispatchEvent(new Event('sgd:session-expired'))
 }
 
 export function getAccessToken() {
-  return sessionStorage.getItem(ACCESS_TOKEN_KEY)
+  return readToken(ACCESS_TOKEN_KEY)
 }
 
 export function getRefreshToken() {
-  return sessionStorage.getItem(REFRESH_TOKEN_KEY)
+  return readToken(REFRESH_TOKEN_KEY)
 }
 
 export function hasStoredSession() {
