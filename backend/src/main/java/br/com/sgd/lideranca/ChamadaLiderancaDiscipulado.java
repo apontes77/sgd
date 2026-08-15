@@ -58,12 +58,36 @@ public class ChamadaLiderancaDiscipulado {
     this.chamada = chamada;
   }
 
+  public void atualizarObservacao(String observacao) {
+    this.observacao = normalizar(observacao);
+  }
+
   public void substituirPresencas(List<PresencaLideranca> novas) {
     presencas.clear();
     for (PresencaLideranca p : novas) {
       p.vincularItem(this);
       presencas.add(p);
     }
+  }
+
+  public void mesclarPresencas(List<PresencaLideranca> novas) {
+    if (novas == null || novas.isEmpty()) return;
+    for (PresencaLideranca nova : novas) {
+      PresencaLideranca existente = presencaDoUsuario(nova.getUsuario().getId());
+      if (existente == null) {
+        nova.vincularItem(this);
+        presencas.add(nova);
+      } else {
+        existente.atualizar(nova.getPapel(), nova.getSituacao());
+      }
+    }
+  }
+
+  private PresencaLideranca presencaDoUsuario(Long usuarioId) {
+    for (PresencaLideranca presenca : presencas) {
+      if (presenca.getUsuario().getId().equals(usuarioId)) return presenca;
+    }
+    return null;
   }
 
   private static String normalizar(String valor) {

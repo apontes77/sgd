@@ -58,6 +58,13 @@ public class PresencaLideranca {
     this.item = item;
   }
 
+  void atualizar(PapelLideranca papel, SituacaoFrequencia situacao) {
+    if (papel == null || situacao == null)
+      throw new IllegalArgumentException("Os dados da presença são obrigatórios.");
+    this.papel = papel;
+    this.situacao = situacao;
+  }
+
   public Long getId() {
     return id;
   }

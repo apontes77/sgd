@@ -133,12 +133,134 @@ class ChamadaLiderancaHttpTest {
   }
 
   @Test
+  void adminSalvaPresencasParciaisEMesclaNasSeguintes() throws Exception {
+    String token = token(admin);
+    String primeiro =
+        """
+        {
+          "data": "%s",
+          "observacaoGeral": null,
+          "discipulados": [
+            {
+              "discipuladoId": %d,
+              "observacao": null,
+              "presencas": [
+                {"usuarioId": %d, "papel": "DISCIPULADOR", "situacao": "PRESENTE"}
+              ]
+            }
+          ]
+        }
+        """
+            .formatted(DATA, alpha.getId(), lider.getId());
+
+    mvc.perform(
+            put("/api/v1/chamadas-lideranca")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(primeiro))
+        .andExpect(status().isOk());
+
+    JsonNode depoisDoPrimeiro = discipuladoPorNome(consultar(token), "Alpha CL");
+    assertThat(situacao(depoisDoPrimeiro, lider.getId())).isEqualTo("PRESENTE");
+    assertThat(situacao(depoisDoPrimeiro, coLider.getId())).isNull();
+
+    String segundo =
+        """
+        {
+          "data": "%s",
+          "observacaoGeral": "Parcial",
+          "discipulados": [
+            {
+              "discipuladoId": %d,
+              "observacao": "Co-líder faltou",
+              "presencas": [
+                {"usuarioId": %d, "papel": "CO_LIDER", "situacao": "AUSENTE"}
+              ]
+            }
+          ]
+        }
+        """
+            .formatted(DATA, alpha.getId(), coLider.getId());
+
+    mvc.perform(
+            put("/api/v1/chamadas-lideranca")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(segundo))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.observacaoGeral").value("Parcial"));
+
+    JsonNode depoisDoSegundo = discipuladoPorNome(consultar(token), "Alpha CL");
+    assertThat(depoisDoSegundo.get("observacao").asText()).isEqualTo("Co-líder faltou");
+    assertThat(situacao(depoisDoSegundo, lider.getId())).isEqualTo("PRESENTE");
+    assertThat(situacao(depoisDoSegundo, coLider.getId())).isEqualTo("AUSENTE");
+  }
+
+  @Test
+  void rejeitaPresencaDeQuemNaoLideraODiscipulado() throws Exception {
+    String payload =
+        """
+        {
+          "data": "%s",
+          "observacaoGeral": null,
+          "discipulados": [
+            {
+              "discipuladoId": %d,
+              "observacao": null,
+              "presencas": [
+                {"usuarioId": %d, "papel": "DISCIPULADOR", "situacao": "PRESENTE"}
+              ]
+            }
+          ]
+        }
+        """
+            .formatted(DATA, alpha.getId(), gerente.getId());
+
+    mvc.perform(
+            put("/api/v1/chamadas-lideranca")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(admin)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(payload))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
   void naoAdminRecebeForbidden() throws Exception {
     mvc.perform(
             get("/api/v1/chamadas-lideranca")
                 .param("data", DATA.toString())
                 .header(HttpHeaders.AUTHORIZATION, bearer(token(lider))))
         .andExpect(status().isForbidden());
+  }
+
+  private JsonNode consultar(String token) throws Exception {
+    String body =
+        mvc.perform(
+                get("/api/v1/chamadas-lideranca")
+                    .param("data", DATA.toString())
+                    .header(HttpHeaders.AUTHORIZATION, bearer(token)))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    return json.readTree(body);
+  }
+
+  private static JsonNode discipuladoPorNome(JsonNode root, String nome) {
+    for (JsonNode discipulado : root.get("discipulados")) {
+      if (nome.equals(discipulado.get("discipuladoNome").asText())) return discipulado;
+    }
+    throw new AssertionError("Discipulado não encontrado: " + nome);
+  }
+
+  private static String situacao(JsonNode discipulado, long usuarioId) {
+    for (JsonNode presenca : discipulado.get("presencas")) {
+      if (presenca.get("usuarioId").asLong() == usuarioId) {
+        JsonNode situacao = presenca.get("situacao");
+        return situacao.isNull() ? null : situacao.asText();
+      }
+    }
+    throw new AssertionError("Usuário não encontrado: " + usuarioId);
   }
 
   private User usuario(String nome, String prefixo, Role... perfis) {
