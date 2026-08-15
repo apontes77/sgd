@@ -49,6 +49,46 @@ export interface RelatorioPeriodoResponse {
   relatorios: RelatorioEncontro[]
 }
 
+export type PapelLiderancaRelatorio = 'DISCIPULADOR' | 'CO_LIDER'
+
+export interface PresencaLiderancaRelatorio {
+  usuarioId: number
+  nome: string
+  papel: PapelLiderancaRelatorio
+  situacao: SituacaoRelatorio
+}
+
+export interface DiscipuladoChamadaLiderancaRelatorio {
+  discipuladoId: number
+  discipuladoNome: string
+  sexo: 'MASCULINO' | 'FEMININO'
+  gerenciaNome: string
+  observacao: string | null
+  presencas: PresencaLiderancaRelatorio[]
+}
+
+export interface ResumoChamadaLideranca {
+  presentes: number
+  ausentes: number
+  participantes: number
+  percentualPresenca: number
+}
+
+export interface RelatorioChamadaLideranca {
+  chamadaId: number
+  data: string
+  observacaoGeral: string | null
+  discipulados: DiscipuladoChamadaLiderancaRelatorio[]
+  resumo: ResumoChamadaLideranca
+}
+
+export interface RelatorioChamadaLiderancaPeriodoResponse {
+  dataInicio: string
+  dataFim: string
+  emitidoEm: string
+  relatorios: RelatorioChamadaLideranca[]
+}
+
 export type FiltroAtivoExport = 'ativos' | 'inativos' | 'todos'
 
 export const relatorioApi = {
@@ -71,6 +111,27 @@ export const relatorioApi = {
       const link = document.createElement('a')
       link.href = url
       link.download = filename ?? 'frequencias.xlsx'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    } finally {
+      URL.revokeObjectURL(url)
+    }
+  },
+  consultarChamadaLideranca: (dataInicio: string, dataFim: string, discipuladoId?: number) => {
+    const params = new URLSearchParams({ dataInicio, dataFim })
+    if (discipuladoId != null) params.set('discipuladoId', String(discipuladoId))
+    return request<RelatorioChamadaLiderancaPeriodoResponse>(`/relatorios/chamadas-lideranca?${params}`)
+  },
+  exportarChamadaLideranca: async (dataInicio: string, dataFim: string, discipuladoId?: number) => {
+    const params = new URLSearchParams({ dataInicio, dataFim })
+    if (discipuladoId != null) params.set('discipuladoId', String(discipuladoId))
+    const { blob, filename } = await requestBlob(`/relatorios/chamadas-lideranca/export?${params}`)
+    const url = URL.createObjectURL(blob)
+    try {
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename ?? 'chamada-lideranca.xlsx'
       document.body.appendChild(link)
       link.click()
       link.remove()

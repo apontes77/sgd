@@ -1,0 +1,384 @@
+import { FileDownloadRounded, PrintRounded, SearchRounded } from '@mui/icons-material'
+import {
+  Alert,
+  Autocomplete,
+  Box,
+  Button,
+  Chip,
+  GlobalStyles,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from '@mui/material'
+import type { FormEvent } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+
+import { organizationApi } from '@/features/organizacao/api'
+import {
+  relatorioApi,
+  type RelatorioChamadaLideranca,
+  type RelatorioChamadaLiderancaPeriodoResponse,
+} from '@/features/relatorios/api'
+import { type Discipulado, labelDiscipulado } from '@/shared/api/types'
+import { DataTableCard, FilterToolbar, PageHeader } from '@/shared/ui'
+
+type OpcaoDiscipulado = Discipulado | { id: 0; nome: string }
+
+const OPCAO_TODOS: OpcaoDiscipulado = { id: 0, nome: 'Todos' }
+
+export default function LeadershipAttendanceReport() {
+  const hoje = dataAtual()
+  const [dataInicio, setDataInicio] = useState(hoje)
+  const [dataFim, setDataFim] = useState(hoje)
+  const [discipuladoId, setDiscipuladoId] = useState(0)
+  const [discipulados, setDiscipulados] = useState<Discipulado[]>([])
+  const [dados, setDados] = useState<RelatorioChamadaLiderancaPeriodoResponse>()
+  const [erro, setErro] = useState('')
+  const [carregando, setCarregando] = useState(false)
+  const [exportando, setExportando] = useState(false)
+
+  const opcoesDiscipulado = useMemo<OpcaoDiscipulado[]>(() => [OPCAO_TODOS, ...discipulados], [discipulados])
+  const discipuladoSelecionado = useMemo(
+    () => opcoesDiscipulado.find((item) => item.id === discipuladoId) ?? OPCAO_TODOS,
+    [opcoesDiscipulado, discipuladoId],
+  )
+
+  useEffect(() => {
+    let ativo = true
+    void organizationApi
+      .listarDiscipulados()
+      .then((pagina) => {
+        if (ativo) setDiscipulados(pagina.content)
+      })
+      .catch(() => {
+        if (ativo) setDiscipulados([])
+      })
+    return () => {
+      ativo = false
+    }
+  }, [])
+
+  async function consultar(event: FormEvent) {
+    event.preventDefault()
+    setErro('')
+    if (dataInicio > dataFim) {
+      setDados(undefined)
+      setErro('A data inicial não pode ser posterior à data final.')
+      return
+    }
+    if (dataFim > somarMeses(dataInicio, 12)) {
+      setDados(undefined)
+      setErro('O período do relatório deve ser de no máximo 12 meses.')
+      return
+    }
+    setCarregando(true)
+    try {
+      setDados(await relatorioApi.consultarChamadaLideranca(dataInicio, dataFim, discipuladoId || undefined))
+    } catch (e) {
+      setDados(undefined)
+      setErro(e instanceof Error ? e.message : 'Não foi possível consultar o relatório.')
+    } finally {
+      setCarregando(false)
+    }
+  }
+
+  async function exportarExcel() {
+    setErro('')
+    if (dataInicio > dataFim) {
+      setErro('A data inicial não pode ser posterior à data final.')
+      return
+    }
+    if (dataFim > somarMeses(dataInicio, 12)) {
+      setErro('O período do relatório deve ser de no máximo 12 meses.')
+      return
+    }
+    setExportando(true)
+    try {
+      await relatorioApi.exportarChamadaLideranca(dataInicio, dataFim, discipuladoId || undefined)
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não foi possível exportar o relatório.')
+    } finally {
+      setExportando(false)
+    }
+  }
+
+  return (
+    <Stack spacing={3}>
+      <GlobalStyles
+        styles={{
+          '@page': { size: 'A4 portrait', margin: '12mm' },
+          '@media print': {
+            'body *': { visibility: 'hidden' },
+            '#relatorio-lideranca-impressao, #relatorio-lideranca-impressao *': { visibility: 'visible' },
+            '#relatorio-lideranca-impressao': { position: 'absolute', inset: 0, width: '100%' },
+            '.relatorio-lideranca-pagina': {
+              boxShadow: 'none !important',
+              margin: 0,
+              padding: '0 !important',
+              maxWidth: 'none !important',
+              breakAfter: 'page',
+              pageBreakAfter: 'always',
+            },
+            '.relatorio-lideranca-pagina:last-child': { breakAfter: 'auto', pageBreakAfter: 'auto' },
+            '.frequencia-presente': { fontWeight: '700 !important' },
+            '.frequencia-ausente': { fontWeight: '400 !important' },
+          },
+        }}
+      />
+      <PageHeader
+        title="Relatório de chamada de liderança"
+        description="Consulte a presença dos discipuladores e co-líderes registrada nas sextas-feiras."
+        eyebrow="Análises"
+      />
+      <FilterToolbar component="form" onSubmit={consultar}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1.5}
+          alignItems={{ sm: 'center' }}
+          flexWrap="wrap"
+          useFlexGap
+        >
+          <TextField
+            required
+            fullWidth
+            type="date"
+            label="Data inicial"
+            value={dataInicio}
+            onChange={(e) => setDataInicio(e.target.value)}
+            slotProps={{ inputLabel: { shrink: true } }}
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
+          />
+          <TextField
+            required
+            fullWidth
+            type="date"
+            label="Data final"
+            value={dataFim}
+            onChange={(e) => setDataFim(e.target.value)}
+            slotProps={{ inputLabel: { shrink: true } }}
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
+          />
+          <Autocomplete
+            sx={{ minWidth: { xs: '100%', sm: 280 }, width: { xs: '100%', sm: 'auto' }, flex: { sm: 1 } }}
+            options={opcoesDiscipulado}
+            value={discipuladoSelecionado}
+            onChange={(_, value) => setDiscipuladoId(value?.id ?? 0)}
+            getOptionLabel={(item) => (item.id === 0 ? item.nome : labelDiscipulado(item))}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            noOptionsText="Nenhum discipulado encontrado"
+            renderInput={(params) => (
+              <TextField {...params} label="Discipulado" placeholder="Pesquisar discipulado ou discipulador" />
+            )}
+          />
+          <Button
+            type="submit"
+            variant="contained"
+            startIcon={<SearchRounded />}
+            disabled={carregando}
+            fullWidth
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
+          >
+            {carregando ? 'Consultando...' : 'Consultar'}
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<PrintRounded />}
+            disabled={!dados?.relatorios.length}
+            onClick={() => window.print()}
+            fullWidth
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
+          >
+            Imprimir / salvar como PDF
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<FileDownloadRounded />}
+            disabled={!dados?.relatorios.length || exportando}
+            onClick={() => void exportarExcel()}
+            fullWidth
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
+          >
+            {exportando ? 'Exportando...' : 'Exportar Excel'}
+          </Button>
+        </Stack>
+      </FilterToolbar>
+      {erro && <Alert severity="error">{erro}</Alert>}
+      {dados && dados.relatorios.length === 0 && (
+        <Alert severity="info">
+          Não há chamadas de liderança no período de {formatarData(dados.dataInicio)} a {formatarData(dados.dataFim)}.
+        </Alert>
+      )}
+      {dados?.relatorios.length ? (
+        <Box id="relatorio-lideranca-impressao">
+          <Stack spacing={3}>
+            {dados.relatorios.map((item) => (
+              <PaginaRelatorio key={item.chamadaId} item={item} emitidoEm={dados.emitidoEm} />
+            ))}
+          </Stack>
+        </Box>
+      ) : null}
+    </Stack>
+  )
+}
+
+function PaginaRelatorio({ item, emitidoEm }: { item: RelatorioChamadaLideranca; emitidoEm: string }) {
+  return (
+    <Paper
+      className="relatorio-lideranca-pagina"
+      sx={{
+        p: { xs: 2, sm: 4 },
+        mx: 'auto',
+        width: '100%',
+        maxWidth: '190mm',
+        bgcolor: 'background.paper',
+        color: 'text.primary',
+      }}
+    >
+      <Stack spacing={2}>
+        <Box textAlign="center">
+          <Typography variant="overline">SGD — Sistema de Gerenciamento de Discipulados</Typography>
+          <Typography component="h2" variant="h4">
+            Relatório de chamada de liderança
+          </Typography>
+        </Box>
+        <Typography>
+          <strong>Data:</strong> {formatarData(item.data)}
+        </Typography>
+        {item.observacaoGeral ? (
+          <Alert severity="info">
+            <strong>Observação geral:</strong> {item.observacaoGeral}
+          </Alert>
+        ) : null}
+        {item.discipulados.length ? (
+          item.discipulados.map((discipulado) => (
+            <Stack key={discipulado.discipuladoId} spacing={1}>
+              <Box>
+                <Typography variant="h6">{discipulado.discipuladoNome}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {discipulado.gerenciaNome} · {discipulado.sexo === 'MASCULINO' ? 'Masculino' : 'Feminino'}
+                </Typography>
+              </Box>
+              {discipulado.observacao ? (
+                <Typography variant="body2">
+                  <strong>Observação:</strong> {discipulado.observacao}
+                </Typography>
+              ) : null}
+              <DataTableCard>
+                <Table
+                  size="small"
+                  aria-label={`Chamada de liderança do ${discipulado.discipuladoNome} em ${formatarData(item.data)}`}
+                >
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Nome</TableCell>
+                      <TableCell>Papel</TableCell>
+                      <TableCell align="right">Presença</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {discipulado.presencas.map((p) => (
+                      <TableRow key={p.usuarioId}>
+                        <TableCell>{p.nome}</TableCell>
+                        <TableCell>{p.papel === 'DISCIPULADOR' ? 'Discipulador' : 'Co-líder'}</TableCell>
+                        <TableCell align="right">
+                          <Chip
+                            size="small"
+                            color={p.situacao === 'PRESENTE' ? 'success' : 'default'}
+                            label={
+                              <Box
+                                component="span"
+                                className={p.situacao === 'PRESENTE' ? 'frequencia-presente' : 'frequencia-ausente'}
+                              >
+                                {p.situacao === 'PRESENTE' ? 'Presente' : 'Ausente'}
+                              </Box>
+                            }
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </DataTableCard>
+            </Stack>
+          ))
+        ) : (
+          <Alert severity="info">Nenhuma presença de liderança registrada nesta data.</Alert>
+        )}
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(4,1fr)' },
+            gap: 1,
+            p: 2,
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: 1,
+          }}
+        >
+          <Resumo label="Presentes" valor={item.resumo.presentes} />
+          <Resumo label="Ausentes" valor={item.resumo.ausentes} />
+          <Resumo label="Participantes" valor={item.resumo.participantes} />
+          <Resumo label="Presença" valor={percentual(item.resumo.percentualPresenca)} />
+        </Box>
+        <Typography variant="caption" color="text.secondary" textAlign="right">
+          Emitido em {formatarDataHora(emitidoEm)}
+        </Typography>
+      </Stack>
+    </Paper>
+  )
+}
+
+function Resumo({ label, valor }: { label: string; valor: string | number }) {
+  return (
+    <Box>
+      <Typography variant="caption" color="text.secondary">
+        {label}
+      </Typography>
+      <Typography fontWeight={700}>{valor}</Typography>
+    </Box>
+  )
+}
+
+function percentual(valor: number) {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'percent',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(valor / 100)
+}
+
+function formatarData(data: string) {
+  return new Intl.DateTimeFormat('pt-BR').format(new Date(`${data}T12:00:00`))
+}
+
+function formatarDataHora(data: string) {
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+    timeZone: 'America/Sao_Paulo',
+  }).format(new Date(data))
+}
+
+function dataAtual() {
+  const partes = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date())
+  const valor = (tipo: Intl.DateTimeFormatPartTypes) => partes.find((p) => p.type === tipo)?.value ?? ''
+  return `${valor('year')}-${valor('month')}-${valor('day')}`
+}
+
+function somarMeses(data: string, meses: number) {
+  const [ano, mes, dia] = data.split('-').map(Number)
+  const base = new Date(Date.UTC(ano, mes - 1 + meses, 1))
+  const ultimoDia = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + 1, 0)).getUTCDate()
+  return `${base.getUTCFullYear()}-${String(base.getUTCMonth() + 1).padStart(2, '0')}-${String(Math.min(dia, ultimoDia)).padStart(2, '0')}`
+}

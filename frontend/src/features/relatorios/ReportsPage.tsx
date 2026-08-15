@@ -3,9 +3,10 @@ import { useState } from 'react'
 
 import AdolescentExportReport from '@/features/relatorios/AdolescentExportReport'
 import FrequencyReport from '@/features/relatorios/FrequencyReport'
+import LeadershipAttendanceReport from '@/features/relatorios/LeadershipAttendanceReport'
 import type { Usuario } from '@/shared/api/types'
 
-type TipoRelatorio = 'frequencia' | 'adolescentes'
+type TipoRelatorio = 'frequencia' | 'adolescentes' | 'lideranca'
 
 export default function ReportsPage({ currentUser }: { currentUser: Usuario }) {
   const isAdmin = currentUser.perfis.includes('ADMIN')
@@ -26,8 +27,11 @@ export default function ReportsPage({ currentUser }: { currentUser: Usuario }) {
       >
         <Tab value="frequencia" label="Frequência" />
         <Tab value="adolescentes" label="Adolescentes" />
+        <Tab value="lideranca" label="Liderança" />
       </Tabs>
-      {tipo === 'frequencia' ? <FrequencyReport currentUser={currentUser} /> : <AdolescentExportReport />}
+      {tipo === 'frequencia' && <FrequencyReport currentUser={currentUser} />}
+      {tipo === 'adolescentes' && <AdolescentExportReport />}
+      {tipo === 'lideranca' && <LeadershipAttendanceReport />}
     </>
   )
 }

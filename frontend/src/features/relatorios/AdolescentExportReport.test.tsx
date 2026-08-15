@@ -98,7 +98,7 @@ describe('exportação de adolescentes', () => {
     expect(revokeObjectURL).toHaveBeenCalled()
   })
 
-  it('exibe abas de frequência e adolescentes apenas para admin', async () => {
+  it('exibe abas de frequência, adolescentes e liderança apenas para admin', async () => {
     const user = userEvent.setup()
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input)
@@ -117,12 +117,16 @@ describe('exportação de adolescentes', () => {
     const { unmount } = render(<ReportsPage currentUser={adminUser} />)
     expect(screen.getByRole('tab', { name: 'Frequência' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Adolescentes' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Liderança' })).toBeInTheDocument()
     await user.click(screen.getByRole('tab', { name: 'Adolescentes' }))
     expect(await screen.findByRole('heading', { name: 'Relatório de adolescentes' })).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: 'Liderança' }))
+    expect(await screen.findByRole('heading', { name: 'Relatório de chamada de liderança' })).toBeInTheDocument()
     unmount()
 
     render(<ReportsPage currentUser={gerenteUser} />)
     expect(screen.queryByRole('tab', { name: 'Adolescentes' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Liderança' })).not.toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: /Relatórios de frequência/i })).toBeInTheDocument()
   })
 })
