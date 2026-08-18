@@ -213,7 +213,13 @@ paths:
     get:
       tags: [Adolescentes]
       summary: Lista fichas de família (ADMIN todas; GERENTE da gerência)
-      parameters: [ { $ref: '#/components/parameters/Pagina' }, { $ref: '#/components/parameters/TamanhoPagina' } ]
+      description: Paginação obrigatória. Filtros opcionais por texto (nome do adolescente ou discipulado), situacaoIgreja e situacaoPais.
+      parameters:
+        - { $ref: '#/components/parameters/Pagina' }
+        - { $ref: '#/components/parameters/TamanhoPagina' }
+        - { name: busca, in: query, schema: { type: string }, description: Trecho do nome do adolescente ou do discipulado }
+        - { name: situacaoIgreja, in: query, schema: { type: string, enum: [FDV_ATUANTES, FDV_NAO_ATUANTES, OUTRA_IGREJA, NAO_CRISTA, AFASTADA, NAO_CONSTA] } }
+        - { name: situacaoPais, in: query, schema: { type: string, enum: [CASADOS, SEPARADOS, FALECIDOS, ADOTIVOS, HOMOAFETIVOS, NULOS, NAO_CONSTA] } }
       responses: { '200': { description: Página de fichas } }
   /encontros:
     get:

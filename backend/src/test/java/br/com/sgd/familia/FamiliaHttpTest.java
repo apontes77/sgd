@@ -293,13 +293,131 @@ class FamiliaHttpTest {
         .andExpect(status().isForbidden());
   }
 
+  @Test
+  void listagemFamiliasFiltraPorBuscaSituacaoIgrejaEPais() throws Exception {
+    long idCasados =
+        criarAdolescente(admin, alpha.getId(), "Ana Busca Alpha", familiaPreenchidaJson("Mãe Ana"));
+    criarAdolescente(admin, betaOutraGerencia.getId(), "Bruno Outro", familiaNaoConstaJson());
+
+    mvc.perform(
+            put("/api/v1/adolescentes/{id}/familia", idCasados)
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(admin)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(familiaPreenchidaJson("Mãe Ana")))
+        .andExpect(status().isOk());
+
+    JsonNode porNome =
+        json.readTree(
+            mvc.perform(
+                    get("/api/v1/familias")
+                        .param("busca", "Ana")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token(admin))))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString());
+    assertThat(porNome.get("content").toString()).contains("Ana Busca Alpha");
+    assertThat(porNome.get("content").toString()).doesNotContain("Bruno Outro");
+
+    JsonNode porDiscipulado =
+        json.readTree(
+            mvc.perform(
+                    get("/api/v1/familias")
+                        .param("busca", "Alpha")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token(admin))))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString());
+    assertThat(porDiscipulado.get("content").toString()).contains("Ana Busca Alpha");
+    assertThat(porDiscipulado.get("content").toString()).doesNotContain("Bruno Outro");
+
+    JsonNode porIgreja =
+        json.readTree(
+            mvc.perform(
+                    get("/api/v1/familias")
+                        .param("situacaoIgreja", "OUTRA_IGREJA")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token(admin))))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString());
+    assertThat(porIgreja.get("content").toString()).contains("Ana Busca Alpha");
+    assertThat(porIgreja.get("content").toString()).doesNotContain("Bruno Outro");
+
+    JsonNode porIgrejaNaoConsta =
+        json.readTree(
+            mvc.perform(
+                    get("/api/v1/familias")
+                        .param("situacaoIgreja", "NAO_CONSTA")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token(admin))))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString());
+    assertThat(porIgrejaNaoConsta.get("content").toString()).contains("Bruno Outro");
+    assertThat(porIgrejaNaoConsta.get("content").toString()).doesNotContain("Ana Busca Alpha");
+
+    JsonNode porPais =
+        json.readTree(
+            mvc.perform(
+                    get("/api/v1/familias")
+                        .param("situacaoPais", "CASADOS")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token(admin))))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString());
+    assertThat(porPais.get("content").toString()).contains("Ana Busca Alpha");
+    assertThat(porPais.get("content").toString()).doesNotContain("Bruno Outro");
+  }
+
+  @Test
+  void listagemFamiliasPaginadaNaoCarregaTudo() throws Exception {
+    criarAdolescente(admin, alpha.getId(), "Pagina Um");
+    criarAdolescente(admin, alpha.getId(), "Pagina Dois");
+    criarAdolescente(admin, alpha.getId(), "Pagina Tres");
+
+    JsonNode pagina0 =
+        json.readTree(
+            mvc.perform(
+                    get("/api/v1/familias")
+                        .param("page", "0")
+                        .param("size", "2")
+                        .param("busca", "Pagina")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token(admin))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.size").value(2))
+                .andExpect(jsonPath("$.totalElements").value(3))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.content.length()").value(2))
+                .andReturn()
+                .getResponse()
+                .getContentAsString());
+    assertThat(pagina0.get("content")).hasSize(2);
+
+    mvc.perform(
+            get("/api/v1/familias")
+                .param("page", "1")
+                .param("size", "2")
+                .param("busca", "Pagina")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(admin))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content.length()").value(1));
+  }
+
   private long criarAdolescente(User ator, long discipuladoId, String nome) throws Exception {
+    return criarAdolescente(ator, discipuladoId, nome, familiaNaoConstaJson());
+  }
+
+  private long criarAdolescente(User ator, long discipuladoId, String nome, String familiaJson)
+      throws Exception {
     String body =
         mvc.perform(
                 post("/api/v1/adolescentes")
                     .header(HttpHeaders.AUTHORIZATION, bearer(token(ator)))
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content(payloadCriacao(discipuladoId, nome)))
+                    .content(payloadCriacao(discipuladoId, nome, familiaJson)))
             .andExpect(status().isCreated())
             .andReturn()
             .getResponse()
@@ -308,6 +426,10 @@ class FamiliaHttpTest {
   }
 
   private static String payloadCriacao(long discipuladoId, String nome) {
+    return payloadCriacao(discipuladoId, nome, familiaNaoConstaJson());
+  }
+
+  private static String payloadCriacao(long discipuladoId, String nome, String familiaJson) {
     return """
         {
           "nome": "%s",
@@ -321,7 +443,7 @@ class FamiliaHttpTest {
           "familia": %s
         }
         """
-        .formatted(nome, discipuladoId, familiaNaoConstaJson());
+        .formatted(nome, discipuladoId, familiaJson);
   }
 
   private static String familiaPreenchidaJson(String nomeResponsavel1) {
@@ -333,7 +455,7 @@ class FamiliaHttpTest {
           "complemento": "Casa",
           "bairro": "Centro",
           "cidade": "Goiânia",
-          "situacaoIgreja": "NAO_CONSTA",
+          "situacaoIgreja": "OUTRA_IGREJA",
           "atuaOnde": "Não consta",
           "situacaoPais": "CASADOS",
           "descricao": "Família acolhedora",
