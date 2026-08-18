@@ -323,6 +323,7 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
               {section === 'adolescentes' && (
                 <AdolescentManagement
                   podeAnonimizar={isAdmin}
+                  podeFamilia={isAdmin || isGerente}
                   podeEditar={currentUser.perfis.some(
                     (perfil) =>
                       perfil === 'ADMIN' || perfil === 'GERENTE' || perfil === 'DISCIPULADOR' || perfil === 'CO_LIDER',
@@ -701,6 +702,7 @@ function FrequencyPage({ currentUser }: { currentUser: Usuario }) {
       })
   }, [currentUser.perfis])
   const podeAdministrar = currentUser.perfis.includes('ADMIN')
+  const podeFamilia = currentUser.perfis.includes('ADMIN') || currentUser.perfis.includes('GERENTE')
   const podeRegistrarNaoRealizacao =
     podeAdministrar || currentUser.perfis.some((role) => role === 'DISCIPULADOR' || role === 'CO_LIDER')
   const mostrarSeletor = discipulados.length > 1
@@ -731,6 +733,7 @@ function FrequencyPage({ currentUser }: { currentUser: Usuario }) {
           discipuladoId={discipuladoId}
           discipulado={discipulados.find((item) => item.id === discipuladoId)}
           podeAdministrar={podeAdministrar}
+          podeFamilia={podeFamilia}
           podeRegistrarNaoRealizacao={podeRegistrarNaoRealizacao}
         />
       ) : (

@@ -214,7 +214,6 @@ describe('registro de frequência', () => {
       .find((el) => el.hasAttribute('required'))
     expect(dataNascimentoAdolescente).toBeTruthy()
     fireEvent.change(dataNascimentoAdolescente!, { target: { value: '2011-05-04' } })
-    await user.click(screen.getByRole('button', { name: /Preencher tudo como/i }))
     await user.click(screen.getByRole('button', { name: 'Adicionar' }))
 
     expect(await screen.findByText('João Visitante')).toBeInTheDocument()
@@ -226,11 +225,8 @@ describe('registro de frequência', () => {
       discipuladoId: 1,
       dataInicio: hoje,
       categoria: 'VISITANTE',
-      familia: expect.objectContaining({
-        responsavel1: expect.objectContaining({ nome: 'Não consta' }),
-        responsavel2: expect.objectContaining({ nome: 'Não consta' }),
-      }),
     })
+    expect(JSON.parse(String(criacaoVisitante?.[1]?.body)).familia).toBeUndefined()
 
     await user.click(await screen.findByRole('button', { name: 'Salvar frequência' }))
     expect(await screen.findByText('Frequência salva.')).toBeInTheDocument()

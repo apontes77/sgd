@@ -65,12 +65,9 @@ public class AdolescenteService {
   }
 
   public Adolescente criar(User usuario, DadosAdolescente dados, FichaFamilia.DadosFicha familia) {
-    if (familia == null) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "A ficha de família é obrigatória no cadastro do adolescente.");
-    }
     Discipulado discipulado = discipuladoAtivo(dados.discipuladoId());
     escopo.exigirAlteracao(usuario, discipulado);
+    FichaFamilia.DadosFicha ficha = fichaParaCadastro(usuario, familia);
     CategoriaAdolescente categoria =
         dados.categoria() == null ? CategoriaAdolescente.DISCIPULO : dados.categoria();
     Adolescente adolescente =
@@ -79,8 +76,24 @@ public class AdolescenteService {
     LocalDate inicioVinculo =
         dados.dataInicio() == null ? LocalDate.now(ZONA_NEGOCIO) : dados.dataInicio();
     vinculos.save(new VinculoAdolescenteDiscipulado(adolescente, discipulado, inicioVinculo));
-    familias.criarObrigatoria(adolescente, familia);
+    familias.criarObrigatoria(adolescente, ficha);
     return adolescente;
+  }
+
+  /**
+   * ADMIN/GERENTE devem informar a ficha; liderança recebe “Não consta” automaticamente (RN051).
+   */
+  private static FichaFamilia.DadosFicha fichaParaCadastro(
+      User usuario, FichaFamilia.DadosFicha familia) {
+    var perfis = usuario.getPerfis();
+    boolean podeFamilia =
+        perfis != null && (perfis.contains(Role.ADMIN) || perfis.contains(Role.GERENTE));
+    if (!podeFamilia) return FichaFamilia.dadosNaoConsta();
+    if (familia == null) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "A ficha de família é obrigatória no cadastro do adolescente.");
+    }
+    return familia;
   }
 
   public Adolescente atualizar(User usuario, long id, DadosAdolescente dados) {

@@ -50,6 +50,7 @@ public class FamiliaService {
   }
 
   public FichaFamilia consultar(User usuario, long adolescenteId) {
+    exigirPerfilFamilia(usuario);
     buscarAdolescente(adolescenteId);
     VinculoAdolescenteDiscipulado vinculo = vinculoAtivoLeitura(adolescenteId);
     escopo.exigirLeitura(usuario, vinculo.getDiscipulado());
@@ -67,6 +68,7 @@ public class FamiliaService {
   }
 
   public FichaFamilia salvar(User usuario, long adolescenteId, FichaFamilia.DadosFicha dados) {
+    exigirPerfilFamilia(usuario);
     Adolescente adolescente = buscarAdolescente(adolescenteId);
     VinculoAdolescenteDiscipulado vinculo = vinculoAtivoEscrita(adolescenteId);
     escopo.exigirAlteracao(usuario, vinculo.getDiscipulado());
@@ -90,15 +92,20 @@ public class FamiliaService {
 
   @Transactional(readOnly = true)
   public Page<FamiliaResumo> listar(User usuario, Pageable pageable) {
+    exigirPerfilFamilia(usuario);
     Long gerenteId = null;
     if (!usuario.getPerfis().contains(Role.ADMIN)) {
-      if (!usuario.getPerfis().contains(Role.GERENTE)) {
-        throw new ResponseStatusException(
-            HttpStatus.FORBIDDEN, "Somente ADMIN e GERENTE listam fichas de família.");
-      }
       gerenteId = usuario.getId();
     }
     return fichas.listarNoEscopo(gerenteId, pageable).map(this::resumo);
+  }
+
+  private static void exigirPerfilFamilia(User usuario) {
+    if (usuario.getPerfis().contains(Role.ADMIN) || usuario.getPerfis().contains(Role.GERENTE)) {
+      return;
+    }
+    throw new ResponseStatusException(
+        HttpStatus.FORBIDDEN, "Somente ADMIN e GERENTE acessam fichas de família.");
   }
 
   private FamiliaResumo resumo(FichaFamilia ficha) {

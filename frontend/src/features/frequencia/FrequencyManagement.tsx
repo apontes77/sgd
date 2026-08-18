@@ -45,6 +45,7 @@ interface Props {
   discipuladoId: number
   discipulado?: Discipulado
   podeAdministrar?: boolean
+  podeFamilia?: boolean
   podeRegistrarNaoRealizacao?: boolean
 }
 interface ParticipanteChamada extends AdolescenteResumo {
@@ -72,6 +73,7 @@ export default function FrequencyManagement({
   discipuladoId,
   discipulado,
   podeAdministrar = false,
+  podeFamilia = false,
   podeRegistrarNaoRealizacao = false,
 }: Props) {
   const mobile = useMediaQuery('(max-width:599.95px)')
@@ -319,7 +321,7 @@ export default function FrequencyManagement({
         discipuladoId,
         ativo: true,
         dataInicio: data,
-        familia: toFamiliaPayload(familiaVisitante),
+        ...(podeFamilia ? { familia: toFamiliaPayload(familiaVisitante) } : {}),
       })
       setParticipantes((atual) => [...atual, { id: criado.id, nome: criado.nome, registroAnterior: false }])
       setChamada((atual) => ({ ...atual, [criado.id]: 'PRESENTE' }))
@@ -769,7 +771,9 @@ export default function FrequencyManagement({
                 disabled={salvando}
               />
             )}
-            <FamilyFormFields value={familiaVisitante} onChange={setFamiliaVisitante} disabled={salvando} />
+            {podeFamilia && (
+              <FamilyFormFields value={familiaVisitante} onChange={setFamiliaVisitante} disabled={salvando} />
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>

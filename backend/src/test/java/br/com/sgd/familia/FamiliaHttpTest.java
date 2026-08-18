@@ -106,23 +106,95 @@ class FamiliaHttpTest {
   }
 
   @Test
-  void liderConsultaEAtualizaFamiliaDoProprioDiscipulado() throws Exception {
+  void liderRecebeForbiddenEmGetEPutFamiliaDoProprioDiscipulado() throws Exception {
     long adolescenteId = criarAdolescente(lider, alpha.getId(), "Ana Familia");
 
     mvc.perform(
             get("/api/v1/adolescentes/{id}/familia", adolescenteId)
                 .header(HttpHeaders.AUTHORIZATION, bearer(token(lider))))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.adolescenteId").value(adolescenteId));
+        .andExpect(status().isForbidden());
 
     mvc.perform(
             put("/api/v1/adolescentes/{id}/familia", adolescenteId)
                 .header(HttpHeaders.AUTHORIZATION, bearer(token(lider)))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(familiaPreenchidaJson("Maria Mãe")))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void liderCriaAdolescenteSemFamiliaGeraNaoConsta() throws Exception {
+    String semFamilia =
+        """
+        {
+          "nome": "Lider Sem Ficha",
+          "dataNascimento": "2010-01-15",
+          "consentimentoEm": "2026-01-01",
+          "categoria": "DISCIPULO",
+          "discipuladoId": %d,
+          "ativo": true,
+          "dataInicio": "2026-01-01",
+          "naoPossuiTelefone": true
+        }
+        """
+            .formatted(alpha.getId());
+
+    String body =
+        mvc.perform(
+                post("/api/v1/adolescentes")
+                    .header(HttpHeaders.AUTHORIZATION, bearer(token(lider)))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(semFamilia))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    long adolescenteId = json.readTree(body).get("id").asLong();
+
+    mvc.perform(
+            get("/api/v1/adolescentes/{id}/familia", adolescenteId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(admin))))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.responsavel1.nome").value("Maria Mãe"))
-        .andExpect(jsonPath("$.situacaoFicha").value("PREENCHIDA"));
+        .andExpect(jsonPath("$.situacaoFicha").value("NAO_CONSTA"))
+        .andExpect(jsonPath("$.responsavel1.nome").value("Não consta"));
+  }
+
+  @Test
+  void liderCriaAdolescenteComFamiliaNoBodyIgnoraEGeraNaoConsta() throws Exception {
+    String comFamilia =
+        """
+        {
+          "nome": "Lider Com Ficha Ignorada",
+          "dataNascimento": "2010-01-15",
+          "consentimentoEm": "2026-01-01",
+          "categoria": "DISCIPULO",
+          "discipuladoId": %d,
+          "ativo": true,
+          "dataInicio": "2026-01-01",
+          "naoPossuiTelefone": true,
+          "familia": %s
+        }
+        """
+            .formatted(alpha.getId(), familiaPreenchidaJson("Maria Ignorada"));
+
+    String body =
+        mvc.perform(
+                post("/api/v1/adolescentes")
+                    .header(HttpHeaders.AUTHORIZATION, bearer(token(lider)))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(comFamilia))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    long adolescenteId = json.readTree(body).get("id").asLong();
+
+    mvc.perform(
+            get("/api/v1/adolescentes/{id}/familia", adolescenteId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(admin))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.situacaoFicha").value("NAO_CONSTA"))
+        .andExpect(jsonPath("$.responsavel1.nome").value("Não consta"));
   }
 
   @Test

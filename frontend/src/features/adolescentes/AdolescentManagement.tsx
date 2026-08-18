@@ -109,9 +109,11 @@ function validarFormularioAdolescente(form: AdolescenteInput): string | null {
 export default function AdolescentManagement({
   podeAnonimizar = false,
   podeEditar = true,
+  podeFamilia = false,
 }: {
   podeAnonimizar?: boolean
   podeEditar?: boolean
+  podeFamilia?: boolean
 }) {
   const [items, setItems] = useState<Adolescente[]>([])
   const [totalAtivos, setTotalAtivos] = useState(0)
@@ -304,7 +306,7 @@ export default function AdolescentManagement({
       setErro(erroValidacao)
       return
     }
-    if (!editando) {
+    if (!editando && podeFamilia) {
       const erroFamilia = validarFamiliaObrigatoria(familiaForm)
       if (erroFamilia) {
         setErro(erroFamilia)
@@ -321,7 +323,7 @@ export default function AdolescentManagement({
         naoPossuiTelefone: Boolean(form.naoPossuiTelefone),
       }
       if (editando) await adolescentesApi.atualizar(editando.id, payload)
-      else await adolescentesApi.criar({ ...payload, familia: toFamiliaPayload(familiaForm) })
+      else await adolescentesApi.criar(podeFamilia ? { ...payload, familia: toFamiliaPayload(familiaForm) } : payload)
       setSucesso(editando ? 'Adolescente atualizado.' : 'Adolescente cadastrado.')
       setEditando(null)
       setForm(vazio)
@@ -438,7 +440,7 @@ export default function AdolescentManagement({
 
   function acoesLinha(a: Adolescente) {
     const actions = [
-      { label: 'Ficha de família', onClick: () => void abrirFamilia(a) },
+      ...(podeFamilia ? [{ label: 'Ficha de família', onClick: () => void abrirFamilia(a) }] : []),
       ...(podeEditar
         ? [
             { label: 'Editar', onClick: () => editar(a) },
@@ -549,7 +551,7 @@ export default function AdolescentManagement({
             empty="Nenhum discípulo ativo neste discipulado."
             acoes={acoesLinha}
             onEditar={podeEditar ? editar : undefined}
-            onAbrirFamilia={(a) => void abrirFamilia(a)}
+            onAbrirFamilia={podeFamilia ? (a) => void abrirFamilia(a) : undefined}
           />
           <CategoriaSection
             titulo="Visitantes"
@@ -557,7 +559,7 @@ export default function AdolescentManagement({
             empty="Nenhum visitante cadastrado neste discipulado."
             acoes={acoesLinha}
             onEditar={podeEditar ? editar : undefined}
-            onAbrirFamilia={(a) => void abrirFamilia(a)}
+            onAbrirFamilia={podeFamilia ? (a) => void abrirFamilia(a) : undefined}
           />
           <CategoriaSection
             titulo="Discípulos GOE"
@@ -566,7 +568,7 @@ export default function AdolescentManagement({
             acoes={acoesLinha}
             mostrarMotivo
             onEditar={podeEditar ? editar : undefined}
-            onAbrirFamilia={(a) => void abrirFamilia(a)}
+            onAbrirFamilia={podeFamilia ? (a) => void abrirFamilia(a) : undefined}
           />
         </>
       )}
@@ -604,49 +606,55 @@ export default function AdolescentManagement({
             ))}
           </Select>
         </FormControl>
-        {!editando && <FamilyFormFields value={familiaForm} onChange={setFamiliaForm} disabled={salvando} />}
+        {!editando && podeFamilia && (
+          <FamilyFormFields value={familiaForm} onChange={setFamiliaForm} disabled={salvando} />
+        )}
         {editando && (
           <Stack spacing={1.5}>
             <Stack direction="row" alignItems="center">
               <Switch checked={form.ativo} onChange={(e) => setForm({ ...form, ativo: e.target.checked })} />
               <Typography>Cadastro ativo</Typography>
             </Stack>
-            <Stack spacing={0.5}>
-              <Typography variant="subtitle2" fontWeight={700}>
-                Ficha de família
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                A ficha é editada em janela própria para não misturar com os dados cadastrais.
-              </Typography>
-              <Button
-                variant="outlined"
-                onClick={() => void abrirFamilia(editando)}
-                disabled={salvando}
-                sx={{ alignSelf: 'flex-start' }}
-              >
-                Abrir ficha de família
-              </Button>
-            </Stack>
+            {podeFamilia && (
+              <Stack spacing={0.5}>
+                <Typography variant="subtitle2" fontWeight={700}>
+                  Ficha de família
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  A ficha é editada em janela própria para não misturar com os dados cadastrais.
+                </Typography>
+                <Button
+                  variant="outlined"
+                  onClick={() => void abrirFamilia(editando)}
+                  disabled={salvando}
+                  sx={{ alignSelf: 'flex-start' }}
+                >
+                  Abrir ficha de família
+                </Button>
+              </Stack>
+            )}
           </Stack>
         )}
       </FormSheet>
 
-      <Dialog open={Boolean(familiaAlvo)} onClose={() => !salvando && setFamiliaAlvo(null)} fullWidth maxWidth="md">
-        <DialogTitle>Família de {familiaAlvo?.nome}</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} mt={1}>
-            <FamilyFormFields value={familiaDialog} onChange={setFamiliaDialog} disabled={salvando || !podeEditar} />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setFamiliaAlvo(null)}>Cancelar</Button>
-          {podeEditar && (
-            <Button variant="contained" disabled={salvando} onClick={() => void salvarFamiliaDialog()}>
-              {salvando ? 'Salvando...' : 'Salvar ficha'}
-            </Button>
-          )}
-        </DialogActions>
-      </Dialog>
+      {podeFamilia && (
+        <Dialog open={Boolean(familiaAlvo)} onClose={() => !salvando && setFamiliaAlvo(null)} fullWidth maxWidth="md">
+          <DialogTitle>Família de {familiaAlvo?.nome}</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2} mt={1}>
+              <FamilyFormFields value={familiaDialog} onChange={setFamiliaDialog} disabled={salvando || !podeEditar} />
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setFamiliaAlvo(null)}>Cancelar</Button>
+            {podeEditar && (
+              <Button variant="contained" disabled={salvando} onClick={() => void salvarFamiliaDialog()}>
+                {salvando ? 'Salvando...' : 'Salvar ficha'}
+              </Button>
+            )}
+          </DialogActions>
+        </Dialog>
+      )}
 
       <Dialog open={Boolean(transferindo)} onClose={() => setTransferindo(null)} fullWidth maxWidth="sm">
         <DialogTitle>Transferir {transferindo?.nome}</DialogTitle>
@@ -860,7 +868,7 @@ function CategoriaSection({
                 <TableCell>Estrutura</TableCell>
                 {mostrarMotivo && <TableCell>Motivo do afastamento</TableCell>}
                 <TableCell>Situação</TableCell>
-                <TableCell>Famílias</TableCell>
+                {onAbrirFamilia && <TableCell>Famílias</TableCell>}
                 <TableCell align="right">Ações</TableCell>
               </TableRow>
             </TableHead>
@@ -897,11 +905,13 @@ function CategoriaSection({
                   <TableCell>
                     <StatusChip active={a.ativo} />
                   </TableCell>
-                  <TableCell>
-                    <Button size="small" variant="outlined" onClick={() => onAbrirFamilia?.(a)}>
-                      Abrir ficha
-                    </Button>
-                  </TableCell>
+                  {onAbrirFamilia && (
+                    <TableCell>
+                      <Button size="small" variant="outlined" onClick={() => onAbrirFamilia(a)}>
+                        Abrir ficha
+                      </Button>
+                    </TableCell>
+                  )}
                   <TableCell align="right">{acoes(a)}</TableCell>
                 </TableRow>
               ))}
