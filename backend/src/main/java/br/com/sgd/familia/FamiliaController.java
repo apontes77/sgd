@@ -34,8 +34,13 @@ public class FamiliaController {
   public PaginaResponse<FamiliaService.FamiliaResumo> listar(
       Authentication auth,
       @RequestParam(defaultValue = "0") @Min(0) int page,
-      @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-    return PaginaResponse.of(service.listar(usuario(auth), PageRequest.of(page, size)));
+      @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+      @RequestParam(required = false) String busca,
+      @RequestParam(required = false) SituacaoIgrejaFamilia situacaoIgreja,
+      @RequestParam(required = false) SituacaoPaisFamilia situacaoPais) {
+    return PaginaResponse.of(
+        service.listar(
+            usuario(auth), PageRequest.of(page, size), busca, situacaoIgreja, situacaoPais));
   }
 
   @GetMapping("/api/v1/adolescentes/{adolescenteId}/familia")

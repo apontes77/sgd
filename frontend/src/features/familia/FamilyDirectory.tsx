@@ -1,3 +1,4 @@
+import { SearchRounded } from '@mui/icons-material'
 import {
   Alert,
   Button,
@@ -5,24 +6,52 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  LinearProgress,
+  MenuItem,
   Stack,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableRow,
+  TextField,
   Typography,
 } from '@mui/material'
+import type { FormEvent } from 'react'
 import { useCallback, useEffect, useState } from 'react'
 
-import { familiaApi, type FamiliaInput, familiaNaoConsta, type FamiliaResumo } from '@/features/familia/api'
+import {
+  familiaApi,
+  type FamiliaInput,
+  familiaNaoConsta,
+  type FamiliaResumo,
+  SITUACAO_IGREJA_LABEL,
+  SITUACAO_PAIS_LABEL,
+  type SituacaoIgrejaFamilia,
+  type SituacaoPaisFamilia,
+} from '@/features/familia/api'
 import { FamilyFormFields } from '@/features/familia/FamilyFormFields'
-import { DataTableCard, EmptyState, PageHeader, SectionCard } from '@/shared/ui'
+import type { Pagina } from '@/shared/api/types'
+import { DataTableCard, EmptyState, FilterToolbar, PageHeader, SectionCard } from '@/shared/ui'
 
-const PAGE_SIZE = 100
+const PAGE_SIZE = 20
+const SITUACOES_IGREJA = Object.keys(SITUACAO_IGREJA_LABEL) as SituacaoIgrejaFamilia[]
+const SITUACOES_PAIS = Object.keys(SITUACAO_PAIS_LABEL) as SituacaoPaisFamilia[]
+
+const paginaVazia: Pagina<FamiliaResumo> = {
+  content: [],
+  page: 0,
+  size: PAGE_SIZE,
+  totalElements: 0,
+  totalPages: 0,
+}
 
 export default function FamilyDirectory() {
-  const [itens, setItens] = useState<FamiliaResumo[]>([])
+  const [resultado, setResultado] = useState<Pagina<FamiliaResumo>>(paginaVazia)
+  const [busca, setBusca] = useState('')
+  const [buscaAplicada, setBuscaAplicada] = useState('')
+  const [situacaoIgreja, setSituacaoIgreja] = useState<SituacaoIgrejaFamilia | ''>('')
+  const [situacaoPais, setSituacaoPais] = useState<SituacaoPaisFamilia | ''>('')
   const [erro, setErro] = useState('')
   const [sucesso, setSucesso] = useState('')
   const [salvando, setSalvando] = useState(false)
@@ -30,36 +59,40 @@ export default function FamilyDirectory() {
   const [alvo, setAlvo] = useState<FamiliaResumo | null>(null)
   const [form, setForm] = useState<FamiliaInput>(familiaNaoConsta())
 
-  const carregar = useCallback(async () => {
-    setCarregando(true)
-    try {
-      setErro('')
-      const todos: FamiliaResumo[] = []
-      let page = 0
-      let totalPages = 1
-      while (page < totalPages) {
-        const pagina = await familiaApi.listar(page, PAGE_SIZE)
-        todos.push(...pagina.content)
-        totalPages = Math.max(pagina.totalPages, 1)
-        page += 1
-        if (page > 50) break
+  const carregar = useCallback(
+    async (page = 0) => {
+      setCarregando(true)
+      try {
+        setErro('')
+        setResultado(
+          await familiaApi.listar(page, PAGE_SIZE, {
+            busca: buscaAplicada,
+            situacaoIgreja,
+            situacaoPais,
+          }),
+        )
+      } catch (e) {
+        setResultado(paginaVazia)
+        setErro(
+          e instanceof Error
+            ? e.message
+            : 'Não foi possível carregar as famílias. Confirme que a API está na versão com ficha de família.',
+        )
+      } finally {
+        setCarregando(false)
       }
-      setItens(todos)
-    } catch (e) {
-      setItens([])
-      setErro(
-        e instanceof Error
-          ? e.message
-          : 'Não foi possível carregar as famílias. Confirme que a API está na versão com ficha de família.',
-      )
-    } finally {
-      setCarregando(false)
-    }
-  }, [])
+    },
+    [buscaAplicada, situacaoIgreja, situacaoPais],
+  )
 
   useEffect(() => {
-    void carregar()
+    void carregar(0)
   }, [carregar])
+
+  function aplicarFiltros(event: FormEvent) {
+    event.preventDefault()
+    setBuscaAplicada(busca.trim())
+  }
 
   async function abrir(item: FamiliaResumo) {
     setAlvo(item)
@@ -105,7 +138,7 @@ export default function FamilyDirectory() {
       await familiaApi.salvar(alvo.adolescenteId, form)
       setAlvo(null)
       setSucesso('Ficha de família atualizada.')
-      await carregar()
+      await carregar(resultado.page)
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não foi possível salvar a ficha.')
     } finally {
@@ -130,19 +163,73 @@ export default function FamilyDirectory() {
           {sucesso}
         </Alert>
       )}
+      <FilterToolbar component="form" onSubmit={aplicarFiltros}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1.5}
+          alignItems={{ sm: 'center' }}
+          flexWrap="wrap"
+          useFlexGap
+        >
+          <TextField
+            label="Nome ou discipulado"
+            placeholder="Buscar por adolescente ou discipulado"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            sx={{ minWidth: { xs: '100%', sm: 260 }, flex: { sm: 1 } }}
+          />
+          <TextField
+            select
+            label="Situação na igreja"
+            value={situacaoIgreja}
+            onChange={(e) => setSituacaoIgreja(e.target.value as SituacaoIgrejaFamilia | '')}
+            sx={{ minWidth: { xs: '100%', sm: 240 } }}
+          >
+            <MenuItem value="">Todas</MenuItem>
+            {SITUACOES_IGREJA.map((valor) => (
+              <MenuItem key={valor} value={valor}>
+                {SITUACAO_IGREJA_LABEL[valor]}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            label="Situação dos pais"
+            value={situacaoPais}
+            onChange={(e) => setSituacaoPais(e.target.value as SituacaoPaisFamilia | '')}
+            sx={{ minWidth: { xs: '100%', sm: 200 } }}
+          >
+            <MenuItem value="">Todas</MenuItem>
+            {SITUACOES_PAIS.map((valor) => (
+              <MenuItem key={valor} value={valor}>
+                {SITUACAO_PAIS_LABEL[valor]}
+              </MenuItem>
+            ))}
+          </TextField>
+          <Button type="submit" variant="contained" startIcon={<SearchRounded />} disabled={carregando}>
+            Buscar
+          </Button>
+          <Typography variant="body2" color="text.secondary" sx={{ ml: { sm: 'auto' } }}>
+            {resultado.totalElements} ficha{resultado.totalElements === 1 ? '' : 's'}
+          </Typography>
+        </Stack>
+      </FilterToolbar>
       <SectionCard>
         <DataTableCard>
+          {carregando && <LinearProgress />}
           <Table size="small">
             <TableHead>
               <TableRow>
                 <TableCell>Adolescente</TableCell>
                 <TableCell>Discipulado</TableCell>
                 <TableCell>Situação da ficha</TableCell>
+                <TableCell>Situação na igreja</TableCell>
+                <TableCell>Situação dos pais</TableCell>
                 <TableCell align="right">Ações</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {itens.map((item) => (
+              {resultado.content.map((item) => (
                 <TableRow key={item.id} hover>
                   <TableCell>
                     <Typography variant="body2" fontWeight={650}>
@@ -151,6 +238,8 @@ export default function FamilyDirectory() {
                   </TableCell>
                   <TableCell>{item.discipuladoNome}</TableCell>
                   <TableCell>{item.situacaoFicha === 'PREENCHIDA' ? 'Preenchida' : 'Não consta'}</TableCell>
+                  <TableCell>{SITUACAO_IGREJA_LABEL[item.situacaoIgreja]}</TableCell>
+                  <TableCell>{SITUACAO_PAIS_LABEL[item.situacaoPais]}</TableCell>
                   <TableCell align="right">
                     <Button size="small" variant="outlined" onClick={() => void abrir(item)}>
                       Abrir ficha
@@ -160,19 +249,28 @@ export default function FamilyDirectory() {
               ))}
             </TableBody>
           </Table>
-          {!carregando && itens.length === 0 && !erro && (
+          {!carregando && resultado.content.length === 0 && !erro && (
             <EmptyState
-              title="Nenhuma ficha de família"
-              description="Cadastre adolescentes em Cadastros > Adolescentes para gerar as fichas 1:1."
+              title="Nenhuma ficha encontrada"
+              description="Ajuste os filtros ou cadastre adolescentes em Cadastros > Adolescentes."
             />
-          )}
-          {carregando && (
-            <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>
-              Carregando fichas…
-            </Typography>
           )}
         </DataTableCard>
       </SectionCard>
+      <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <Button disabled={resultado.page === 0 || carregando} onClick={() => void carregar(resultado.page - 1)}>
+          Anterior
+        </Button>
+        <Typography variant="body2" color="text.secondary">
+          Página {resultado.page + 1} de {Math.max(1, resultado.totalPages)}
+        </Typography>
+        <Button
+          disabled={resultado.page + 1 >= resultado.totalPages || carregando}
+          onClick={() => void carregar(resultado.page + 1)}
+        >
+          Próxima
+        </Button>
+      </Stack>
 
       <Dialog open={Boolean(alvo)} onClose={() => !salvando && setAlvo(null)} fullWidth maxWidth="md">
         <DialogTitle>Família de {alvo?.adolescenteNome}</DialogTitle>

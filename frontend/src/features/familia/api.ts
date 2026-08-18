@@ -61,6 +61,14 @@ export interface FamiliaResumo {
   discipuladoId: number
   discipuladoNome: string
   situacaoFicha: SituacaoFichaFamilia
+  situacaoIgreja: SituacaoIgrejaFamilia
+  situacaoPais: SituacaoPaisFamilia
+}
+
+export type FamiliaListagemFiltros = {
+  busca?: string
+  situacaoIgreja?: SituacaoIgrejaFamilia | ''
+  situacaoPais?: SituacaoPaisFamilia | ''
 }
 
 export const SITUACAO_IGREJA_LABEL: Record<SituacaoIgrejaFamilia, string> = {
@@ -187,7 +195,14 @@ export function validarFamiliaObrigatoria(input: FamiliaInput): string | undefin
 }
 
 export const familiaApi = {
-  listar: (page = 0, size = 50) => request<Pagina<FamiliaResumo>>(`/familias?page=${page}&size=${size}`),
+  listar: (page = 0, size = 20, filtros: FamiliaListagemFiltros = {}) => {
+    const params = new URLSearchParams({ page: String(page), size: String(size) })
+    const busca = filtros.busca?.trim()
+    if (busca) params.set('busca', busca)
+    if (filtros.situacaoIgreja) params.set('situacaoIgreja', filtros.situacaoIgreja)
+    if (filtros.situacaoPais) params.set('situacaoPais', filtros.situacaoPais)
+    return request<Pagina<FamiliaResumo>>(`/familias?${params}`)
+  },
   obter: (adolescenteId: number) => request<Familia>(`/adolescentes/${adolescenteId}/familia`),
   salvar: (adolescenteId: number, body: FamiliaInput) =>
     request<Familia>(`/adolescentes/${adolescenteId}/familia`, {

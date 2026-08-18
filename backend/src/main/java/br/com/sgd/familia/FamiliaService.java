@@ -91,13 +91,21 @@ public class FamiliaService {
   }
 
   @Transactional(readOnly = true)
-  public Page<FamiliaResumo> listar(User usuario, Pageable pageable) {
+  public Page<FamiliaResumo> listar(
+      User usuario,
+      Pageable pageable,
+      String busca,
+      SituacaoIgrejaFamilia situacaoIgreja,
+      SituacaoPaisFamilia situacaoPais) {
     exigirPerfilFamilia(usuario);
     Long gerenteId = null;
     if (!usuario.getPerfis().contains(Role.ADMIN)) {
       gerenteId = usuario.getId();
     }
-    return fichas.listarNoEscopo(gerenteId, pageable).map(this::resumo);
+    String termo = busca == null || busca.isBlank() ? null : busca.trim();
+    return fichas
+        .listarNoEscopo(gerenteId, termo, situacaoIgreja, situacaoPais, pageable)
+        .map(this::resumo);
   }
 
   private static void exigirPerfilFamilia(User usuario) {
@@ -116,7 +124,9 @@ public class FamiliaService {
         ficha.getAdolescente().getNome(),
         vinculo.getDiscipulado().getId(),
         vinculo.getDiscipulado().getNome(),
-        ficha.situacaoFicha());
+        ficha.situacaoFicha(),
+        ficha.getSituacaoIgreja(),
+        ficha.getSituacaoPais());
   }
 
   private Adolescente buscarAdolescente(long id) {
@@ -235,7 +245,9 @@ public class FamiliaService {
       String adolescenteNome,
       long discipuladoId,
       String discipuladoNome,
-      SituacaoFichaFamilia situacaoFicha) {}
+      SituacaoFichaFamilia situacaoFicha,
+      SituacaoIgrejaFamilia situacaoIgreja,
+      SituacaoPaisFamilia situacaoPais) {}
 
   public record FamiliaRequest(
       String cep,

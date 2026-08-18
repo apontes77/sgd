@@ -18,14 +18,29 @@ public interface FichaFamiliaRepository extends JpaRepository<FichaFamilia, Long
   @Query(
       """
       select f from FichaFamilia f
-      where :gerenteId is null
+      where (:gerenteId is null
          or exists (
            select 1 from VinculoAdolescenteDiscipulado v
            where v.adolescente = f.adolescente
              and v.ativo = true
              and v.discipulado.gerencia.gerente.id = :gerenteId
-         )
+         ))
+        and (:busca is null
+         or lower(f.adolescente.nome) like lower(concat('%', cast(:busca as string), '%'))
+         or exists (
+           select 1 from VinculoAdolescenteDiscipulado v2
+           where v2.adolescente = f.adolescente
+             and v2.ativo = true
+             and lower(v2.discipulado.nome) like lower(concat('%', cast(:busca as string), '%'))
+         ))
+        and (:situacaoIgreja is null or f.situacao.situacaoIgreja = :situacaoIgreja)
+        and (:situacaoPais is null or f.situacao.situacaoPais = :situacaoPais)
       order by f.adolescente.nome asc
       """)
-  Page<FichaFamilia> listarNoEscopo(@Param("gerenteId") Long gerenteId, Pageable pageable);
+  Page<FichaFamilia> listarNoEscopo(
+      @Param("gerenteId") Long gerenteId,
+      @Param("busca") String busca,
+      @Param("situacaoIgreja") SituacaoIgrejaFamilia situacaoIgreja,
+      @Param("situacaoPais") SituacaoPaisFamilia situacaoPais,
+      Pageable pageable);
 }
