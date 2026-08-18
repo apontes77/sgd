@@ -209,13 +209,12 @@ describe('registro de frequência', () => {
     await user.click(await screen.findByRole('button', { name: /Houve discipulado/i }))
     await user.click(await screen.findByRole('button', { name: 'Adicionar visitante' }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Nome' }), { target: { value: 'João Visitante' } })
-    fireEvent.change(screen.getByLabelText(/Data de nascimento/), { target: { value: '2011-05-04' } })
-    fireEvent.change(screen.getByRole('textbox', { name: 'Nome do responsável' }), {
-      target: { value: 'Responsável do João' },
-    })
-    fireEvent.change(screen.getByRole('textbox', { name: 'Telefone do responsável' }), {
-      target: { value: '11988887777' },
-    })
+    const dataNascimentoAdolescente = screen
+      .getAllByLabelText(/Data de nascimento/)
+      .find((el) => el.hasAttribute('required'))
+    expect(dataNascimentoAdolescente).toBeTruthy()
+    fireEvent.change(dataNascimentoAdolescente!, { target: { value: '2011-05-04' } })
+    await user.click(screen.getByRole('button', { name: /Preencher tudo como/i }))
     await user.click(screen.getByRole('button', { name: 'Adicionar' }))
 
     expect(await screen.findByText('João Visitante')).toBeInTheDocument()
@@ -227,7 +226,10 @@ describe('registro de frequência', () => {
       discipuladoId: 1,
       dataInicio: hoje,
       categoria: 'VISITANTE',
-      responsavelTelefone: '11988887777',
+      familia: expect.objectContaining({
+        responsavel1: expect.objectContaining({ nome: 'Não consta' }),
+        responsavel2: expect.objectContaining({ nome: 'Não consta' }),
+      }),
     })
 
     await user.click(await screen.findByRole('button', { name: 'Salvar frequência' }))
