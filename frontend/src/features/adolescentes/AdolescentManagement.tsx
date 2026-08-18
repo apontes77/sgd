@@ -30,6 +30,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AdolescenteFormFields } from '@/features/adolescentes/AdolescenteFormFields'
 import type { Adolescente, AdolescenteInput, AlertaGoe, DiscipuladoResumo } from '@/features/adolescentes/api'
 import { adolescentesApi } from '@/features/adolescentes/api'
+import {
+  familiaApi,
+  type FamiliaInput,
+  familiaNaoConsta,
+  toFamiliaPayload,
+  validarFamiliaObrigatoria,
+} from '@/features/familia/api'
+import { FamilyFormFields } from '@/features/familia/FamilyFormFields'
 import { labelDiscipulado } from '@/shared/api/types'
 import {
   DataTableCard,
@@ -42,7 +50,7 @@ import {
   SectionCard,
   StatusChip,
 } from '@/shared/ui'
-import { mensagemTelefoneInvalido, telefoneValido, validarContatosPorCategoria } from '@/shared/validation/telefone'
+import { mensagemTelefoneInvalido, telefoneValido, validarTelefoneAdolescente } from '@/shared/validation/telefone'
 
 const hoje = () => new Date().toISOString().slice(0, 10)
 
@@ -60,37 +68,16 @@ function aniversario(dataNascimento: string): string {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 }
 
-function temContatoFamiliarSalvo(a: Adolescente): boolean {
-  return Boolean(
-    a.nomeMae?.trim() ||
-    a.telefoneMae?.trim() ||
-    a.nomePai?.trim() ||
-    a.telefonePai?.trim() ||
-    a.responsavelNome?.trim() ||
-    a.responsavelTelefone?.trim(),
-  )
-}
-
 function inputFromAdolescente(a: Adolescente): AdolescenteInput {
-  // GOE sem telefone: marca o checkbox para reabrir/editar sem bloquear validação.
   const semTelefone = a.categoria === 'DISCIPULO_GOE' && !a.telefone?.trim()
-  // Discípulo/Visitante sem contato familiar: idem para o checkbox de família.
-  const semContatoFamiliar = a.categoria !== 'DISCIPULO_GOE' && !temContatoFamiliarSalvo(a)
   return {
     nome: a.nome,
     dataNascimento: a.dataNascimento,
     telefone: a.telefone ?? '',
     naoPossuiTelefone: semTelefone,
-    naoPossuiContatoFamiliar: semContatoFamiliar,
     instagram: a.instagram ?? '',
-    responsavelNome: a.responsavelNome ?? '',
-    responsavelTelefone: a.responsavelTelefone ?? '',
     consentimentoEm: a.consentimentoEm ?? hoje(),
     categoria: a.categoria,
-    nomeMae: a.nomeMae ?? '',
-    telefoneMae: a.telefoneMae ?? '',
-    nomePai: a.nomePai ?? '',
-    telefonePai: a.telefonePai ?? '',
     estrutura: a.estrutura ?? '',
     motivoAfastamento: a.motivoAfastamento ?? '',
     discipuladoId: a.discipuladoId,
@@ -103,16 +90,9 @@ const vazio: AdolescenteInput = {
   dataNascimento: '',
   telefone: '',
   naoPossuiTelefone: false,
-  naoPossuiContatoFamiliar: false,
   instagram: '',
-  responsavelNome: '',
-  responsavelTelefone: '',
   consentimentoEm: '',
   categoria: 'DISCIPULO',
-  nomeMae: '',
-  telefoneMae: '',
-  nomePai: '',
-  telefonePai: '',
   estrutura: '',
   motivoAfastamento: '',
   discipuladoId: 0,
@@ -120,19 +100,10 @@ const vazio: AdolescenteInput = {
 }
 
 function validarFormularioAdolescente(form: AdolescenteInput): string | null {
-  const telefones: Array<[string | undefined, string]> = []
-  if (!form.naoPossuiTelefone) telefones.push([form.telefone, 'telefone do adolescente'])
-  if (!form.naoPossuiContatoFamiliar) {
-    telefones.push(
-      [form.telefoneMae, 'telefone da mãe'],
-      [form.telefonePai, 'telefone do pai'],
-      [form.responsavelTelefone, 'telefone do responsável'],
-    )
+  if (!form.naoPossuiTelefone && !telefoneValido(form.telefone)) {
+    return mensagemTelefoneInvalido('telefone do adolescente')
   }
-  for (const [valor, rotulo] of telefones) {
-    if (!telefoneValido(valor)) return mensagemTelefoneInvalido(rotulo)
-  }
-  return validarContatosPorCategoria(form.categoria, form)
+  return validarTelefoneAdolescente(form.categoria, form)
 }
 
 export default function AdolescentManagement({
@@ -147,8 +118,11 @@ export default function AdolescentManagement({
   const [discipulados, setDiscipulados] = useState<DiscipuladoResumo[]>([])
   const [filtro, setFiltro] = useState<number>(0)
   const [form, setForm] = useState<AdolescenteInput>(vazio)
+  const [familiaForm, setFamiliaForm] = useState<FamiliaInput>(familiaNaoConsta())
   const [editando, setEditando] = useState<Adolescente | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [familiaAlvo, setFamiliaAlvo] = useState<Adolescente | null>(null)
+  const [familiaDialog, setFamiliaDialog] = useState<FamiliaInput>(familiaNaoConsta())
   const [transferindo, setTransferindo] = useState<Adolescente | null>(null)
   const [inativando, setInativando] = useState<Adolescente | null>(null)
   const [anonimizando, setAnonimizando] = useState<Adolescente | null>(null)
@@ -247,6 +221,7 @@ export default function AdolescentManagement({
       discipuladoId: filtro,
       categoria: 'DISCIPULO',
     })
+    setFamiliaForm(familiaNaoConsta())
     setSucesso('')
     setDrawerOpen(true)
   }
@@ -254,6 +229,7 @@ export default function AdolescentManagement({
   function editar(a: Adolescente) {
     setEditando(a)
     setForm(inputFromAdolescente(a))
+    setFamiliaForm(familiaNaoConsta())
     setSucesso('')
     setDrawerOpen(true)
   }
@@ -263,6 +239,57 @@ export default function AdolescentManagement({
       setDrawerOpen(false)
       setEditando(null)
       setForm(vazio)
+      setFamiliaForm(familiaNaoConsta())
+    }
+  }
+
+  async function abrirFamilia(a: Adolescente) {
+    setErro('')
+    setFamiliaAlvo(a)
+    try {
+      const ficha = await familiaApi.obter(a.id)
+      setFamiliaDialog({
+        cep: ficha.cep,
+        rua: ficha.rua,
+        numero: ficha.numero,
+        complemento: ficha.complemento,
+        bairro: ficha.bairro,
+        cidade: ficha.cidade,
+        situacaoIgreja: ficha.situacaoIgreja,
+        atuaOnde: ficha.atuaOnde,
+        situacaoPais: ficha.situacaoPais,
+        descricao: ficha.descricao,
+        desafioFinanceiro: ficha.desafioFinanceiro,
+        desafioEmocional: ficha.desafioEmocional,
+        desafioEspiritual: ficha.desafioEspiritual,
+        desafiosDescricao: ficha.desafiosDescricao,
+        atividadesJuntas: ficha.atividadesJuntas,
+        rotinaSemana: ficha.rotinaSemana,
+        irmaoDokmos: ficha.irmaoDokmos,
+        pedidoOracao: ficha.pedidoOracao,
+        intervencao: ficha.intervencao,
+        observacaoDiscipulador: ficha.observacaoDiscipulador,
+        observacaoGerente: ficha.observacaoGerente,
+        responsavel1: ficha.responsavel1,
+        responsavel2: ficha.responsavel2,
+      })
+    } catch {
+      setFamiliaDialog(familiaNaoConsta())
+    }
+  }
+
+  async function salvarFamiliaDialog() {
+    if (!familiaAlvo) return
+    setSalvando(true)
+    setErro('')
+    try {
+      await familiaApi.salvar(familiaAlvo.id, familiaDialog)
+      setFamiliaAlvo(null)
+      setSucesso('Ficha de família salva.')
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Não foi possível salvar a ficha de família.')
+    } finally {
+      setSalvando(false)
     }
   }
 
@@ -277,6 +304,13 @@ export default function AdolescentManagement({
       setErro(erroValidacao)
       return
     }
+    if (!editando) {
+      const erroFamilia = validarFamiliaObrigatoria(familiaForm)
+      if (erroFamilia) {
+        setErro(erroFamilia)
+        return
+      }
+    }
     setSalvando(true)
     setErro('')
     setSucesso('')
@@ -285,19 +319,13 @@ export default function AdolescentManagement({
         ...form,
         telefone: form.naoPossuiTelefone ? '' : form.telefone,
         naoPossuiTelefone: Boolean(form.naoPossuiTelefone),
-        nomeMae: form.naoPossuiContatoFamiliar ? '' : form.nomeMae,
-        telefoneMae: form.naoPossuiContatoFamiliar ? '' : form.telefoneMae,
-        nomePai: form.naoPossuiContatoFamiliar ? '' : form.nomePai,
-        telefonePai: form.naoPossuiContatoFamiliar ? '' : form.telefonePai,
-        responsavelNome: form.naoPossuiContatoFamiliar ? '' : form.responsavelNome,
-        responsavelTelefone: form.naoPossuiContatoFamiliar ? '' : form.responsavelTelefone,
-        naoPossuiContatoFamiliar: Boolean(form.naoPossuiContatoFamiliar),
       }
       if (editando) await adolescentesApi.atualizar(editando.id, payload)
-      else await adolescentesApi.criar(payload)
+      else await adolescentesApi.criar({ ...payload, familia: toFamiliaPayload(familiaForm) })
       setSucesso(editando ? 'Adolescente atualizado.' : 'Adolescente cadastrado.')
       setEditando(null)
       setForm(vazio)
+      setFamiliaForm(familiaNaoConsta())
       setDrawerOpen(false)
       await carregar()
       await carregarAlertas(filtro)
@@ -409,8 +437,8 @@ export default function AdolescentManagement({
   }
 
   function acoesLinha(a: Adolescente) {
-    if (!podeEditar && !podeAnonimizar) return null
     const actions = [
+      { label: 'Ficha de família', onClick: () => void abrirFamilia(a) },
       ...(podeEditar
         ? [
             { label: 'Editar', onClick: () => editar(a) },
@@ -521,6 +549,7 @@ export default function AdolescentManagement({
             empty="Nenhum discípulo ativo neste discipulado."
             acoes={acoesLinha}
             onEditar={podeEditar ? editar : undefined}
+            onAbrirFamilia={(a) => void abrirFamilia(a)}
           />
           <CategoriaSection
             titulo="Visitantes"
@@ -528,6 +557,7 @@ export default function AdolescentManagement({
             empty="Nenhum visitante cadastrado neste discipulado."
             acoes={acoesLinha}
             onEditar={podeEditar ? editar : undefined}
+            onAbrirFamilia={(a) => void abrirFamilia(a)}
           />
           <CategoriaSection
             titulo="Discípulos GOE"
@@ -536,6 +566,7 @@ export default function AdolescentManagement({
             acoes={acoesLinha}
             mostrarMotivo
             onEditar={podeEditar ? editar : undefined}
+            onAbrirFamilia={(a) => void abrirFamilia(a)}
           />
         </>
       )}
@@ -544,7 +575,7 @@ export default function AdolescentManagement({
         open={drawerOpen}
         onClose={fecharDrawer}
         title={editando ? 'Editar adolescente' : 'Cadastrar discípulo'}
-        width={520}
+        width={560}
         component="form"
         onSubmit={salvar}
         actions={
@@ -573,13 +604,49 @@ export default function AdolescentManagement({
             ))}
           </Select>
         </FormControl>
+        {!editando && <FamilyFormFields value={familiaForm} onChange={setFamiliaForm} disabled={salvando} />}
         {editando && (
-          <Stack direction="row" alignItems="center">
-            <Switch checked={form.ativo} onChange={(e) => setForm({ ...form, ativo: e.target.checked })} />
-            <Typography>Cadastro ativo</Typography>
+          <Stack spacing={1.5}>
+            <Stack direction="row" alignItems="center">
+              <Switch checked={form.ativo} onChange={(e) => setForm({ ...form, ativo: e.target.checked })} />
+              <Typography>Cadastro ativo</Typography>
+            </Stack>
+            <Stack spacing={0.5}>
+              <Typography variant="subtitle2" fontWeight={700}>
+                Ficha de família
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                A ficha é editada em janela própria para não misturar com os dados cadastrais.
+              </Typography>
+              <Button
+                variant="outlined"
+                onClick={() => void abrirFamilia(editando)}
+                disabled={salvando}
+                sx={{ alignSelf: 'flex-start' }}
+              >
+                Abrir ficha de família
+              </Button>
+            </Stack>
           </Stack>
         )}
       </FormSheet>
+
+      <Dialog open={Boolean(familiaAlvo)} onClose={() => !salvando && setFamiliaAlvo(null)} fullWidth maxWidth="md">
+        <DialogTitle>Família de {familiaAlvo?.nome}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} mt={1}>
+            <FamilyFormFields value={familiaDialog} onChange={setFamiliaDialog} disabled={salvando || !podeEditar} />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setFamiliaAlvo(null)}>Cancelar</Button>
+          {podeEditar && (
+            <Button variant="contained" disabled={salvando} onClick={() => void salvarFamiliaDialog()}>
+              {salvando ? 'Salvando...' : 'Salvar ficha'}
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={Boolean(transferindo)} onClose={() => setTransferindo(null)} fullWidth maxWidth="sm">
         <DialogTitle>Transferir {transferindo?.nome}</DialogTitle>
@@ -766,6 +833,7 @@ function CategoriaSection({
   acoes,
   mostrarMotivo = false,
   onEditar,
+  onAbrirFamilia,
 }: {
   titulo: string
   items: Adolescente[]
@@ -773,6 +841,7 @@ function CategoriaSection({
   acoes: (a: Adolescente) => ReactNode
   mostrarMotivo?: boolean
   onEditar?: (a: Adolescente) => void
+  onAbrirFamilia?: (a: Adolescente) => void
 }) {
   return (
     <SectionCard>
@@ -788,11 +857,10 @@ function CategoriaSection({
                 <TableCell>Idade</TableCell>
                 <TableCell>Aniv.</TableCell>
                 <TableCell>Tel.</TableCell>
-                <TableCell>Tel. mãe</TableCell>
-                <TableCell>Tel. pai</TableCell>
                 <TableCell>Estrutura</TableCell>
                 {mostrarMotivo && <TableCell>Motivo do afastamento</TableCell>}
                 <TableCell>Situação</TableCell>
+                <TableCell>Famílias</TableCell>
                 <TableCell align="right">Ações</TableCell>
               </TableRow>
             </TableHead>
@@ -824,12 +892,15 @@ function CategoriaSection({
                   <TableCell>{idadeAnos(a.dataNascimento)}a</TableCell>
                   <TableCell>{aniversario(a.dataNascimento)}</TableCell>
                   <TableCell>{a.telefone || '—'}</TableCell>
-                  <TableCell>{a.telefoneMae || '—'}</TableCell>
-                  <TableCell>{a.telefonePai || '—'}</TableCell>
                   <TableCell>{a.estrutura || '—'}</TableCell>
                   {mostrarMotivo && <TableCell>{a.motivoAfastamento || '—'}</TableCell>}
                   <TableCell>
                     <StatusChip active={a.ativo} />
+                  </TableCell>
+                  <TableCell>
+                    <Button size="small" variant="outlined" onClick={() => onAbrirFamilia?.(a)}>
+                      Abrir ficha
+                    </Button>
                   </TableCell>
                   <TableCell align="right">{acoes(a)}</TableCell>
                 </TableRow>

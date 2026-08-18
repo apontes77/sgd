@@ -13,6 +13,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import br.com.sgd.common.PaginaResponse;
+import br.com.sgd.familia.FamiliaService;
 import br.com.sgd.user.User;
 
 @RestController
@@ -51,13 +52,15 @@ public class AdolescenteController {
 
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  @PreAuthorize("hasAnyRole('ADMIN','DISCIPULADOR','CO_LIDER')")
+  @PreAuthorize("hasAnyRole('ADMIN','GERENTE','DISCIPULADOR','CO_LIDER')")
   public AdolescenteResponse criar(Authentication auth, @Valid @RequestBody AdolescenteRequest r) {
-    return resposta(service.comVinculoAtual(service.criar(usuario(auth), r.dados())));
+    return resposta(
+        service.comVinculoAtual(
+            service.criar(usuario(auth), r.dados(), FamiliaService.dadosFromRequest(r.familia()))));
   }
 
   @PatchMapping("/{adolescenteId}")
-  @PreAuthorize("hasAnyRole('ADMIN','DISCIPULADOR','CO_LIDER')")
+  @PreAuthorize("hasAnyRole('ADMIN','GERENTE','DISCIPULADOR','CO_LIDER')")
   public AdolescenteResponse atualizar(
       Authentication auth,
       @PathVariable long adolescenteId,
@@ -68,7 +71,7 @@ public class AdolescenteController {
 
   @PostMapping("/{adolescenteId}/vinculos")
   @ResponseStatus(HttpStatus.CREATED)
-  @PreAuthorize("hasAnyRole('ADMIN','DISCIPULADOR','CO_LIDER')")
+  @PreAuthorize("hasAnyRole('ADMIN','GERENTE','DISCIPULADOR','CO_LIDER')")
   public VinculoResponse transferir(
       Authentication auth, @PathVariable long adolescenteId, @Valid @RequestBody VinculoRequest r) {
     return VinculoResponse.of(
@@ -94,14 +97,8 @@ public class AdolescenteController {
         a.getDataNascimento(),
         a.getTelefone(),
         a.getInstagram(),
-        a.getResponsavelNome(),
-        a.getResponsavelTelefone(),
         a.getConsentimentoEm(),
         a.getCategoria() == null ? CategoriaAdolescente.DISCIPULO : a.getCategoria(),
-        a.getNomeMae(),
-        a.getTelefoneMae(),
-        a.getNomePai(),
-        a.getTelefonePai(),
         a.getEstrutura(),
         a.getMotivoAfastamento(),
         a.isAnonimizado(),
@@ -115,42 +112,29 @@ public class AdolescenteController {
       @NotNull @PastOrPresent LocalDate dataNascimento,
       @Size(max = 40) String telefone,
       @Size(max = 120) String instagram,
-      @Size(max = 120) String responsavelNome,
-      @Size(max = 40) String responsavelTelefone,
       @NotNull @PastOrPresent LocalDate consentimentoEm,
       @NotNull CategoriaAdolescente categoria,
-      @Size(max = 120) String nomeMae,
-      @Size(max = 40) String telefoneMae,
-      @Size(max = 120) String nomePai,
-      @Size(max = 40) String telefonePai,
       @Size(max = 120) String estrutura,
       @Size(max = 500) String motivoAfastamento,
       @NotNull @Positive Long discipuladoId,
       Boolean ativo,
       LocalDate dataInicio,
       Boolean naoPossuiTelefone,
-      Boolean naoPossuiContatoFamiliar) {
+      @Valid FamiliaService.FamiliaRequest familia) {
     AdolescenteService.DadosAdolescente dados() {
       return new AdolescenteService.DadosAdolescente(
           nome,
           dataNascimento,
           telefone,
           instagram,
-          responsavelNome,
-          responsavelTelefone,
           consentimentoEm,
           categoria,
-          nomeMae,
-          telefoneMae,
-          nomePai,
-          telefonePai,
           estrutura,
           motivoAfastamento,
           discipuladoId,
           ativo,
           dataInicio,
-          naoPossuiTelefone,
-          naoPossuiContatoFamiliar);
+          naoPossuiTelefone);
     }
   }
 
@@ -160,14 +144,8 @@ public class AdolescenteController {
       LocalDate dataNascimento,
       String telefone,
       String instagram,
-      String responsavelNome,
-      String responsavelTelefone,
       LocalDate consentimentoEm,
       CategoriaAdolescente categoria,
-      String nomeMae,
-      String telefoneMae,
-      String nomePai,
-      String telefonePai,
       String estrutura,
       String motivoAfastamento,
       boolean anonimizado,

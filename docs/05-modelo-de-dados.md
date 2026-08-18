@@ -41,11 +41,24 @@ erDiagram
         string telefone
         string instagram
         string categoria
-        string telefone_mae
-        string telefone_pai
         string estrutura
         string motivo_afastamento
         boolean ativo
+    }
+    FICHA_FAMILIA {
+        bigint id PK
+        bigint adolescente_id UK, FK
+        string situacao_igreja
+        string situacao_pais
+        string intervencao
+    }
+    FICHA_FAMILIA_RESPONSAVEL {
+        bigint id PK
+        bigint ficha_id FK
+        int ordem
+        string nome
+        string parentesco
+        string telefone
     }
     VINCULO_ADOLESCENTE_DISCIPULADO {
         bigint id PK
@@ -54,15 +67,6 @@ erDiagram
         date data_inicio
         date data_fim
         boolean ativo
-    }
-    RESPONSAVEL {
-        bigint id PK
-        string nome
-        string telefone
-    }
-    ADOLESCENTE_RESPONSAVEL {
-        bigint adolescente_id PK, FK
-        bigint responsavel_id PK, FK
     }
     ENCONTRO {
         bigint id PK
@@ -102,8 +106,8 @@ erDiagram
     USUARIO o|--o{ DISCIPULADO_CO_LIDER : atua_como
     ADOLESCENTE ||--o{ VINCULO_ADOLESCENTE_DISCIPULADO : possui_historico
     DISCIPULADO ||--o{ VINCULO_ADOLESCENTE_DISCIPULADO : recebe
-    ADOLESCENTE ||--o{ ADOLESCENTE_RESPONSAVEL : possui
-    RESPONSAVEL ||--o{ ADOLESCENTE_RESPONSAVEL : responsavel_por
+    ADOLESCENTE ||--|| FICHA_FAMILIA : possui
+    FICHA_FAMILIA ||--|{ FICHA_FAMILIA_RESPONSAVEL : contem
     DISCIPULADO ||--o{ ENCONTRO : realiza
     ENCONTRO ||--o{ FREQUENCIA : registra
     ADOLESCENTE ||--o{ FREQUENCIA : tem
@@ -118,6 +122,7 @@ erDiagram
 - Cada `DISCIPULADO` possui exatamente um `discipulador_id` ativo. `DISCIPULADO_CO_LIDER` admite, no máximo, dois co-líderes por discipulado.
 - Um mesmo `USUARIO` pode aparecer como discipulador ou co-líder em somente um `DISCIPULADO` no total. A implementação deve validar as duas relações em conjunto, na mesma transação, e proteger o invariante contra associações concorrentes.
 - `VINCULO_ADOLESCENTE_DISCIPULADO` preserva o histórico. Deve existir somente um vínculo ativo por adolescente; o vínculo do período do encontro mantém o histórico associado ao discipulado correto.
+- Cada `ADOLESCENTE` possui exatamente uma `FICHA_FAMILIA` (1:1), com dois responsáveis (ordens 1 e 2).
 - Deve haver, no máximo, um `ENCONTRO` para cada par (`discipulado_id`, `data`) e uma `FREQUENCIA` para cada par (`encontro_id`, `adolescente_id`). O status do encontro é `REALIZADO` ou `NAO_REALIZADO`; encontros não realizados exigem `justificativa` e encontros realizados mantêm esse campo nulo. `observacao` é texto livre opcional (até 500 caracteres), independente da situação. `chamada_salva_em` registra o instante do primeiro salvamento da chamada e ancora a janela de edição de três horas.
 - Alterações em frequência devem gerar `AUDITORIA`, com usuário responsável, data/hora e valores anterior e novo.
 
@@ -160,18 +165,19 @@ erDiagram
 - telefone
 - instagram
 - categoria (`DISCIPULO`, `VISITANTE`, `DISCIPULO_GOE`)
-- telefone_mae
-- telefone_pai
 - estrutura
 - motivo_afastamento (obrigatório quando categoria = `DISCIPULO_GOE`)
-- responsavel_nome / responsavel_telefone / consentimento_em
+- consentimento_em
 - ativo
 
-### Responsavel
+### Ficha de família
 
 - id
-- nome
-- telefone
+- adolescente_id (UK, 1:1)
+- endereço (cep, rua, número, complemento, bairro, cidade)
+- situacao_igreja / situacao_pais
+- conhecendo a família, intervenção e observações
+- dois responsáveis (ordem 1 e 2) com nome, parentesco, telefone e e-mail
 
 ### Encontro
 

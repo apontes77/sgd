@@ -169,8 +169,8 @@ paths:
       responses: { '200': { $ref: '#/components/responses/PaginaAdolescentes' } }
     post:
       tags: [Adolescentes]
-      summary: Cadastra adolescente e vínculo atual
-      description: ADMIN, DISCIPULADOR ou CO_LIDER; os dois últimos só podem usar seu próprio discipulado (RN016 e RN017). Categoria obrigatória (RN041).
+      summary: Cadastra adolescente, vínculo atual e ficha de família
+      description: ADMIN, GERENTE, DISCIPULADOR ou CO_LIDER no respectivo escopo (RN016, RN017 e RN050). Categoria obrigatória (RN041). Ficha de família obrigatória (RN048).
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AdolescenteRequest' } } } }
       responses: { '201': { description: Adolescente criado, content: { application/json: { schema: { $ref: '#/components/schemas/Adolescente' } } } } }
   /adolescentes/alertas-goe:
@@ -192,10 +192,27 @@ paths:
     post:
       tags: [Adolescentes]
       summary: Transfere adolescente para outro discipulado
-      description: Requer ADMIN. Encerra o vínculo ativo anterior e cria outro; mantém histórico (RN001, RN002 e RN029).
+      description: ADMIN (global) ou GERENTE (origem e destino na própria gerência). Encerra o vínculo ativo anterior e cria outro; mantém histórico (RN001, RN002 e RN029).
       parameters: [ { $ref: '#/components/parameters/AdolescenteId' } ]
       requestBody: { required: true, content: { application/json: { schema: { type: object, required: [discipuladoId, dataInicio], properties: { discipuladoId: { type: integer, format: int64 }, dataInicio: { type: string, format: date } } } } } }
       responses: { '201': { description: Vínculo criado, content: { application/json: { schema: { $ref: '#/components/schemas/Vinculo' } } } }, '401': { $ref: '#/components/responses/NaoAutorizado' }, '403': { $ref: '#/components/responses/Proibido' }, '404': { $ref: '#/components/responses/NaoEncontrado' }, '409': { $ref: '#/components/responses/Conflito' } }
+  /adolescentes/{adolescenteId}/familia:
+    get:
+      tags: [Adolescentes]
+      summary: Consulta a ficha de família do adolescente
+      parameters: [ { $ref: '#/components/parameters/AdolescenteId' } ]
+      responses: { '200': { description: Ficha de família } }
+    put:
+      tags: [Adolescentes]
+      summary: Cria ou atualiza a ficha de família do adolescente
+      parameters: [ { $ref: '#/components/parameters/AdolescenteId' } ]
+      responses: { '200': { description: Ficha salva } }
+  /familias:
+    get:
+      tags: [Adolescentes]
+      summary: Lista fichas de família (ADMIN todas; GERENTE da gerência)
+      parameters: [ { $ref: '#/components/parameters/Pagina' }, { $ref: '#/components/parameters/TamanhoPagina' } ]
+      responses: { '200': { description: Página de fichas } }
   /encontros:
     get:
       tags: [Encontros]

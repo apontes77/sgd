@@ -62,7 +62,7 @@ public class EncontroService {
       SituacaoEncontro situacao,
       String justificativa) {
     var d = discipulado(discipuladoId);
-    escopo.exigirAlteracao(ator, d);
+    escopo.exigirRegistroFrequencia(ator, d);
     if (!d.isAtivo()) conflito("O discipulado está inativo.");
     exigirPrazoLancamento(ator, data);
     if (encontros.existsByDiscipuladoIdAndData(discipuladoId, data))
@@ -95,7 +95,7 @@ public class EncontroService {
       String justificativa,
       String observacao) {
     var e = encontro(id);
-    escopo.exigirAlteracao(ator, e.getDiscipulado());
+    escopo.exigirRegistroFrequencia(ator, e.getDiscipulado());
     var novaData = data == null ? e.getData() : data;
     exigirPrazoLancamento(ator, novaData);
     if (!novaData.equals(e.getData())) exigirPrazoLancamento(ator, e.getData());
@@ -216,7 +216,7 @@ public class EncontroService {
   }
 
   void exigirEditavel(User ator, Encontro e) {
-    escopo.exigirAlteracao(ator, e.getDiscipulado());
+    escopo.exigirRegistroFrequencia(ator, e.getDiscipulado());
     if (e.getSituacao() == SituacaoEncontro.NAO_REALIZADO)
       conflito("Não é possível registrar dados em um discipulado marcado como não realizado.");
     if (ator.getPerfis().contains(Role.ADMIN)) return;

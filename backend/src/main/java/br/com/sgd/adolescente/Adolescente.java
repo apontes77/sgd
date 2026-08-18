@@ -30,8 +30,6 @@ public class Adolescente {
   @Column(nullable = false, length = 20)
   private CategoriaAdolescente categoria = CategoriaAdolescente.DISCIPULO;
 
-  @Embedded private ContatosAdolescente contatos;
-
   @Column(length = 120)
   private String estrutura;
 
@@ -57,7 +55,7 @@ public class Adolescente {
     if (ativo != null) this.ativo = ativo;
   }
 
-  /** Atualiza apenas os dados básicos, preservando contatos, consentimento e categoria atuais. */
+  /** Atualiza apenas os dados básicos, preservando consentimento e categoria atuais. */
   public void atualizar(
       String nome, LocalDate dataNascimento, String telefone, String instagram, Boolean ativo) {
     atualizar(
@@ -70,9 +68,7 @@ public class Adolescente {
             categoria,
             estrutura,
             motivoAfastamento,
-            contatos,
-            telefone == null || telefone.isBlank(),
-            contatos == null || !contatos.temContatoFamiliar()),
+            telefone == null || telefone.isBlank()),
         ativo);
   }
 
@@ -100,7 +96,6 @@ public class Adolescente {
     this.nome = "Adolescente anonimizado";
     this.telefone = null;
     this.instagram = null;
-    this.contatos = null;
     this.estrutura = null;
     this.motivoAfastamento = null;
     this.categoria = CategoriaAdolescente.DISCIPULO;
@@ -120,11 +115,10 @@ public class Adolescente {
     this.nome = dados.nome().trim();
     this.dataNascimento = dados.dataNascimento();
     this.telefone = telefoneFrom(dados);
-    exigirContatosPorCategoria(dados, this.telefone);
+    exigirTelefoneGoe(dados, this.telefone);
     this.instagram = normalizar(dados.instagram());
     this.consentimentoEm = dados.consentimentoEm();
     this.categoria = dados.categoria();
-    this.contatos = contatosFrom(dados);
     this.estrutura = normalizar(dados.estrutura());
     this.motivoAfastamento = motivoExigidoPelaCategoria(dados);
   }
@@ -134,24 +128,11 @@ public class Adolescente {
     return TelefoneValidator.validarOpcional(dados.telefone(), "telefone do adolescente");
   }
 
-  private static ContatosAdolescente contatosFrom(DadosCadastroAdolescente dados) {
-    if (dados.naoPossuiContatoFamiliar())
-      return ContatosAdolescente.de(null, null, null, null, null, null);
-    return dados.contatos();
-  }
-
-  private static void exigirContatosPorCategoria(DadosCadastroAdolescente dados, String telefone) {
-    if (dados.categoria() == CategoriaAdolescente.DISCIPULO_GOE) {
-      if (telefone == null && !dados.naoPossuiTelefone())
-        throw new IllegalArgumentException(
-            "O telefone do adolescente é obrigatório para discípulo GOE, salvo quando marcado que não possui telefone.");
-      return;
-    }
-    if (!dados.naoPossuiContatoFamiliar()
-        && (dados.contatos() == null || !dados.contatos().temContatoFamiliar())) {
+  private static void exigirTelefoneGoe(DadosCadastroAdolescente dados, String telefone) {
+    if (dados.categoria() != CategoriaAdolescente.DISCIPULO_GOE) return;
+    if (telefone == null && !dados.naoPossuiTelefone())
       throw new IllegalArgumentException(
-          "Informe nome e telefone da mãe, ou do pai, ou do responsável, salvo quando marcado que não possui contato familiar.");
-    }
+          "O telefone do adolescente é obrigatório para discípulo GOE, salvo quando marcado que não possui telefone.");
   }
 
   /** O motivo do afastamento só faz sentido para discípulo GOE, então é limpo nas demais. */
@@ -188,36 +169,12 @@ public class Adolescente {
     return instagram;
   }
 
-  public String getResponsavelNome() {
-    return contatos == null ? null : contatos.getResponsavelNome();
-  }
-
-  public String getResponsavelTelefone() {
-    return contatos == null ? null : contatos.getResponsavelTelefone();
-  }
-
   public LocalDate getConsentimentoEm() {
     return consentimentoEm;
   }
 
   public CategoriaAdolescente getCategoria() {
     return categoria;
-  }
-
-  public String getNomeMae() {
-    return contatos == null ? null : contatos.getNomeMae();
-  }
-
-  public String getTelefoneMae() {
-    return contatos == null ? null : contatos.getTelefoneMae();
-  }
-
-  public String getNomePai() {
-    return contatos == null ? null : contatos.getNomePai();
-  }
-
-  public String getTelefonePai() {
-    return contatos == null ? null : contatos.getTelefonePai();
   }
 
   public String getEstrutura() {

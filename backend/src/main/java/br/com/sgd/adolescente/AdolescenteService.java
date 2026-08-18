@@ -17,6 +17,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import br.com.sgd.audit.AuditLog;
 import br.com.sgd.audit.AuditLogRepository;
+import br.com.sgd.familia.FamiliaService;
+import br.com.sgd.familia.FichaFamilia;
 import br.com.sgd.frequencia.FrequenciaRepository;
 import br.com.sgd.organizacao.Discipulado;
 import br.com.sgd.organizacao.DiscipuladoRepository;
@@ -40,6 +42,7 @@ public class AdolescenteService {
   private final EscopoOrganizacionalService escopo;
   private final AuditLogRepository auditoria;
   private final FrequenciaRepository frequencias;
+  private final FamiliaService familias;
   private final Clock clock;
 
   public AdolescenteService(
@@ -49,6 +52,7 @@ public class AdolescenteService {
       EscopoOrganizacionalService escopo,
       AuditLogRepository auditoria,
       FrequenciaRepository frequencias,
+      FamiliaService familias,
       Clock clock) {
     this.adolescentes = adolescentes;
     this.vinculos = vinculos;
@@ -56,10 +60,15 @@ public class AdolescenteService {
     this.escopo = escopo;
     this.auditoria = auditoria;
     this.frequencias = frequencias;
+    this.familias = familias;
     this.clock = clock;
   }
 
-  public Adolescente criar(User usuario, DadosAdolescente dados) {
+  public Adolescente criar(User usuario, DadosAdolescente dados, FichaFamilia.DadosFicha familia) {
+    if (familia == null) {
+      throw new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "A ficha de família é obrigatória no cadastro do adolescente.");
+    }
     Discipulado discipulado = discipuladoAtivo(dados.discipuladoId());
     escopo.exigirAlteracao(usuario, discipulado);
     CategoriaAdolescente categoria =
@@ -70,6 +79,7 @@ public class AdolescenteService {
     LocalDate inicioVinculo =
         dados.dataInicio() == null ? LocalDate.now(ZONA_NEGOCIO) : dados.dataInicio();
     vinculos.save(new VinculoAdolescenteDiscipulado(adolescente, discipulado, inicioVinculo));
+    familias.criarObrigatoria(adolescente, familia);
     return adolescente;
   }
 
@@ -89,17 +99,6 @@ public class AdolescenteService {
   private static DadosCadastroAdolescente cadastro(
       DadosAdolescente dados, CategoriaAdolescente categoria) {
     boolean naoPossuiTelefone = Boolean.TRUE.equals(dados.naoPossuiTelefone());
-    boolean naoPossuiContatoFamiliar = Boolean.TRUE.equals(dados.naoPossuiContatoFamiliar());
-    ContatosAdolescente contatos =
-        naoPossuiContatoFamiliar
-            ? ContatosAdolescente.de(null, null, null, null, null, null)
-            : ContatosAdolescente.de(
-                dados.nomeMae(),
-                dados.telefoneMae(),
-                dados.nomePai(),
-                dados.telefonePai(),
-                dados.responsavelNome(),
-                dados.responsavelTelefone());
     return new DadosCadastroAdolescente(
         dados.nome(),
         dados.dataNascimento(),
@@ -109,14 +108,13 @@ public class AdolescenteService {
         categoria,
         dados.estrutura(),
         dados.motivoAfastamento(),
-        contatos,
-        naoPossuiTelefone,
-        naoPossuiContatoFamiliar);
+        naoPossuiTelefone);
   }
 
   public void anonimizar(User usuario, long adolescenteId) {
     Adolescente adolescente = buscar(adolescenteId);
     adolescente.anonimizar();
+    familias.anonimizarSeExistir(adolescenteId);
     auditoria.save(
         new AuditLog(
             usuario,
@@ -292,21 +290,14 @@ public class AdolescenteService {
       LocalDate dataNascimento,
       String telefone,
       String instagram,
-      String responsavelNome,
-      String responsavelTelefone,
       LocalDate consentimentoEm,
       CategoriaAdolescente categoria,
-      String nomeMae,
-      String telefoneMae,
-      String nomePai,
-      String telefonePai,
       String estrutura,
       String motivoAfastamento,
       Long discipuladoId,
       Boolean ativo,
       LocalDate dataInicio,
-      Boolean naoPossuiTelefone,
-      Boolean naoPossuiContatoFamiliar) {}
+      Boolean naoPossuiTelefone) {}
 
   public record AdolescenteComVinculo(
       Adolescente adolescente, long discipuladoId, String discipuladoNome) {}

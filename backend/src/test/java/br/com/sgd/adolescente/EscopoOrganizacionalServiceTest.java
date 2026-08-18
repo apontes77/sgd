@@ -47,9 +47,17 @@ class EscopoOrganizacionalServiceTest {
   }
 
   @Test
-  void gerenteDaGerenciaPodeLerMasNaoAlterar() {
+  void gerenteDaGerenciaPodeLerEAlterarCadastroMasNaoFrequencia() {
     assertThat(service.podeLer(gerente, discipulado)).isTrue();
-    assertThat(service.podeAlterar(gerente, discipulado)).isFalse();
+    assertThat(service.podeAlterar(gerente, discipulado)).isTrue();
+    assertThat(service.podeRegistrarFrequencia(gerente, discipulado)).isFalse();
+  }
+
+  @Test
+  void gerenteDeOutraGerenciaNaoPodeAlterar() {
+    User outroGerente = usuario(7L, Role.GERENTE);
+    assertThat(service.podeLer(outroGerente, discipulado)).isFalse();
+    assertThat(service.podeAlterar(outroGerente, discipulado)).isFalse();
   }
 
   @Test

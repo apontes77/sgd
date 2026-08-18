@@ -73,7 +73,7 @@ class EncontroServiceTest {
         service.criar(ator, 10L, LocalDate.of(2026, 7, 17), SituacaoEncontro.REALIZADO);
 
     assertThat(criado.getCriadoEm()).isEqualTo(AGORA);
-    verify(escopo).exigirAlteracao(ator, discipulado);
+    verify(escopo).exigirRegistroFrequencia(ator, discipulado);
     verify(auditoria).save(any());
   }
 

@@ -57,6 +57,8 @@ RN016 - Discipuladores podem cadastrar, atualizar e inativar adolescentes soment
 
 RN017 - Co-líderes podem cadastrar, atualizar e inativar adolescentes somente no próprio discipulado.
 
+RN050 - Gerentes podem cadastrar, atualizar, inativar e transferir adolescentes somente nos discipulados da própria gerência. O ADMIN mantém superacesso global.
+
 RN018 - O histórico de adolescentes inativados deve ser preservado.
 
 RN019 - Um adolescente torna-se inativado após três meses sem participação.
@@ -65,7 +67,9 @@ RN041 - No cadastro, o adolescente recebe obrigatoriamente uma categoria: `DISCI
 
 RN042 - A categoria `DISCIPULO_GOE` exige motivo do afastamento. Demais categorias não persistem motivo.
 
-RN048 - No cadastro de `DISCIPULO` e `VISITANTE`, é obrigatório informar ao menos um par completo de nome e telefone entre mãe, pai ou responsável legal, salvo quando marcado explicitamente que não possui contato familiar (`naoPossuiContatoFamiliar`); nesse caso os contatos ficam vazios e podem ser informados depois na edição. Na categoria `DISCIPULO_GOE`, esses contatos familiares são opcionais e o telefone do próprio adolescente é obrigatório, salvo quando marcado explicitamente que o adolescente não possui telefone (`naoPossuiTelefone`); nesse caso o telefone fica vazio e pode ser informado depois na edição.
+RN048 - Cada adolescente possui exatamente uma ficha de família obrigatória (1:1). Contatos familiares (responsáveis, telefones, endereço e demais dados pastorais da ficha) vivem na ficha; campos sem informação usam o texto “Não consta”. Na categoria `DISCIPULO_GOE`, o telefone do próprio adolescente continua obrigatório no cadastro do adolescente, salvo quando marcado explicitamente que não possui telefone (`naoPossuiTelefone`).
+
+RN051 - A ficha de família é preenchida/alterada por discipulador e co-líder no próprio grupo, por gerente na gerência e por ADMIN em qualquer registro.
 
 RN049 - A lista de presença (chamada) de um encontro inclui somente adolescentes ativos nas categorias `DISCIPULO` e `VISITANTE`. Discípulos `DISCIPULO_GOE` permanecem na base para registro histórico e na gestão de adolescentes, mas não entram como participantes atuais da frequência. Registros de frequência já existentes de um GOE em um encontro continuam visíveis/editáveis como registro anterior.
 
@@ -105,7 +109,7 @@ RN027 - O sistema deve suportar login Microsoft.
 
 RN028 - Um usuário pode exercer a função de discipulador ou co-líder em apenas um discipulado no total, mesmo que acumule ambos os perfis.
 
-RN029 - Somente administradores podem transferir adolescentes entre discipulados.
+RN029 - Administradores e gerentes (somente dentro da própria gerência) podem transferir adolescentes entre discipulados. Discipulador e co-líder não transferem.
 
 RN030 - Discipulador e co-líder podem consultar o histórico gráfico do próprio discipulado.
 
