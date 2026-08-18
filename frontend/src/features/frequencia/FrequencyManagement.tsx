@@ -27,6 +27,8 @@ import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } fro
 
 import { AdolescenteFormFields, type DadosPessoaisAdolescente } from '@/features/adolescentes/AdolescenteFormFields'
 import { adolescentesApi } from '@/features/adolescentes/api'
+import { type FamiliaInput, familiaNaoConsta, toFamiliaPayload } from '@/features/familia/api'
+import { FamilyFormFields } from '@/features/familia/FamilyFormFields'
 import {
   type AdolescenteResumo,
   type Encontro,
@@ -37,12 +39,13 @@ import { dentroDoPrazoLancamento, ehSexta } from '@/features/frequencia/prazoLan
 import { ApiError } from '@/shared/api/httpClient'
 import type { Discipulado } from '@/shared/api/types'
 import { BOTTOM_NAV_OFFSET, DiscipuladoLiderancaInfo, EmptyState, SectionCard } from '@/shared/ui'
-import { contatoMinimoValido, mensagemTelefoneInvalido, telefoneValido } from '@/shared/validation/telefone'
+import { mensagemTelefoneInvalido, telefoneValido } from '@/shared/validation/telefone'
 
 interface Props {
   discipuladoId: number
   discipulado?: Discipulado
   podeAdministrar?: boolean
+  podeFamilia?: boolean
   podeRegistrarNaoRealizacao?: boolean
 }
 interface ParticipanteChamada extends AdolescenteResumo {
@@ -59,16 +62,9 @@ const visitanteVazio: DadosPessoaisAdolescente = {
   dataNascimento: '',
   telefone: '',
   naoPossuiTelefone: false,
-  naoPossuiContatoFamiliar: false,
   instagram: '',
-  responsavelNome: '',
-  responsavelTelefone: '',
   consentimentoEm: '',
   categoria: 'VISITANTE',
-  nomeMae: '',
-  telefoneMae: '',
-  nomePai: '',
-  telefonePai: '',
   estrutura: '',
   motivoAfastamento: '',
 }
@@ -77,6 +73,7 @@ export default function FrequencyManagement({
   discipuladoId,
   discipulado,
   podeAdministrar = false,
+  podeFamilia = false,
   podeRegistrarNaoRealizacao = false,
 }: Props) {
   const mobile = useMediaQuery('(max-width:599.95px)')
@@ -94,6 +91,7 @@ export default function FrequencyManagement({
   const [erro, setErro] = useState('')
   const [sucesso, setSucesso] = useState('')
   const [visitante, setVisitante] = useState<DadosPessoaisAdolescente>()
+  const [familiaVisitante, setFamiliaVisitante] = useState<FamiliaInput>(familiaNaoConsta())
   const requisicao = useRef(0)
 
   const prazoAberto = useMemo(() => podeAdministrar || dentroDoPrazoLancamento(data), [podeAdministrar, data])
@@ -300,19 +298,8 @@ export default function FrequencyManagement({
       setErro('Informe a data de consentimento do visitante.')
       return
     }
-    if (!visitante.naoPossuiContatoFamiliar && !contatoMinimoValido(visitante)) {
-      setErro('Informe nome e telefone da mãe, ou do pai, ou do responsável.')
-      return
-    }
     const telefones: Array<[string | undefined, string]> = []
     if (!visitante.naoPossuiTelefone) telefones.push([visitante.telefone, 'telefone do adolescente'])
-    if (!visitante.naoPossuiContatoFamiliar) {
-      telefones.push(
-        [visitante.telefoneMae, 'telefone da mãe'],
-        [visitante.telefonePai, 'telefone do pai'],
-        [visitante.responsavelTelefone, 'telefone do responsável'],
-      )
-    }
     for (const [valor, rotulo] of telefones) {
       if (!telefoneValido(valor)) {
         setErro(mensagemTelefoneInvalido(rotulo))
@@ -327,27 +314,20 @@ export default function FrequencyManagement({
         dataNascimento: visitante.dataNascimento,
         telefone: visitante.naoPossuiTelefone ? undefined : visitante.telefone || undefined,
         naoPossuiTelefone: Boolean(visitante.naoPossuiTelefone),
-        naoPossuiContatoFamiliar: Boolean(visitante.naoPossuiContatoFamiliar),
         instagram: visitante.instagram || undefined,
-        responsavelNome: visitante.naoPossuiContatoFamiliar ? '' : visitante.responsavelNome.trim(),
-        responsavelTelefone: visitante.naoPossuiContatoFamiliar
-          ? undefined
-          : visitante.responsavelTelefone || undefined,
         consentimentoEm: visitante.consentimentoEm,
         categoria: 'VISITANTE',
-        nomeMae: visitante.naoPossuiContatoFamiliar ? undefined : visitante.nomeMae || undefined,
-        telefoneMae: visitante.naoPossuiContatoFamiliar ? undefined : visitante.telefoneMae || undefined,
-        nomePai: visitante.naoPossuiContatoFamiliar ? undefined : visitante.nomePai || undefined,
-        telefonePai: visitante.naoPossuiContatoFamiliar ? undefined : visitante.telefonePai || undefined,
         estrutura: visitante.estrutura || undefined,
         discipuladoId,
         ativo: true,
         dataInicio: data,
+        ...(podeFamilia ? { familia: toFamiliaPayload(familiaVisitante) } : {}),
       })
       setParticipantes((atual) => [...atual, { id: criado.id, nome: criado.nome, registroAnterior: false }])
       setChamada((atual) => ({ ...atual, [criado.id]: 'PRESENTE' }))
       setAlterado(true)
       setVisitante(undefined)
+      setFamiliaVisitante(familiaNaoConsta())
       setSucesso('Visitante adicionado. Salve a frequência para confirmar.')
     } catch (e) {
       setErro(mensagem(e))
@@ -627,6 +607,7 @@ export default function FrequencyManagement({
                 startIcon={<PersonAddAltRounded />}
                 onClick={() => {
                   setVisitante({ ...visitanteVazio, consentimentoEm: hoje() })
+                  setFamiliaVisitante(familiaNaoConsta())
                   setErro('')
                 }}
                 sx={{ alignSelf: 'flex-start' }}
@@ -761,10 +742,13 @@ export default function FrequencyManagement({
       <Dialog
         open={Boolean(visitante)}
         onClose={() => {
-          if (!salvando) setVisitante(undefined)
+          if (!salvando) {
+            setVisitante(undefined)
+            setFamiliaVisitante(familiaNaoConsta())
+          }
         }}
         fullWidth
-        maxWidth="sm"
+        maxWidth="md"
         fullScreen={mobile}
         PaperProps={{
           component: 'form',
@@ -787,22 +771,25 @@ export default function FrequencyManagement({
                 disabled={salvando}
               />
             )}
+            {podeFamilia && (
+              <FamilyFormFields value={familiaVisitante} onChange={setFamiliaVisitante} disabled={salvando} />
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setVisitante(undefined)} disabled={salvando}>
+          <Button
+            onClick={() => {
+              setVisitante(undefined)
+              setFamiliaVisitante(familiaNaoConsta())
+            }}
+            disabled={salvando}
+          >
             Cancelar
           </Button>
           <Button
             type="submit"
             variant="contained"
-            disabled={
-              salvando ||
-              !visitante?.nome.trim() ||
-              !visitante?.dataNascimento ||
-              !visitante?.consentimentoEm ||
-              !contatoMinimoValido(visitante)
-            }
+            disabled={salvando || !visitante?.nome.trim() || !visitante?.dataNascimento || !visitante?.consentimentoEm}
           >
             Adicionar
           </Button>

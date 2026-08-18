@@ -24,6 +24,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.server.ResponseStatusException;
 
 import br.com.sgd.audit.AuditLogRepository;
+import br.com.sgd.familia.FamiliaService;
+import br.com.sgd.familia.FichaFamilia;
 import br.com.sgd.frequencia.FrequenciaRepository;
 import br.com.sgd.organizacao.Discipulado;
 import br.com.sgd.organizacao.DiscipuladoRepository;
@@ -42,6 +44,7 @@ class AdolescenteServiceTest {
   @Mock EscopoOrganizacionalService escopo;
   @Mock AuditLogRepository auditoria;
   @Mock FrequenciaRepository frequencias;
+  @Mock FamiliaService familias;
   @Mock User usuario;
   @Mock Discipulado origem;
   @Mock Discipulado destino;
@@ -52,7 +55,7 @@ class AdolescenteServiceTest {
   void setup() {
     service =
         new AdolescenteService(
-            adolescentes, vinculos, discipulados, escopo, auditoria, frequencias, CLOCK);
+            adolescentes, vinculos, discipulados, escopo, auditoria, frequencias, familias, CLOCK);
   }
 
   @Test
@@ -61,9 +64,10 @@ class AdolescenteServiceTest {
     when(discipulados.findById(10L)).thenReturn(Optional.of(origem));
     when(adolescentes.save(any())).thenAnswer(i -> i.getArgument(0));
     when(vinculos.save(any())).thenAnswer(i -> i.getArgument(0));
+    when(familias.criarObrigatoria(any(), any())).thenAnswer(i -> null);
     var dados = dadosBasicos(10L, CategoriaAdolescente.DISCIPULO, null);
 
-    Adolescente criado = service.criar(usuario, dados);
+    Adolescente criado = service.criar(usuario, dados, FichaFamilia.dadosNaoConsta());
 
     assertThat(criado.getNome()).isEqualTo("Ana");
     assertThat(criado.getCategoria()).isEqualTo(CategoriaAdolescente.DISCIPULO);
@@ -72,6 +76,7 @@ class AdolescenteServiceTest {
     assertThat(captor.getValue().getAdolescente()).isSameAs(criado);
     assertThat(captor.getValue().getDiscipulado()).isSameAs(origem);
     verify(escopo).exigirAlteracao(usuario, origem);
+    verify(familias).criarObrigatoria(eq(criado), any());
   }
 
   @Test
@@ -80,9 +85,13 @@ class AdolescenteServiceTest {
     when(discipulados.findById(10L)).thenReturn(Optional.of(origem));
     when(adolescentes.save(any())).thenAnswer(i -> i.getArgument(0));
     when(vinculos.save(any())).thenAnswer(i -> i.getArgument(0));
+    when(familias.criarObrigatoria(any(), any())).thenAnswer(i -> null);
 
     Adolescente criado =
-        service.criar(usuario, dadosBasicos(10L, CategoriaAdolescente.VISITANTE, null));
+        service.criar(
+            usuario,
+            dadosBasicos(10L, CategoriaAdolescente.VISITANTE, null),
+            FichaFamilia.dadosNaoConsta());
 
     assertThat(criado.getCategoria()).isEqualTo(CategoriaAdolescente.VISITANTE);
     assertThat(criado.getMotivoAfastamento()).isNull();
@@ -95,7 +104,10 @@ class AdolescenteServiceTest {
 
     assertThatThrownBy(
             () ->
-                service.criar(usuario, dadosBasicos(10L, CategoriaAdolescente.DISCIPULO_GOE, null)))
+                service.criar(
+                    usuario,
+                    dadosBasicos(10L, CategoriaAdolescente.DISCIPULO_GOE, null),
+                    FichaFamilia.dadosNaoConsta()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("motivo do afastamento");
   }
@@ -106,10 +118,13 @@ class AdolescenteServiceTest {
     when(discipulados.findById(10L)).thenReturn(Optional.of(origem));
     when(adolescentes.save(any())).thenAnswer(i -> i.getArgument(0));
     when(vinculos.save(any())).thenAnswer(i -> i.getArgument(0));
+    when(familias.criarObrigatoria(any(), any())).thenAnswer(i -> null);
 
     Adolescente criado =
         service.criar(
-            usuario, dadosBasicos(10L, CategoriaAdolescente.DISCIPULO_GOE, "Mudou de cidade"));
+            usuario,
+            dadosBasicos(10L, CategoriaAdolescente.DISCIPULO_GOE, "Mudou de cidade"),
+            FichaFamilia.dadosNaoConsta());
 
     assertThat(criado.getCategoria()).isEqualTo(CategoriaAdolescente.DISCIPULO_GOE);
     assertThat(criado.getMotivoAfastamento()).isEqualTo("Mudou de cidade");
@@ -121,29 +136,23 @@ class AdolescenteServiceTest {
     when(discipulados.findById(10L)).thenReturn(Optional.of(origem));
     when(adolescentes.save(any())).thenAnswer(i -> i.getArgument(0));
     when(vinculos.save(any())).thenAnswer(i -> i.getArgument(0));
+    when(familias.criarObrigatoria(any(), any())).thenAnswer(i -> null);
     var dados =
         new AdolescenteService.DadosAdolescente(
             "Bia",
             LocalDate.of(2011, 5, 4),
             null,
             null,
-            null,
-            null,
             LocalDate.of(2026, 1, 1),
             CategoriaAdolescente.VISITANTE,
-            null,
-            null,
-            "Pai da Bia",
-            "(11) 97777-0000",
             null,
             null,
             10L,
             true,
             LocalDate.of(2026, 3, 1),
-            false,
             false);
 
-    service.criar(usuario, dados);
+    service.criar(usuario, dados, FichaFamilia.dadosNaoConsta());
 
     var captor = ArgumentCaptor.forClass(VinculoAdolescenteDiscipulado.class);
     verify(vinculos).save(captor.capture());
@@ -266,9 +275,7 @@ class AdolescenteServiceTest {
             CategoriaAdolescente.VISITANTE,
             null,
             null,
-            ContatosAdolescente.de(null, null, null, null, "Mãe da Ana", "(11) 98888-0000"),
-            false,
-            false),
+            true),
         false);
     when(adolescentes.findById(2L)).thenReturn(Optional.of(inativo));
     service.promoverVisitanteSeElegivel(usuario, 2L);
@@ -307,9 +314,6 @@ class AdolescenteServiceTest {
                 CategoriaAdolescente.DISCIPULO_GOE,
                 "Núcleo A",
                 "Mudou de cidade",
-                ContatosAdolescente.de(
-                    "Mãe da Ana", "(11) 98888-0000", "Pai da Ana", "(11) 97777-0000", null, null),
-                false,
                 false),
             true);
     when(adolescentes.findById(1L)).thenReturn(Optional.of(adolescente));
@@ -319,16 +323,13 @@ class AdolescenteServiceTest {
     assertThat(adolescente.getNome()).isEqualTo("Adolescente anonimizado");
     assertThat(adolescente.getTelefone()).isNull();
     assertThat(adolescente.getInstagram()).isNull();
-    assertThat(adolescente.getResponsavelNome()).isNull();
-    assertThat(adolescente.getResponsavelTelefone()).isNull();
-    assertThat(adolescente.getTelefoneMae()).isNull();
-    assertThat(adolescente.getTelefonePai()).isNull();
     assertThat(adolescente.getEstrutura()).isNull();
     assertThat(adolescente.getMotivoAfastamento()).isNull();
     assertThat(adolescente.getCategoria()).isEqualTo(CategoriaAdolescente.DISCIPULO);
     assertThat(adolescente.isAtivo()).isFalse();
     assertThat(adolescente.isAnonimizado()).isTrue();
     verify(auditoria).save(any());
+    verify(familias).anonimizarSeExistir(1L);
   }
 
   private static Adolescente adolescenteComResponsavel() {
@@ -346,9 +347,7 @@ class AdolescenteServiceTest {
             categoria,
             null,
             null,
-            ContatosAdolescente.de(null, null, null, null, "Mãe da Ana", "(11) 98888-0000"),
-            false,
-            false),
+            true),
         true);
   }
 
@@ -360,20 +359,13 @@ class AdolescenteServiceTest {
         LocalDate.of(2010, 3, 2),
         telefone,
         "@ana",
-        null,
-        null,
         LocalDate.of(2026, 1, 1),
         categoria,
-        "Mãe da Ana",
-        "(11) 91111-0000",
-        null,
-        null,
         "Núcleo A",
         motivo,
         discipuladoId,
         true,
         null,
-        false,
         false);
   }
 

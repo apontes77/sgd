@@ -59,7 +59,8 @@ Os acessos são cumulativos: `GERENTE + DISCIPULADOR` recebe “Minha gerência�
 - Discipulador e co-líder podem lançar a frequência de uma sexta até o domingo subsequente (23:59, `America/Sao_Paulo`). A janela de três horas para editar a chamada começa no primeiro `PUT /encontros/{id}/frequencias` (`chamadaSalvaEm`); após isso, somente `ADMIN` pode alterar. Sem lançamento até o prazo, o sistema fecha a sexta como `NAO_REALIZADO` com justificativa automática. Todas as alterações são auditadas.
 - Discipulador e co-líder registram encontros realizados, chamadas e visitantes somente nos discipulados em que exercem liderança; o `DISCIPULADOR` também informa a não realização e sua justificativa no próprio grupo. `ADMIN` pode executar essas ações em qualquer discipulado ativo.
 - Gerentes visualizam no painel as não realizações e justificativas dos discipulados da própria gerência, sem permissão de alteração.
-- Discipulador e co-líder cadastram, atualizam e inativam adolescentes somente no próprio discipulado; somente `ADMIN` transfere adolescentes entre grupos.
+- Discipulador e co-líder cadastram, atualizam e inativam adolescentes somente no próprio discipulado; gerente na própria gerência; ADMIN com superacesso. Transferências: ADMIN global ou GERENTE dentro da gerência.
+- Cada adolescente possui ficha de família 1:1 (RN048). Em `POST /adolescentes`, `familia` é obrigatória para ADMIN/GERENTE; para DISCIPULADOR/CO_LIDER o body é ignorado e a ficha nasce como “Não consta” (RN051). `GET`/`PUT /adolescentes/{id}/familia` e `GET /familias` são somente ADMIN/GERENTE.
 - Um usuário exerce liderança em apenas um discipulado no total, seja como discipulador ou co-líder.
 - Permissões e painéis são cumulativos. O painel “Meu discipulado” sempre usa a associação de liderança, mesmo quando o usuário também é `ADMIN` ou `GERENTE`.
 - O relatório por período reúne a união dos escopos dos perfis do usuário, aceita de um dia a 12 meses, inclui encontros realizados e não realizados (com justificativa) e exibe apenas frequências persistidas nos realizados; a impressão A4 e o salvamento em PDF usam o diálogo nativo do navegador.
@@ -70,7 +71,7 @@ Os acessos são cumulativos: `GERENTE + DISCIPULADOR` recebe “Minha gerência�
 | --- | --- |
 | Usuários | `/usuarios` |
 | Estrutura | `/gerencias`, `/discipulados`, `/discipulados/liderados`, `/discipulados/{id}/co-lideres` |
-| Cadastro | `/adolescentes`, `/adolescentes/{id}/vinculos` |
+| Cadastro | `/adolescentes`, `/adolescentes/{id}/vinculos`, `/adolescentes/{id}/familia`, `/familias` |
 | Frequência | `/encontros`, `/encontros/{id}/frequencias`, `/encontros/{id}/visitantes` |
 | Indicadores | `/painel/lider`, `/painel/gerencia`, `/painel/admin` |
 | Relatórios | `/relatorios/frequencia-diaria`, `/relatorios/frequencia` |

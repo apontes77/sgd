@@ -1,43 +1,22 @@
 import { describe, expect, it } from 'vitest'
 
-import { contatoMinimoValido, validarContatosPorCategoria } from '@/shared/validation/telefone'
+import { mensagemTelefoneInvalido, telefoneValido, validarTelefoneAdolescente } from '@/shared/validation/telefone'
 
-describe('validarContatosPorCategoria', () => {
-  it('exige telefone do adolescente para Discípulo GOE', () => {
-    expect(validarContatosPorCategoria('DISCIPULO_GOE', {})).toContain('telefone do adolescente')
-    expect(validarContatosPorCategoria('DISCIPULO_GOE', { telefone: '(11) 91234-5678' })).toBeNull()
+describe('validação de telefone', () => {
+  it('aceita telefone brasileiro com DDD', () => {
+    expect(telefoneValido('(11) 98888-0000')).toBe(true)
+    expect(telefoneValido('11988880000')).toBe(true)
+    expect(telefoneValido('')).toBe(true)
   })
 
-  it('permite Discípulo GOE sem telefone quando marcado que não possui', () => {
-    expect(validarContatosPorCategoria('DISCIPULO_GOE', { naoPossuiTelefone: true })).toBeNull()
+  it('rejeita telefone incompleto', () => {
+    expect(telefoneValido('98888-0000')).toBe(false)
+    expect(mensagemTelefoneInvalido('telefone')).toContain('DDD')
   })
 
-  it('não exige contato familiar para Discípulo GOE', () => {
-    expect(
-      validarContatosPorCategoria('DISCIPULO_GOE', {
-        telefone: '(11) 91234-5678',
-      }),
-    ).toBeNull()
-  })
-
-  it('exige contato familiar para Discípulo e Visitante', () => {
-    expect(validarContatosPorCategoria('DISCIPULO', {})).toContain('mãe, ou do pai, ou do responsável')
-    expect(validarContatosPorCategoria('VISITANTE', {})).toContain('mãe, ou do pai, ou do responsável')
-    expect(
-      validarContatosPorCategoria('DISCIPULO', {
-        nomeMae: 'Maria',
-        telefoneMae: '(11) 98888-0000',
-      }),
-    ).toBeNull()
-  })
-
-  it('permite Discípulo e Visitante sem contato familiar quando marcado que não possui', () => {
-    expect(validarContatosPorCategoria('DISCIPULO', { naoPossuiContatoFamiliar: true })).toBeNull()
-    expect(validarContatosPorCategoria('VISITANTE', { naoPossuiContatoFamiliar: true })).toBeNull()
-  })
-
-  it('contatoMinimoValido continua validando o par completo', () => {
-    expect(contatoMinimoValido({ nomeMae: 'Maria', telefoneMae: '(11) 98888-0000' })).toBe(true)
-    expect(contatoMinimoValido({ nomeMae: 'Maria' })).toBe(false)
+  it('exige telefone para GOE salvo flag', () => {
+    expect(validarTelefoneAdolescente('DISCIPULO_GOE', { naoPossuiTelefone: true })).toBeNull()
+    expect(validarTelefoneAdolescente('DISCIPULO_GOE', { telefone: '(11) 91234-5678' })).toBeNull()
+    expect(validarTelefoneAdolescente('DISCIPULO_GOE', {})).toContain('telefone')
   })
 })

@@ -125,7 +125,7 @@ Fluxos alternativos:
 ## UC008 - Transferir Adolescente
 
 Ator:
-Administrador
+Administrador ou Gerente (escopo da gerência)
 
 Fluxo:
 
@@ -136,3 +136,4 @@ Fluxo:
 Fluxo alternativo:
 
 - Discipulador ou co-líder tenta transferir: retornar `403`; a ação não é exibida na interface desses perfis.
+- Gerente tenta transferir para discipulado de outra gerência: retornar `403`.

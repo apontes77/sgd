@@ -8,6 +8,7 @@ import {
   DashboardRounded,
   Diversity3Rounded,
   FactCheckRounded,
+  FamilyRestroomRounded,
   GroupsRounded,
   InsightsRounded,
   LogoutRounded,
@@ -58,6 +59,7 @@ const ManagerDashboard = lazy(() => import('@/features/dashboards/ManagerDashboa
 const LeaderDashboard = lazy(() => import('@/features/dashboards/LeaderDashboard'))
 const ReportsPage = lazy(() => import('@/features/relatorios/ReportsPage'))
 const LeadershipAttendance = lazy(() => import('@/features/lideranca/LeadershipAttendance'))
+const FamilyDirectory = lazy(() => import('@/features/familia/FamilyDirectory'))
 
 type Section = AppSection
 type NavGroup = 'Dashboards & BI' | 'Cadastros' | 'Operações' | 'Relatórios'
@@ -145,6 +147,14 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
       group: 'Cadastros',
       icon: <GroupsRounded />,
     })
+    if (isAdmin || isGerente)
+      values.push({
+        value: 'familias',
+        label: 'Famílias',
+        shortLabel: 'Famílias',
+        group: 'Cadastros',
+        icon: <FamilyRestroomRounded />,
+      })
     if (currentUser.perfis.some((role) => role === 'ADMIN' || role === 'DISCIPULADOR' || role === 'CO_LIDER'))
       values.push({
         value: 'frequencia',
@@ -313,11 +323,14 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
               {section === 'adolescentes' && (
                 <AdolescentManagement
                   podeAnonimizar={isAdmin}
+                  podeFamilia={isAdmin || isGerente}
                   podeEditar={currentUser.perfis.some(
-                    (perfil) => perfil === 'ADMIN' || perfil === 'DISCIPULADOR' || perfil === 'CO_LIDER',
+                    (perfil) =>
+                      perfil === 'ADMIN' || perfil === 'GERENTE' || perfil === 'DISCIPULADOR' || perfil === 'CO_LIDER',
                   )}
                 />
               )}
+              {section === 'familias' && <FamilyDirectory />}
               {section === 'frequencia' && <FrequencyPage currentUser={currentUser} />}
               {section === 'chamada-lideranca' && <LeadershipAttendance />}
               {section === 'relatorios' && <ReportsPage currentUser={currentUser} />}
@@ -689,6 +702,7 @@ function FrequencyPage({ currentUser }: { currentUser: Usuario }) {
       })
   }, [currentUser.perfis])
   const podeAdministrar = currentUser.perfis.includes('ADMIN')
+  const podeFamilia = currentUser.perfis.includes('ADMIN') || currentUser.perfis.includes('GERENTE')
   const podeRegistrarNaoRealizacao =
     podeAdministrar || currentUser.perfis.some((role) => role === 'DISCIPULADOR' || role === 'CO_LIDER')
   const mostrarSeletor = discipulados.length > 1
@@ -719,6 +733,7 @@ function FrequencyPage({ currentUser }: { currentUser: Usuario }) {
           discipuladoId={discipuladoId}
           discipulado={discipulados.find((item) => item.id === discipuladoId)}
           podeAdministrar={podeAdministrar}
+          podeFamilia={podeFamilia}
           podeRegistrarNaoRealizacao={podeRegistrarNaoRealizacao}
         />
       ) : (

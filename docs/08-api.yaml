@@ -169,8 +169,8 @@ paths:
       responses: { '200': { $ref: '#/components/responses/PaginaAdolescentes' } }
     post:
       tags: [Adolescentes]
-      summary: Cadastra adolescente e vínculo atual
-      description: ADMIN, DISCIPULADOR ou CO_LIDER; os dois últimos só podem usar seu próprio discipulado (RN016 e RN017). Categoria obrigatória (RN041).
+      summary: Cadastra adolescente, vínculo atual e ficha de família
+      description: ADMIN, GERENTE, DISCIPULADOR ou CO_LIDER no respectivo escopo (RN016, RN017 e RN050). Categoria obrigatória (RN041). Ficha 1:1 sempre criada (RN048); `familia` no body é obrigatória para ADMIN/GERENTE e ignorada para liderança, que recebe “Não consta” (RN051).
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AdolescenteRequest' } } } }
       responses: { '201': { description: Adolescente criado, content: { application/json: { schema: { $ref: '#/components/schemas/Adolescente' } } } } }
   /adolescentes/alertas-goe:
@@ -192,10 +192,29 @@ paths:
     post:
       tags: [Adolescentes]
       summary: Transfere adolescente para outro discipulado
-      description: Requer ADMIN. Encerra o vínculo ativo anterior e cria outro; mantém histórico (RN001, RN002 e RN029).
+      description: ADMIN (global) ou GERENTE (origem e destino na própria gerência). Encerra o vínculo ativo anterior e cria outro; mantém histórico (RN001, RN002 e RN029).
       parameters: [ { $ref: '#/components/parameters/AdolescenteId' } ]
       requestBody: { required: true, content: { application/json: { schema: { type: object, required: [discipuladoId, dataInicio], properties: { discipuladoId: { type: integer, format: int64 }, dataInicio: { type: string, format: date } } } } } }
       responses: { '201': { description: Vínculo criado, content: { application/json: { schema: { $ref: '#/components/schemas/Vinculo' } } } }, '401': { $ref: '#/components/responses/NaoAutorizado' }, '403': { $ref: '#/components/responses/Proibido' }, '404': { $ref: '#/components/responses/NaoEncontrado' }, '409': { $ref: '#/components/responses/Conflito' } }
+  /adolescentes/{adolescenteId}/familia:
+    get:
+      tags: [Adolescentes]
+      summary: Consulta a ficha de família do adolescente
+      description: Somente ADMIN (global) ou GERENTE (própria gerência) (RN051).
+      parameters: [ { $ref: '#/components/parameters/AdolescenteId' } ]
+      responses: { '200': { description: Ficha de família }, '403': { $ref: '#/components/responses/Proibido' } }
+    put:
+      tags: [Adolescentes]
+      summary: Cria ou atualiza a ficha de família do adolescente
+      description: Somente ADMIN (global) ou GERENTE (própria gerência) (RN051).
+      parameters: [ { $ref: '#/components/parameters/AdolescenteId' } ]
+      responses: { '200': { description: Ficha salva }, '403': { $ref: '#/components/responses/Proibido' } }
+  /familias:
+    get:
+      tags: [Adolescentes]
+      summary: Lista fichas de família (ADMIN todas; GERENTE da gerência)
+      parameters: [ { $ref: '#/components/parameters/Pagina' }, { $ref: '#/components/parameters/TamanhoPagina' } ]
+      responses: { '200': { description: Página de fichas } }
   /encontros:
     get:
       tags: [Encontros]
@@ -360,7 +379,7 @@ components:
     DiscipuladoRequest: { type: object, required: [nome, sexo, faixaEtaria, gerenciaId, discipuladorId], properties: { nome: { type: string, minLength: 1, maxLength: 120 }, sexo: { type: string, enum: [MASCULINO, FEMININO] }, faixaEtaria: { $ref: '#/components/schemas/FaixaEtaria' }, gerenciaId: { type: integer, format: int64 }, discipuladorId: { type: integer, format: int64 }, ativo: { type: boolean } } }
     AtualizarDiscipuladoRequest: { type: object, minProperties: 1, properties: { nome: { type: string, minLength: 1, maxLength: 120 }, sexo: { type: string, enum: [MASCULINO, FEMININO] }, faixaEtaria: { $ref: '#/components/schemas/FaixaEtaria' }, gerenciaId: { type: integer, format: int64 }, discipuladorId: { type: integer, format: int64 }, ativo: { type: boolean } } }
     Discipulado: { allOf: [ { $ref: '#/components/schemas/DiscipuladoRequest' }, { type: object, required: [id, discipuladorNome, coLideres], properties: { id: { type: integer, format: int64 }, discipuladorNome: { type: string, description: Nome do discipulador titular, usado na seleção tipável e no contexto de liderança na UI. }, coLideres: { type: array, maxItems: 2, items: { $ref: '#/components/schemas/Usuario' }, description: 'Índice 0 = co-líder; índice 1 = co-líder em treinamento.' } } } ] }
-    AdolescenteRequest: { type: object, required: [nome, dataNascimento, categoria, consentimentoEm, discipuladoId], properties: { nome: { type: string, minLength: 1, maxLength: 120 }, dataNascimento: { type: string, format: date }, telefone: { type: string, description: 'Obrigatório quando categoria for DISCIPULO_GOE, salvo se naoPossuiTelefone=true (RN048).' }, naoPossuiTelefone: { type: boolean, description: 'Quando true, o telefone do adolescente fica vazio e a obrigatoriedade de telefone em DISCIPULO_GOE é dispensada.' }, naoPossuiContatoFamiliar: { type: boolean, description: 'Quando true, os contatos de mãe/pai/responsável ficam vazios e a obrigatoriedade de contato familiar em DISCIPULO/VISITANTE é dispensada.' }, instagram: { type: string }, responsavelNome: { type: string }, responsavelTelefone: { type: string }, consentimentoEm: { type: string, format: date }, categoria: { type: string, enum: [DISCIPULO, VISITANTE, DISCIPULO_GOE] }, telefoneMae: { type: string }, telefonePai: { type: string }, estrutura: { type: string, maxLength: 120 }, motivoAfastamento: { type: string, maxLength: 500, description: Obrigatório quando categoria for DISCIPULO_GOE. }, discipuladoId: { type: integer, format: int64 }, ativo: { type: boolean }, dataInicio: { type: string, format: date, description: Data de início do vínculo com o discipulado. Padrão é a data atual; usada ao registrar um visitante em uma data anterior. } }, description: 'Para DISCIPULO e VISITANTE, informe ao menos um par completo nome+telefone entre mãe, pai ou responsável (RN048), salvo quando naoPossuiContatoFamiliar=true. Para DISCIPULO_GOE, contatos familiares são opcionais e telefone do adolescente é obrigatório, salvo quando naoPossuiTelefone=true.' }
+    AdolescenteRequest: { type: object, required: [nome, dataNascimento, categoria, consentimentoEm, discipuladoId], properties: { nome: { type: string, minLength: 1, maxLength: 120 }, dataNascimento: { type: string, format: date }, telefone: { type: string, description: 'Obrigatório quando categoria for DISCIPULO_GOE, salvo se naoPossuiTelefone=true (RN048).' }, naoPossuiTelefone: { type: boolean, description: 'Quando true, o telefone do adolescente fica vazio e a obrigatoriedade de telefone em DISCIPULO_GOE é dispensada.' }, naoPossuiContatoFamiliar: { type: boolean, description: 'Quando true, os contatos de mãe/pai/responsável ficam vazios e a obrigatoriedade de contato familiar em DISCIPULO/VISITANTE é dispensada.' }, instagram: { type: string }, responsavelNome: { type: string }, responsavelTelefone: { type: string }, consentimentoEm: { type: string, format: date }, categoria: { type: string, enum: [DISCIPULO, VISITANTE, DISCIPULO_GOE] }, telefoneMae: { type: string }, telefonePai: { type: string }, estrutura: { type: string, maxLength: 120 }, motivoAfastamento: { type: string, maxLength: 500, description: Obrigatório quando categoria for DISCIPULO_GOE. }, discipuladoId: { type: integer, format: int64 }, ativo: { type: boolean }, dataInicio: { type: string, format: date, description: Data de início do vínculo com o discipulado. Padrão é a data atual; usada ao registrar um visitante em uma data anterior. }, familia: { type: object, description: 'Obrigatória para ADMIN/GERENTE; ignorada para DISCIPULADOR/CO_LIDER (ficha automática “Não consta”, RN051).' } }, description: 'Ficha de família 1:1 (RN048). ADMIN/GERENTE devem enviar `familia`; liderança omite e o servidor cria “Não consta” (RN051). Contatos familiares vivem na ficha, não nestes campos legados.' }
     Adolescente: { allOf: [ { $ref: '#/components/schemas/AdolescenteRequest' }, { type: object, required: [id, anonimizado], properties: { id: { type: integer, format: int64 }, discipuladoNome: { type: string }, anonimizado: { type: boolean } } } ] }
     AlertaGoe: { type: object, required: [adolescenteId, nome, faltas], properties: { adolescenteId: { type: integer, format: int64 }, nome: { type: string }, faltas: { type: integer, format: int64 } } }
     Vinculo: { type: object, required: [id, adolescenteId, discipuladoId, dataInicio, ativo], properties: { id: { type: integer, format: int64 }, adolescenteId: { type: integer, format: int64 }, discipuladoId: { type: integer, format: int64 }, dataInicio: { type: string, format: date }, dataFim: { type: string, format: date }, ativo: { type: boolean } } }

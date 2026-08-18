@@ -1,3 +1,4 @@
+import type { FamiliaInput } from '@/features/familia/api'
 import { request } from '@/shared/api/httpClient'
 import type { FaixaEtaria, Pagina } from '@/shared/api/types'
 
@@ -11,14 +12,8 @@ export interface Adolescente {
   dataNascimento: string
   telefone?: string
   instagram?: string
-  responsavelNome?: string
-  responsavelTelefone?: string
   consentimentoEm?: string
   categoria: CategoriaAdolescente
-  nomeMae?: string
-  telefoneMae?: string
-  nomePai?: string
-  telefonePai?: string
   estrutura?: string
   motivoAfastamento?: string
   anonimizado: boolean
@@ -32,21 +27,15 @@ export interface AdolescenteInput {
   dataNascimento: string
   telefone?: string
   instagram?: string
-  responsavelNome: string
-  responsavelTelefone?: string
   consentimentoEm: string
   categoria: CategoriaAdolescente
-  nomeMae?: string
-  telefoneMae?: string
-  nomePai?: string
-  telefonePai?: string
   estrutura?: string
   motivoAfastamento?: string
   discipuladoId: number
   ativo?: boolean
   dataInicio?: string
   naoPossuiTelefone?: boolean
-  naoPossuiContatoFamiliar?: boolean
+  familia?: FamiliaInput
 }
 
 export interface AlertaGoe {

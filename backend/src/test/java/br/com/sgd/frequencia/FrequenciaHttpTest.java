@@ -434,11 +434,13 @@ class FrequenciaHttpTest {
                     .content(
                         "{\"nome\":\""
                             + nome
-                            + "\",\"dataNascimento\":\"2011-05-04\",\"categoria\":\"VISITANTE\",\"responsavelNome\":\"Responsável\",\"responsavelTelefone\":\"(11) 98888-0000\",\"consentimentoEm\":\"2026-01-01\",\"discipuladoId\":"
+                            + "\",\"dataNascimento\":\"2011-05-04\",\"categoria\":\"VISITANTE\",\"consentimentoEm\":\"2026-01-01\",\"naoPossuiTelefone\":true,\"discipuladoId\":"
                             + proprio.getId()
                             + ",\"ativo\":true,\"dataInicio\":\""
                             + dataInicio
-                            + "\"}"))
+                            + "\",\"familia\":"
+                            + familiaJson()
+                            + "}"))
             .andExpect(status().isCreated())
             .andReturn()
             .getResponse()
@@ -471,7 +473,9 @@ class FrequenciaHttpTest {
                             + nome
                             + "\",\"dataNascimento\":\"2010-01-01\",\"telefone\":\"(11) 91234-5678\",\"categoria\":\"DISCIPULO_GOE\",\"motivoAfastamento\":\"Afastou-se\",\"consentimentoEm\":\"2026-01-01\",\"discipuladoId\":"
                             + proprio.getId()
-                            + ",\"ativo\":true}"))
+                            + ",\"ativo\":true,\"familia\":"
+                            + familiaJson()
+                            + "}"))
             .andExpect(status().isCreated())
             .andReturn()
             .getResponse()
@@ -492,11 +496,59 @@ class FrequenciaHttpTest {
   private String adolescente(String nome, boolean ativo) {
     return "{\"nome\":\""
         + nome
-        + "\",\"dataNascimento\":\"2010-01-01\",\"categoria\":\"DISCIPULO\",\"responsavelNome\":\"Responsável\",\"responsavelTelefone\":\"(11) 98888-0000\",\"consentimentoEm\":\"2026-01-01\",\"discipuladoId\":"
+        + "\",\"dataNascimento\":\"2010-01-01\",\"categoria\":\"DISCIPULO\",\"consentimentoEm\":\"2026-01-01\",\"naoPossuiTelefone\":true,\"discipuladoId\":"
         + proprio.getId()
         + ",\"ativo\":"
         + ativo
+        + ",\"familia\":"
+        + familiaJson()
         + "}";
+  }
+
+  private static String familiaJson() {
+    return """
+        {
+          "cep": "Não consta",
+          "rua": "Não consta",
+          "numero": "Não consta",
+          "complemento": "Não consta",
+          "bairro": "Não consta",
+          "cidade": "Não consta",
+          "situacaoIgreja": "NAO_CONSTA",
+          "atuaOnde": "Não consta",
+          "situacaoPais": "NAO_CONSTA",
+          "descricao": "Não consta",
+          "desafioFinanceiro": false,
+          "desafioEmocional": false,
+          "desafioEspiritual": false,
+          "desafiosDescricao": "Não consta",
+          "atividadesJuntas": "Não consta",
+          "rotinaSemana": "Não consta",
+          "irmaoDokmos": "Não consta",
+          "pedidoOracao": "Não consta",
+          "intervencao": "Não consta",
+          "observacaoDiscipulador": "Não consta",
+          "observacaoGerente": "Não consta",
+          "responsavel1": {
+            "nome": "Não consta",
+            "parentesco": "Não consta",
+            "estadoCivil": "Não consta",
+            "profissao": "Não consta",
+            "telefone": "Não consta",
+            "email": "Não consta",
+            "interessePessoal": "Não consta"
+          },
+          "responsavel2": {
+            "nome": "Não consta",
+            "parentesco": "Não consta",
+            "estadoCivil": "Não consta",
+            "profissao": "Não consta",
+            "telefone": "Não consta",
+            "email": "Não consta",
+            "interessePessoal": "Não consta"
+          }
+        }
+        """;
   }
 
   private static String chamada(long primeiro, long segundo) {

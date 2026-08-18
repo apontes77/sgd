@@ -31,7 +31,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import br.com.sgd.adolescente.Adolescente;
 import br.com.sgd.adolescente.AdolescenteRepository;
 import br.com.sgd.adolescente.CategoriaAdolescente;
-import br.com.sgd.adolescente.ContatosAdolescente;
 import br.com.sgd.adolescente.DadosCadastroAdolescente;
 import br.com.sgd.adolescente.VinculoAdolescenteDiscipulado;
 import br.com.sgd.adolescente.VinculoAdolescenteRepository;
@@ -406,9 +405,7 @@ class RelatorioFrequenciaHttpTest {
             CategoriaAdolescente.DISCIPULO,
             null,
             null,
-            ContatosAdolescente.de(null, null, null, null, responsavelNome, responsavelTelefone),
-            false,
-            false),
+            telefone == null || telefone.isBlank()),
         true);
   }
 

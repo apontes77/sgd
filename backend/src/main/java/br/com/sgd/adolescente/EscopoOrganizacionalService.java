@@ -18,6 +18,14 @@ public class EscopoOrganizacionalService {
   }
 
   public boolean podeAlterar(User usuario, Discipulado discipulado) {
+    if (usuario.getPerfis().contains(Role.ADMIN)) return true;
+    if (usuario.getPerfis().contains(Role.GERENTE)
+        && discipulado.getGerencia().getGerente().getId().equals(usuario.getId())) return true;
+    return liderDoDiscipulado(usuario, discipulado);
+  }
+
+  /** Frequência/encontros: somente ADMIN ou liderança do discipulado (sem gerente). */
+  public boolean podeRegistrarFrequencia(User usuario, Discipulado discipulado) {
     return usuario.getPerfis().contains(Role.ADMIN) || liderDoDiscipulado(usuario, discipulado);
   }
 
@@ -31,6 +39,12 @@ public class EscopoOrganizacionalService {
     if (!podeAlterar(usuario, discipulado))
       throw new ResponseStatusException(
           HttpStatus.FORBIDDEN, "O usuário não pode alterar dados deste discipulado.");
+  }
+
+  public void exigirRegistroFrequencia(User usuario, Discipulado discipulado) {
+    if (!podeRegistrarFrequencia(usuario, discipulado))
+      throw new ResponseStatusException(
+          HttpStatus.FORBIDDEN, "O usuário não pode registrar frequência neste discipulado.");
   }
 
   private boolean liderDoDiscipulado(User usuario, Discipulado discipulado) {
