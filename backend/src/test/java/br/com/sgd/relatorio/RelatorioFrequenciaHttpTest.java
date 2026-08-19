@@ -253,7 +253,8 @@ class RelatorioFrequenciaHttpTest {
                 .header(HttpHeaders.AUTHORIZATION, bearer(token(admin))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.relatorios.length()").value(1))
-        .andExpect(jsonPath("$.relatorios[0].discipulado.nome").value("Alpha"));
+        .andExpect(jsonPath("$.relatorios[0].discipulado.nome").value("Alpha"))
+        .andExpect(jsonPath("$.relatorios[0].participantes.length()").value(2));
   }
 
   @Test
@@ -300,7 +301,11 @@ class RelatorioFrequenciaHttpTest {
         .andExpect(jsonPath("$.relatorios[0].participantes.length()").value(0))
         .andExpect(jsonPath("$.relatorios[0].visitantes").value(0))
         .andExpect(jsonPath("$.relatorios[1].situacao").value("REALIZADO"))
-        .andExpect(jsonPath("$.relatorios[2].situacao").value("REALIZADO"));
+        .andExpect(jsonPath("$.relatorios[1].participantes.length()").value(0))
+        .andExpect(jsonPath("$.relatorios[2].situacao").value("REALIZADO"))
+        .andExpect(jsonPath("$.relatorios[2].participantes.length()").value(0))
+        .andExpect(jsonPath("$.relatorios[2].resumo.presentes").value(1))
+        .andExpect(jsonPath("$.relatorios[2].resumo.ausentes").value(1));
   }
 
   @Test

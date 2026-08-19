@@ -219,7 +219,12 @@ export default function FrequencyReport({ currentUser }: { currentUser: Usuario 
         <Box id="relatorio-frequencia-impressao">
           <Stack spacing={3}>
             {dados.relatorios.map((item) => (
-              <PaginaRelatorio key={item.encontroId} item={item} emitidoEm={dados.emitidoEm} />
+              <PaginaRelatorio
+                key={item.encontroId}
+                item={item}
+                emitidoEm={dados.emitidoEm}
+                listaNominal={dados.dataInicio === dados.dataFim}
+              />
             ))}
           </Stack>
         </Box>
@@ -228,7 +233,15 @@ export default function FrequencyReport({ currentUser }: { currentUser: Usuario 
   )
 }
 
-function PaginaRelatorio({ item, emitidoEm }: { item: RelatorioEncontro; emitidoEm: string }) {
+function PaginaRelatorio({
+  item,
+  emitidoEm,
+  listaNominal,
+}: {
+  item: RelatorioEncontro
+  emitidoEm: string
+  listaNominal: boolean
+}) {
   const coLideres = item.coLideres.map((l) => l.nome).join(', ') || 'Nenhum'
   const naoRealizado = item.situacao === 'NAO_REALIZADO'
   return (
@@ -274,7 +287,7 @@ function PaginaRelatorio({ item, emitidoEm }: { item: RelatorioEncontro; emitido
           <Alert severity="warning">
             <strong>Justificativa:</strong> {item.justificativa || 'Não informada'}
           </Alert>
-        ) : (
+        ) : listaNominal ? (
           <DataTableCard>
             <Table size="small" aria-label={`Frequência do ${item.discipulado.nome} em ${formatarData(item.data)}`}>
               <TableHead>
@@ -316,6 +329,8 @@ function PaginaRelatorio({ item, emitidoEm }: { item: RelatorioEncontro; emitido
               </TableBody>
             </Table>
           </DataTableCard>
+        ) : (
+          <Alert severity="info">Lista nominal disponível na consulta de um único dia.</Alert>
         )}
         {!naoRealizado && (
           <Box

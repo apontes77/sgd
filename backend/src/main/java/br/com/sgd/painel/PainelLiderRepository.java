@@ -12,12 +12,12 @@ public interface PainelLiderRepository extends Repository<Encontro, Long> {
   @Query(
       value =
           """
-        select substring(cast(e.data as varchar), 1, 7) as referencia,
+        select to_char(e.data, 'YYYY-MM') as referencia,
                coalesce(sum(case when f.situacao = 'PRESENTE' then 1 else 0 end), 0) as presentes,
                coalesce(sum(case when f.situacao = 'AUSENTE' then 1 else 0 end), 0) as ausentes
           from encontros e left join frequencias f on f.encontro_id = e.id
          where e.discipulado_id = :discipuladoId and e.situacao = 'REALIZADO' and e.data between :inicio and :fim
-         group by substring(cast(e.data as varchar), 1, 7) order by referencia
+         group by to_char(e.data, 'YYYY-MM') order by referencia
         """,
       nativeQuery = true)
   List<ContagemMensal> frequenciasMensais(long discipuladoId, LocalDate inicio, LocalDate fim);
@@ -25,13 +25,13 @@ public interface PainelLiderRepository extends Repository<Encontro, Long> {
   @Query(
       value =
           """
-        select substring(cast(e.data as varchar), 1, 7) as referencia, count(distinct f.adolescente_id) as visitantes
+        select to_char(e.data, 'YYYY-MM') as referencia, count(distinct f.adolescente_id) as visitantes
           from encontros e
           join frequencias f on f.encontro_id = e.id and f.situacao = 'PRESENTE'
           join vinculos_adolescente_discipulado vin on vin.adolescente_id = f.adolescente_id
            and vin.discipulado_id = e.discipulado_id and vin.data_inicio = e.data
          where e.discipulado_id = :discipuladoId and e.situacao = 'REALIZADO' and e.data between :inicio and :fim
-         group by substring(cast(e.data as varchar), 1, 7) order by referencia
+         group by to_char(e.data, 'YYYY-MM') order by referencia
         """,
       nativeQuery = true)
   List<VisitantesMensais> visitantesMensais(long discipuladoId, LocalDate inicio, LocalDate fim);
@@ -58,14 +58,14 @@ public interface PainelLiderRepository extends Repository<Encontro, Long> {
   @Query(
       value =
           "select a.id as adolescenteId, a.nome as nome, "
-              + "substring(cast(e.data as varchar), 1, 7) as referencia, "
+              + "to_char(e.data, 'YYYY-MM') as referencia, "
               + "coalesce(sum(case when f.situacao = 'PRESENTE' then 1 else 0 end), 0) as presentes, "
               + "coalesce(sum(case when f.situacao = 'AUSENTE' then 1 else 0 end), 0) as ausentes "
               + "from encontros e join frequencias f on f.encontro_id = e.id "
               + "join adolescentes a on a.id = f.adolescente_id "
               + "where e.discipulado_id = :discipuladoId and e.situacao = 'REALIZADO' "
               + "and e.data between :inicio and :fim group by a.id, a.nome, "
-              + "substring(cast(e.data as varchar), 1, 7) order by a.nome, a.id, referencia",
+              + "to_char(e.data, 'YYYY-MM') order by a.nome, a.id, referencia",
       nativeQuery = true)
   List<FrequenciaIndividualMensal> frequenciasIndividuaisMensais(
       long discipuladoId, LocalDate inicio, LocalDate fim);

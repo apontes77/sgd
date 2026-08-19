@@ -10,24 +10,25 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import br.com.sgd.frequencia.SituacaoFrequencia;
-import br.com.sgd.lideranca.ChamadaLideranca;
-import br.com.sgd.lideranca.ChamadaLiderancaDiscipulado;
-import br.com.sgd.lideranca.ChamadaLiderancaRepository;
 import br.com.sgd.lideranca.PapelLideranca;
-import br.com.sgd.lideranca.PresencaLideranca;
-import br.com.sgd.organizacao.Discipulado;
 import br.com.sgd.organizacao.DiscipuladoRepository;
+import br.com.sgd.relatorio.RelatorioChamadaLiderancaRepository.CabecalhoChamada;
+import br.com.sgd.relatorio.RelatorioChamadaLiderancaRepository.PresencaRow;
+import br.com.sgd.relatorio.RelatorioChamadaLiderancaRepository.ResumoChamadaSql;
 import br.com.sgd.user.Role;
 import br.com.sgd.user.User;
 
@@ -36,13 +37,15 @@ import br.com.sgd.user.User;
 public class RelatorioChamadaLiderancaService {
   private static final DateTimeFormatter DATA_BR = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-  private final ChamadaLiderancaRepository chamadas;
+  private final RelatorioChamadaLiderancaRepository relatorios;
   private final DiscipuladoRepository discipulados;
   private final Clock clock;
 
   public RelatorioChamadaLiderancaService(
-      ChamadaLiderancaRepository chamadas, DiscipuladoRepository discipulados, Clock clock) {
-    this.chamadas = chamadas;
+      RelatorioChamadaLiderancaRepository relatorios,
+      DiscipuladoRepository discipulados,
+      Clock clock) {
+    this.relatorios = relatorios;
     this.discipulados = discipulados;
     this.clock = clock;
   }
@@ -54,16 +57,15 @@ public class RelatorioChamadaLiderancaService {
     if (discipuladoId != null && !discipulados.existsById(discipuladoId)) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Discipulado não encontrado.");
     }
-    List<ChamadaLideranca> encontradas = chamadas.findAllByDataBetweenOrderByDataAsc(inicio, fim);
     return new RelatorioPeriodoResponse(
-        inicio, fim, clock.instant(), montarRelatorios(encontradas, discipuladoId));
+        inicio, fim, clock.instant(), montarRelatorios(inicio, fim, discipuladoId));
   }
 
   public void exportarExcel(
       User usuario, LocalDate inicio, LocalDate fim, Long discipuladoId, OutputStream out)
       throws IOException {
     RelatorioPeriodoResponse periodo = consultar(usuario, inicio, fim, discipuladoId);
-    try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+    try (SXSSFWorkbook workbook = new SXSSFWorkbook(100)) {
       Sheet sheet = workbook.createSheet("Chamada de liderança");
       Row cabecalho = sheet.createRow(0);
       String[] colunas = {
@@ -96,81 +98,71 @@ public class RelatorioChamadaLiderancaService {
         }
       }
       workbook.write(out);
+      workbook.dispose();
     }
   }
 
   private List<RelatorioChamada> montarRelatorios(
-      List<ChamadaLideranca> encontradas, Long discipuladoId) {
+      LocalDate inicio, LocalDate fim, Long discipuladoId) {
+    Map<ItemChave, List<PresencaRelatorio>> presencasPorItem = new LinkedHashMap<>();
+    for (PresencaRow row : relatorios.presencas(inicio, fim, discipuladoId)) {
+      presencasPorItem
+          .computeIfAbsent(
+              new ItemChave(row.getChamadaId(), row.getDiscipuladoId()), k -> new ArrayList<>())
+          .add(
+              new PresencaRelatorio(
+                  row.getUsuarioId(),
+                  row.getNome(),
+                  PapelLideranca.valueOf(row.getPapel()),
+                  SituacaoFrequencia.valueOf(row.getSituacao())));
+    }
+    presencasPorItem.replaceAll((chave, lista) -> lista.stream().sorted(ordemPresenca()).toList());
+
+    Map<Long, ResumoChamadaSql> resumos =
+        relatorios.resumir(inicio, fim, discipuladoId).stream()
+            .collect(Collectors.toMap(ResumoChamadaSql::getChamadaId, r -> r));
+
+    Map<Long, RelatorioChamadaBuilder> porChamada = new LinkedHashMap<>();
+    for (CabecalhoChamada row : relatorios.cabecalhos(inicio, fim, discipuladoId)) {
+      RelatorioChamadaBuilder builder =
+          porChamada.computeIfAbsent(
+              row.getChamadaId(),
+              id -> new RelatorioChamadaBuilder(id, row.getData(), row.getObservacaoGeral()));
+      if (row.getDiscipuladoId() == null) continue;
+      builder.discipulados.add(
+          new DiscipuladoRelatorio(
+              row.getDiscipuladoId(),
+              row.getDiscipuladoNome(),
+              row.getSexo(),
+              row.getGerenciaNome(),
+              row.getObservacao(),
+              presencasPorItem.getOrDefault(
+                  new ItemChave(row.getChamadaId(), row.getDiscipuladoId()), List.of())));
+    }
+
     List<RelatorioChamada> resultado = new ArrayList<>();
-    for (ChamadaLideranca chamada : encontradas) {
-      List<DiscipuladoRelatorio> discipuladosRelatorio =
-          chamada.getItens().stream()
-              .filter(
-                  item ->
-                      discipuladoId == null || item.getDiscipulado().getId().equals(discipuladoId))
-              .sorted(ordemDiscipulado())
-              .map(RelatorioChamadaLiderancaService::montarDiscipulado)
-              .toList();
-      if (discipuladoId != null && discipuladosRelatorio.isEmpty()) continue;
+    for (RelatorioChamadaBuilder builder : porChamada.values()) {
+      if (discipuladoId != null && builder.discipulados.isEmpty()) continue;
+      ResumoChamadaSql sql = resumos.get(builder.chamadaId);
+      long presentes = valor(sql == null ? null : sql.getPresentes());
+      long ausentes = valor(sql == null ? null : sql.getAusentes());
       resultado.add(
           new RelatorioChamada(
-              chamada.getId(),
-              chamada.getData(),
-              chamada.getObservacaoGeral(),
-              discipuladosRelatorio,
-              resumir(discipuladosRelatorio)));
+              builder.chamadaId,
+              builder.data,
+              builder.observacaoGeral,
+              List.copyOf(builder.discipulados),
+              new ResumoChamada(
+                  presentes, ausentes, presentes + ausentes, percentual(presentes, ausentes))));
     }
     return resultado;
   }
 
-  private static DiscipuladoRelatorio montarDiscipulado(ChamadaLiderancaDiscipulado item) {
-    Discipulado discipulado = item.getDiscipulado();
-    List<PresencaRelatorio> presencas =
-        item.getPresencas().stream()
-            .sorted(ordemPresenca())
-            .map(
-                p ->
-                    new PresencaRelatorio(
-                        p.getUsuario().getId(),
-                        p.getUsuario().getNome(),
-                        p.getPapel(),
-                        p.getSituacao()))
-            .toList();
-    return new DiscipuladoRelatorio(
-        discipulado.getId(),
-        discipulado.getNome(),
-        discipulado.getSexo().name(),
-        discipulado.getGerencia().getNome(),
-        item.getObservacao(),
-        presencas);
-  }
+  private record ItemChave(Long chamadaId, Long discipuladoId) {}
 
-  private static ResumoChamada resumir(List<DiscipuladoRelatorio> discipuladosRelatorio) {
-    long presentes =
-        discipuladosRelatorio.stream()
-            .flatMap(d -> d.presencas().stream())
-            .filter(p -> p.situacao() == SituacaoFrequencia.PRESENTE)
-            .count();
-    long ausentes =
-        discipuladosRelatorio.stream()
-            .flatMap(d -> d.presencas().stream())
-            .filter(p -> p.situacao() == SituacaoFrequencia.AUSENTE)
-            .count();
-    long participantes = presentes + ausentes;
-    return new ResumoChamada(presentes, ausentes, participantes, percentual(presentes, ausentes));
-  }
-
-  private static Comparator<ChamadaLiderancaDiscipulado> ordemDiscipulado() {
-    return Comparator.comparing(
-            (ChamadaLiderancaDiscipulado item) -> item.getDiscipulado().getGerencia().getNome(),
-            String.CASE_INSENSITIVE_ORDER)
-        .thenComparing(item -> item.getDiscipulado().getNome(), String.CASE_INSENSITIVE_ORDER);
-  }
-
-  private static Comparator<PresencaLideranca> ordemPresenca() {
-    return Comparator.comparing(
-            (PresencaLideranca p) -> p.getPapel() != PapelLideranca.DISCIPULADOR)
-        .thenComparing(p -> p.getUsuario().getNome(), String.CASE_INSENSITIVE_ORDER);
+  private static Comparator<PresencaRelatorio> ordemPresenca() {
+    return Comparator.comparing((PresencaRelatorio p) -> p.papel() != PapelLideranca.DISCIPULADOR)
+        .thenComparing(PresencaRelatorio::nome, String.CASE_INSENSITIVE_ORDER);
   }
 
   private static void validarPeriodo(LocalDate inicio, LocalDate fim) {
@@ -188,6 +180,10 @@ public class RelatorioChamadaLiderancaService {
   private static void exigirAdmin(User usuario) {
     if (usuario == null || !usuario.getPerfis().contains(Role.ADMIN))
       throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acesso negado.");
+  }
+
+  private static long valor(Number n) {
+    return n == null ? 0 : n.longValue();
   }
 
   private static BigDecimal percentual(long presentes, long ausentes) {
@@ -209,6 +205,19 @@ public class RelatorioChamadaLiderancaService {
 
   private static String texto(String valor) {
     return valor == null ? "" : valor;
+  }
+
+  private static final class RelatorioChamadaBuilder {
+    private final Long chamadaId;
+    private final LocalDate data;
+    private final String observacaoGeral;
+    private final List<DiscipuladoRelatorio> discipulados = new ArrayList<>();
+
+    private RelatorioChamadaBuilder(Long chamadaId, LocalDate data, String observacaoGeral) {
+      this.chamadaId = chamadaId;
+      this.data = data;
+      this.observacaoGeral = observacaoGeral;
+    }
   }
 
   public record RelatorioPeriodoResponse(

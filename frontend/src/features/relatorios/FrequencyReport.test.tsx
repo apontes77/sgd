@@ -84,8 +84,72 @@ describe('relatório diário de frequência', () => {
     sessionStorage.clear()
   })
 
-  it('consulta a data, renderiza uma página por encontro e imprime o resultado', async () => {
+  it('consulta o período, omite a lista nominal e imprime o resultado', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/discipulados')) {
+        return new Response(
+          JSON.stringify({
+            content: [],
+            page: 0,
+            size: 100,
+            totalElements: 0,
+            totalPages: 0,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        )
+      }
+      return new Response(
+        JSON.stringify({
+          ...relatorio,
+          dataInicio: '2026-07-20',
+          dataFim: '2026-07-21',
+          relatorios: relatorio.relatorios.map((item) => ({ ...item, participantes: [] })),
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      )
+    })
+    const printMock = vi.spyOn(window, 'print').mockImplementation(() => undefined)
+    render(<FrequencyReport currentUser={adminUser} />)
+
+    const imprimir = screen.getByRole('button', { name: 'Imprimir / salvar como PDF' })
+    const exportar = screen.getByRole('button', { name: 'Exportar Excel' })
+    expect(imprimir).toBeDisabled()
+    expect(exportar).toBeDisabled()
+    expect(await screen.findByLabelText(/^Discipulado/)).toBeInTheDocument()
+    const dataInicial = screen.getByLabelText(/^Data inicial/)
+    const dataFinal = screen.getByLabelText(/^Data final/)
+    await userEvent.clear(dataInicial)
+    await userEvent.type(dataInicial, '2026-07-20')
+    await userEvent.clear(dataFinal)
+    await userEvent.type(dataFinal, '2026-07-21')
+    await userEvent.click(screen.getByRole('button', { name: 'Consultar' }))
+
+    expect(await screen.findAllByText('Relatório de frequência')).not.toHaveLength(0)
+    expect(screen.getAllByText('Lista nominal disponível na consulta de um único dia.')).toHaveLength(2)
+    expect(screen.queryByText('Ana')).not.toBeInTheDocument()
+    expect(screen.queryByText('Bia')).not.toBeInTheDocument()
+    expect(screen.queryByRole('table', { name: 'Frequência do Alpha em 21/07/2026' })).not.toBeInTheDocument()
+    expect(screen.getByText('Registro de ausência do discipulado')).toBeInTheDocument()
+    expect(screen.getByText(/Problema de saúde/)).toBeInTheDocument()
+    expect(screen.getByText('Não houve discipulado')).toBeInTheDocument()
+    expect(screen.queryByText(/Encontro:/)).not.toBeInTheDocument()
+    expect(screen.queryByText('#10')).not.toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/relatorios/frequencia?dataInicio=2026-07-20&dataFim=2026-07-21',
+      expect.anything(),
+    )
+
+    await userEvent.click(imprimir)
+    expect(printMock).toHaveBeenCalledOnce()
+    expect(exportar).toBeEnabled()
+  })
+
+  it('lista adolescentes quando o período é um único dia', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input)
       if (url.includes('/discipulados')) {
         return new Response(
@@ -104,18 +168,12 @@ describe('relatório diário de frequência', () => {
         headers: { 'Content-Type': 'application/json' },
       })
     })
-    const printMock = vi.spyOn(window, 'print').mockImplementation(() => undefined)
     render(<FrequencyReport currentUser={adminUser} />)
 
-    const imprimir = screen.getByRole('button', { name: 'Imprimir / salvar como PDF' })
-    const exportar = screen.getByRole('button', { name: 'Exportar Excel' })
-    expect(imprimir).toBeDisabled()
-    expect(exportar).toBeDisabled()
-    expect(await screen.findByLabelText(/^Discipulado/)).toBeInTheDocument()
     const dataInicial = screen.getByLabelText(/^Data inicial/)
     const dataFinal = screen.getByLabelText(/^Data final/)
     await userEvent.clear(dataInicial)
-    await userEvent.type(dataInicial, '2026-07-20')
+    await userEvent.type(dataInicial, '2026-07-21')
     await userEvent.clear(dataFinal)
     await userEvent.type(dataFinal, '2026-07-21')
     await userEvent.click(screen.getByRole('button', { name: 'Consultar' }))
@@ -126,23 +184,9 @@ describe('relatório diário de frequência', () => {
     expect(screen.getByText('Bia')).toBeInTheDocument()
     expect(screen.getByText('(11) 97777-1111')).toBeInTheDocument()
     expect(screen.getByText('Não informado')).toBeInTheDocument()
-    expect(screen.getByText('Registro de ausência do discipulado')).toBeInTheDocument()
-    expect(screen.getByText(/Problema de saúde/)).toBeInTheDocument()
-    expect(screen.getByText('Não houve discipulado')).toBeInTheDocument()
-    expect(screen.getAllByText('21/07/2026')).toHaveLength(4)
-    expect(screen.queryByText(/Encontro:/)).not.toBeInTheDocument()
-    expect(screen.queryByText('#10')).not.toBeInTheDocument()
     expect(screen.getByText('Ausente')).toHaveClass('frequencia-ausente')
     expect(screen.getByText('Presente')).toHaveClass('frequencia-presente')
     expect(screen.getByText('Nenhuma frequência registrada neste encontro.')).toBeInTheDocument()
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/v1/relatorios/frequencia?dataInicio=2026-07-20&dataFim=2026-07-21',
-      expect.anything(),
-    )
-
-    await userEvent.click(imprimir)
-    expect(printMock).toHaveBeenCalledOnce()
-    expect(exportar).toBeEnabled()
   })
 
   it('informa quando não há encontros e mantém a impressão desabilitada', async () => {

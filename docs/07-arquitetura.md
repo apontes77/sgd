@@ -30,7 +30,7 @@
 
 ## Infraestrutura
 
-- Docker / Docker Compose
+- Docker / Docker Compose (local: teto de memória no `backend` e no `postgres`; JVM com `MaxRAMPercentage=60` no Compose)
 - Render (ver `docs/deploy-render.md`)
 - Observabilidade OTLP (ver `docs/observability.md`)
 
