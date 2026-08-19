@@ -52,6 +52,12 @@ Não use curingas no CORS e não coloque segredos em variáveis `VITE_*`, pois e
 4. Uma escrita simples persiste e pode ser lida novamente.
 5. O fluxo de recuperação envia e-mail e abre a URL correta do frontend.
 
+## Memória da API
+
+O `Dockerfile` da API aplica `-XX:MaxRAMPercentage=70.0` quando `JAVA_TOOL_OPTIONS` ainda não define o teto. No Render o plano `starter` já limita a instância (~512 MB); 70% desse cgroup é o heap máximo esperado. Não baixe esse percentual no Blueprint.
+
+No Compose local o `backend` tem `mem_limit: 768m` e `JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=60.0`, e o Postgres `512m`, para a JVM não ocupar ~70% do WSL/host. Para outro teto, defina `JAVA_TOOL_OPTIONS` com `MaxRAMPercentage` no ambiente do serviço.
+
 ## Banco, migrações e restauração
 
 - Mantenha `numInstances: 1`: o job `@Scheduled` atual executa em cada instância.

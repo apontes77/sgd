@@ -13,13 +13,13 @@ public interface PainelAdminRepository extends Repository<Encontro, Long> {
   @Query(
       value =
           """
-        select substring(cast(e.data as varchar), 1, 7) as referencia,
+        select to_char(e.data, 'YYYY-MM') as referencia,
                coalesce(sum(case when f.situacao = 'PRESENTE' then 1 else 0 end), 0) as presentes,
                coalesce(sum(case when f.situacao = 'AUSENTE' then 1 else 0 end), 0) as ausentes
           from encontros e
           left join frequencias f on f.encontro_id = e.id
          where e.situacao = 'REALIZADO' and e.data between :inicio and :fim
-         group by substring(cast(e.data as varchar), 1, 7)
+         group by to_char(e.data, 'YYYY-MM')
          order by referencia
         """,
       nativeQuery = true)
@@ -29,14 +29,14 @@ public interface PainelAdminRepository extends Repository<Encontro, Long> {
   @Query(
       value =
           """
-        select substring(cast(e.data as varchar), 1, 7) as referencia,
+        select to_char(e.data, 'YYYY-MM') as referencia,
                count(distinct f.adolescente_id) as visitantes
           from encontros e
           join frequencias f on f.encontro_id = e.id and f.situacao = 'PRESENTE'
           join vinculos_adolescente_discipulado vin on vin.adolescente_id = f.adolescente_id
            and vin.discipulado_id = e.discipulado_id and vin.data_inicio = e.data
          where e.situacao = 'REALIZADO' and e.data between :inicio and :fim
-         group by substring(cast(e.data as varchar), 1, 7)
+         group by to_char(e.data, 'YYYY-MM')
          order by referencia
         """,
       nativeQuery = true)
@@ -104,7 +104,7 @@ public interface PainelAdminRepository extends Repository<Encontro, Long> {
       value =
           """
         select g.id as gerenciaId, g.nome as gerenciaNome,
-               substring(cast(e.data as varchar), 1, 7) as referencia,
+               to_char(e.data, 'YYYY-MM') as referencia,
                coalesce(sum(case when f.situacao = 'PRESENTE' then 1 else 0 end), 0) as presentes,
                coalesce(sum(case when f.situacao = 'AUSENTE' then 1 else 0 end), 0) as ausentes
           from gerencias g
@@ -115,7 +115,7 @@ public interface PainelAdminRepository extends Repository<Encontro, Long> {
           left join frequencias f on f.encontro_id = e.id
          where g.ativo = true
            and e.data is not null
-         group by g.id, g.nome, substring(cast(e.data as varchar), 1, 7)
+         group by g.id, g.nome, to_char(e.data, 'YYYY-MM')
          order by g.nome, referencia
         """,
       nativeQuery = true)

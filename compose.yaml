@@ -7,6 +7,14 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD no arquivo .env}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
+    mem_limit: 512m
+    memswap_limit: 512m
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - work_mem=8MB
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -36,8 +44,11 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:?Defina SMTP_PASSWORD no arquivo .env}
       SMTP_AUTH: ${SMTP_AUTH:-true}
       SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=60.0
     ports:
       - "${BACKEND_PORT:-8080}:8080"
+    mem_limit: 768m
+    memswap_limit: 768m
     depends_on:
       postgres:
         condition: service_healthy

@@ -150,6 +150,8 @@ class RelatorioChamadaLiderancaHttpTest {
         .andExpect(jsonPath("$.relatorios.length()").value(1))
         .andExpect(jsonPath("$.relatorios[0].discipulados.length()").value(1))
         .andExpect(jsonPath("$.relatorios[0].discipulados[0].discipuladoNome").value("Alpha RL"))
+        .andExpect(
+            jsonPath("$.relatorios[0].discipulados[?(@.discipuladoNome == 'Beta RL')]").isEmpty())
         .andExpect(jsonPath("$.relatorios[0].resumo.participantes").value(2));
   }
 

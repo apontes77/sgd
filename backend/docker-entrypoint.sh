@@ -18,6 +18,9 @@ if [ -n "${DATABASE_URL:-}" ]; then
   esac
 fi
 
-export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-} -XX:MaxRAMPercentage=70.0"
+case "${JAVA_TOOL_OPTIONS:-}" in
+  *MaxRAMPercentage*) ;;
+  *) export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-} -XX:MaxRAMPercentage=70.0" ;;
+esac
 
 exec java -jar /app/app.jar
