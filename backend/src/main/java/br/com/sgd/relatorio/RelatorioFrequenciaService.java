@@ -188,54 +188,87 @@ public class RelatorioFrequenciaService {
     List<Long> discipuladoIds =
         encontrados.stream().map(EncontroCabecalho::getDiscipuladoId).distinct().toList();
     Map<Long, List<LiderInfo>> coLideresPorDiscipulado = coLideres(discipuladoIds);
-    Map<Long, ResumoEncontro> resumosPorEncontro =
-        relatorios.resumirPorEncontro(encontroIds).stream()
-            .collect(Collectors.toMap(ResumoEncontro::getEncontroId, r -> r));
-    Map<Long, Integer> visitantesPorEncontro =
-        relatorios.contarVisitantesPorEncontro(encontroIds).stream()
-            .collect(
-                Collectors.toMap(
-                    VisitantesPorEncontro::getEncontroId, v -> valorInt(v.getVisitantes())));
+    Map<Long, ResumoEncontro> resumosPorEncontro = resumos(encontroIds);
+    Map<Long, Integer> visitantesPorEncontro = visitantes(encontroIds);
     Map<Long, List<ParticipanteInfo>> participantesPorEncontro =
         incluirParticipantes ? participantes(encontroIds) : Map.of();
+    return encontrados.stream()
+        .map(
+            encontro ->
+                montarEncontro(
+                    encontro,
+                    coLideresPorDiscipulado,
+                    resumosPorEncontro,
+                    visitantesPorEncontro,
+                    participantesPorEncontro))
+        .toList();
+  }
 
-    List<RelatorioEncontro> resultado = new ArrayList<>();
-    for (EncontroCabecalho encontro : encontrados) {
-      SituacaoEncontro situacao = SituacaoEncontro.valueOf(encontro.getSituacao());
-      boolean naoRealizado = situacao == SituacaoEncontro.NAO_REALIZADO;
-      List<ParticipanteInfo> participantes =
-          naoRealizado
-              ? List.of()
-              : participantesPorEncontro.getOrDefault(encontro.getEncontroId(), List.of());
-      ResumoEncontro resumoSql = resumosPorEncontro.get(encontro.getEncontroId());
-      long presentes =
-          naoRealizado ? 0 : valor(resumoSql == null ? null : resumoSql.getPresentes());
-      long ausentes = naoRealizado ? 0 : valor(resumoSql == null ? null : resumoSql.getAusentes());
-      int quantidadeVisitantes =
-          naoRealizado ? 0 : visitantesPorEncontro.getOrDefault(encontro.getEncontroId(), 0);
-      resultado.add(
-          new RelatorioEncontro(
-              encontro.getEncontroId(),
-              encontro.getData(),
-              situacao,
-              naoRealizado ? encontro.getJustificativa() : null,
-              encontro.getObservacao(),
-              new GerenciaInfo(encontro.getGerenciaId(), encontro.getGerenciaNome()),
-              new DiscipuladoInfo(
-                  encontro.getDiscipuladoId(), encontro.getDiscipuladoNome(), encontro.getSexo()),
-              new LiderInfo(encontro.getDiscipuladorId(), encontro.getDiscipuladorNome()),
-              encontro.getGerenteNome(),
-              coLideresPorDiscipulado.getOrDefault(encontro.getDiscipuladoId(), List.of()),
-              participantes,
-              quantidadeVisitantes,
-              new ResumoFrequencia(
-                  presentes,
-                  ausentes,
-                  presentes + ausentes,
-                  quantidadeVisitantes,
-                  percentual(presentes, ausentes))));
+  private RelatorioEncontro montarEncontro(
+      EncontroCabecalho encontro,
+      Map<Long, List<LiderInfo>> coLideresPorDiscipulado,
+      Map<Long, ResumoEncontro> resumosPorEncontro,
+      Map<Long, Integer> visitantesPorEncontro,
+      Map<Long, List<ParticipanteInfo>> participantesPorEncontro) {
+    SituacaoEncontro situacao = SituacaoEncontro.valueOf(encontro.getSituacao());
+    if (situacao == SituacaoEncontro.NAO_REALIZADO) {
+      return relatorioNaoRealizado(encontro, coLideresPorDiscipulado);
     }
-    return resultado;
+    ResumoEncontro resumoSql = resumosPorEncontro.get(encontro.getEncontroId());
+    long presentes = valor(resumoSql == null ? null : resumoSql.getPresentes());
+    long ausentes = valor(resumoSql == null ? null : resumoSql.getAusentes());
+    int quantidadeVisitantes = visitantesPorEncontro.getOrDefault(encontro.getEncontroId(), 0);
+    return new RelatorioEncontro(
+        encontro.getEncontroId(),
+        encontro.getData(),
+        situacao,
+        null,
+        encontro.getObservacao(),
+        new GerenciaInfo(encontro.getGerenciaId(), encontro.getGerenciaNome()),
+        new DiscipuladoInfo(
+            encontro.getDiscipuladoId(), encontro.getDiscipuladoNome(), encontro.getSexo()),
+        new LiderInfo(encontro.getDiscipuladorId(), encontro.getDiscipuladorNome()),
+        encontro.getGerenteNome(),
+        coLideresPorDiscipulado.getOrDefault(encontro.getDiscipuladoId(), List.of()),
+        participantesPorEncontro.getOrDefault(encontro.getEncontroId(), List.of()),
+        quantidadeVisitantes,
+        new ResumoFrequencia(
+            presentes,
+            ausentes,
+            presentes + ausentes,
+            quantidadeVisitantes,
+            percentual(presentes, ausentes)));
+  }
+
+  private static RelatorioEncontro relatorioNaoRealizado(
+      EncontroCabecalho encontro, Map<Long, List<LiderInfo>> coLideresPorDiscipulado) {
+    return new RelatorioEncontro(
+        encontro.getEncontroId(),
+        encontro.getData(),
+        SituacaoEncontro.NAO_REALIZADO,
+        encontro.getJustificativa(),
+        encontro.getObservacao(),
+        new GerenciaInfo(encontro.getGerenciaId(), encontro.getGerenciaNome()),
+        new DiscipuladoInfo(
+            encontro.getDiscipuladoId(), encontro.getDiscipuladoNome(), encontro.getSexo()),
+        new LiderInfo(encontro.getDiscipuladorId(), encontro.getDiscipuladorNome()),
+        encontro.getGerenteNome(),
+        coLideresPorDiscipulado.getOrDefault(encontro.getDiscipuladoId(), List.of()),
+        List.of(),
+        0,
+        new ResumoFrequencia(0, 0, 0, 0, BigDecimal.ZERO));
+  }
+
+  private Map<Long, ResumoEncontro> resumos(List<Long> encontroIds) {
+    return relatorios.resumirPorEncontro(encontroIds).stream()
+        .collect(Collectors.toMap(ResumoEncontro::getEncontroId, r -> r));
+  }
+
+  private Map<Long, Integer> visitantes(List<Long> encontroIds) {
+    return relatorios.contarVisitantesPorEncontro(encontroIds).stream()
+        .collect(
+            Collectors.toMap(
+                VisitantesPorEncontro::getEncontroId, v -> valorInt(v.getVisitantes())));
   }
 
   private Map<Long, List<LiderInfo>> coLideres(List<Long> discipuladoIds) {
