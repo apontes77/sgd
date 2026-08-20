@@ -1,4 +1,4 @@
-import { AddRounded, PersonAddRounded } from '@mui/icons-material'
+import { AddRounded, EditRounded, PersonAddRounded } from '@mui/icons-material'
 import {
   Alert,
   Box,
@@ -25,7 +25,15 @@ import type { FormEvent } from 'react'
 import { useEffect, useState } from 'react'
 
 import type { Pagina, Perfil, Usuario } from '@/shared/api/types'
-import { DataTableCard, EmptyState, FilterToolbar, FormSheet, PageHeader, StatusChip } from '@/shared/ui'
+import {
+  DataTableCard,
+  EmptyState,
+  FilterToolbar,
+  FormSheet,
+  PageHeader,
+  RowActionsMenu,
+  StatusChip,
+} from '@/shared/ui'
 
 export interface UserManagementClient {
   list(page: number, size: number, active?: boolean): Promise<Pagina<Usuario>>
@@ -53,6 +61,7 @@ export default function UserManagement({ client }: { client: UserManagementClien
   const [activeFilter, setActiveFilter] = useState('')
   const [form, setForm] = useState(emptyForm)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [editingUser, setEditingUser] = useState<Usuario>()
   const [pendingUser, setPendingUser] = useState<Usuario>()
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
@@ -73,19 +82,41 @@ export default function UserManagement({ client }: { client: UserManagementClien
     void load(0)
   }, [activeFilter]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  function openCreate() {
+    setEditingUser(undefined)
+    setForm(emptyForm)
+    setDrawerOpen(true)
+  }
+  function openEdit(user: Usuario) {
+    setEditingUser(user)
+    setForm({ nome: user.nome, email: user.email, senha: '', perfis: [...user.perfis] })
+    setDrawerOpen(true)
+  }
   async function submit(event: FormEvent) {
     event.preventDefault()
     setError('')
     setMessage('')
     setLoading(true)
     try {
-      await client.create(form)
+      if (editingUser) {
+        await client.update(editingUser.id, { nome: form.nome, perfis: form.perfis })
+        setMessage('Usuário atualizado com sucesso.')
+      } else {
+        await client.create(form)
+        setMessage('Usuário criado com sucesso.')
+      }
       setForm(emptyForm)
+      setEditingUser(undefined)
       setDrawerOpen(false)
-      setMessage('Usuário criado com sucesso.')
-      await load(0)
+      await load(editingUser ? result.page : 0)
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Não foi possível criar o usuário.')
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : editingUser
+            ? 'Não foi possível atualizar o usuário.'
+            : 'Não foi possível criar o usuário.',
+      )
     } finally {
       setLoading(false)
     }
@@ -105,6 +136,7 @@ export default function UserManagement({ client }: { client: UserManagementClien
   function closeDrawer() {
     if (!loading) {
       setDrawerOpen(false)
+      setEditingUser(undefined)
       setForm(emptyForm)
     }
   }
@@ -116,7 +148,7 @@ export default function UserManagement({ client }: { client: UserManagementClien
         description="Administre acessos, perfis e situação das contas."
         eyebrow="Gestão"
         action={
-          <Button variant="contained" startIcon={<AddRounded />} onClick={() => setDrawerOpen(true)}>
+          <Button variant="contained" startIcon={<AddRounded />} onClick={openCreate}>
             Novo usuário
           </Button>
         }
@@ -190,9 +222,17 @@ export default function UserManagement({ client }: { client: UserManagementClien
                   <StatusChip active={Boolean(user.ativo)} />
                 </TableCell>
                 <TableCell align="right">
-                  <Button color={user.ativo ? 'warning' : 'primary'} onClick={() => setPendingUser(user)}>
-                    {user.ativo ? 'Inativar' : 'Reativar'}
-                  </Button>
+                  <RowActionsMenu
+                    ariaLabel={`Ações de ${user.nome}`}
+                    actions={[
+                      { label: 'Editar', onClick: () => openEdit(user) },
+                      {
+                        label: user.ativo ? 'Inativar' : 'Reativar',
+                        onClick: () => setPendingUser(user),
+                        color: user.ativo ? 'warning' : 'primary',
+                      },
+                    ]}
+                  />
                 </TableCell>
               </TableRow>
             ))}
@@ -216,16 +256,16 @@ export default function UserManagement({ client }: { client: UserManagementClien
       <FormSheet
         open={drawerOpen}
         onClose={closeDrawer}
-        title="Novo usuário"
+        title={editingUser ? 'Editar usuário' : 'Novo usuário'}
         width={480}
-        icon={<PersonAddRounded color="primary" />}
+        icon={editingUser ? <EditRounded color="primary" /> : <PersonAddRounded color="primary" />}
         component="form"
         onSubmit={submit}
         actions={
           <>
             <Button onClick={closeDrawer}>Cancelar</Button>
             <Button type="submit" variant="contained" disabled={loading || form.perfis.length === 0}>
-              Cadastrar usuário
+              {editingUser ? 'Salvar alterações' : 'Cadastrar usuário'}
             </Button>
           </>
         }
@@ -243,20 +283,27 @@ export default function UserManagement({ client }: { client: UserManagementClien
           type="email"
           label="E-mail"
           value={form.email}
+          disabled={Boolean(editingUser)}
           onChange={(e) => setForm({ ...form, email: e.target.value })}
         />
-        <TextField
-          required
-          type="password"
-          inputProps={{ minLength: 12 }}
-          label="Senha inicial"
-          helperText="Mínimo de 12 caracteres"
-          value={form.senha}
-          onChange={(e) => setForm({ ...form, senha: e.target.value })}
-        />
+        {!editingUser && (
+          <TextField
+            required
+            type="password"
+            inputProps={{ minLength: 12 }}
+            label="Senha inicial"
+            helperText="Mínimo de 12 caracteres"
+            value={form.senha}
+            onChange={(e) => setForm({ ...form, senha: e.target.value })}
+          />
+        )}
         <Box>
           <Typography variant="subtitle2" gutterBottom>
             Perfis de acesso
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            Um usuário pode acumular vários papéis. Marque Administrador para conceder gestão total a quem já é
+            discipulador, gerente ou co-líder.
           </Typography>
           <Stack>
             {roles.map((role) => (

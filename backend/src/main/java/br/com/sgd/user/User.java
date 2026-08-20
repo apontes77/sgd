@@ -82,7 +82,10 @@ public class User {
 
   public void update(String nome, Set<Role> perfis, Boolean ativo) {
     if (nome != null && !nome.isBlank()) this.nome = nome;
-    if (perfis != null && !perfis.isEmpty()) this.perfis = new HashSet<>(perfis);
+    if (perfis != null && !perfis.isEmpty()) {
+      this.perfis.clear();
+      this.perfis.addAll(perfis);
+    }
     if (ativo != null) this.ativo = ativo;
     this.atualizadoEm = Instant.now();
   }

@@ -54,5 +54,5 @@ public class UserController {
       @NotEmpty Set<Role> perfis) {}
 
   public record UpdateUserRequest(
-      @Size(min = 1, max = 120) String nome, Set<Role> perfis, Boolean ativo) {}
+      @Size(min = 1, max = 120) String nome, @Size(min = 1) Set<Role> perfis, Boolean ativo) {}
 }
