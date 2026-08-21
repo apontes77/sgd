@@ -81,7 +81,7 @@ paths:
       tags: [Usuários]
       summary: Lista usuários
       description: Requer ADMIN.
-      parameters: [ { $ref: '#/components/parameters/Pagina' }, { $ref: '#/components/parameters/TamanhoPagina' }, { name: ativo, in: query, schema: { type: boolean } } ]
+      parameters: [ { $ref: '#/components/parameters/Pagina' }, { $ref: '#/components/parameters/TamanhoPagina' }, { name: ativo, in: query, schema: { type: boolean } }, { name: busca, in: query, schema: { type: string, maxLength: 120 }, description: Trecho do nome do usuário } ]
       responses: { '200': { $ref: '#/components/responses/PaginaUsuarios' }, '403': { $ref: '#/components/responses/Proibido' } }
     post:
       tags: [Usuários]

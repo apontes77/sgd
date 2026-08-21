@@ -1,4 +1,4 @@
-import { AddRounded, EditRounded, PersonAddRounded } from '@mui/icons-material'
+import { AddRounded, EditRounded, PersonAddRounded, SearchRounded } from '@mui/icons-material'
 import {
   Alert,
   Box,
@@ -36,7 +36,7 @@ import {
 } from '@/shared/ui'
 
 export interface UserManagementClient {
-  list(page: number, size: number, active?: boolean): Promise<Pagina<Usuario>>
+  list(page: number, size: number, active?: boolean, busca?: string): Promise<Pagina<Usuario>>
   create(body: { nome: string; email: string; senha: string; perfis: Perfil[] }): Promise<Usuario>
   update(id: number, body: { nome?: string; perfis?: Perfil[]; ativo?: boolean }): Promise<Usuario>
 }
@@ -59,6 +59,8 @@ export default function UserManagement({ client }: { client: UserManagementClien
     totalPages: 0,
   })
   const [activeFilter, setActiveFilter] = useState('')
+  const [busca, setBusca] = useState('')
+  const [buscaAplicada, setBuscaAplicada] = useState('')
   const [form, setForm] = useState(emptyForm)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<Usuario>()
@@ -71,7 +73,14 @@ export default function UserManagement({ client }: { client: UserManagementClien
     setLoading(true)
     setError('')
     try {
-      setResult(await client.list(page, result.size, activeFilter === '' ? undefined : activeFilter === 'true'))
+      setResult(
+        await client.list(
+          page,
+          result.size,
+          activeFilter === '' ? undefined : activeFilter === 'true',
+          buscaAplicada || undefined,
+        ),
+      )
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Não foi possível carregar os usuários.')
     } finally {
@@ -80,7 +89,12 @@ export default function UserManagement({ client }: { client: UserManagementClien
   }
   useEffect(() => {
     void load(0)
-  }, [activeFilter]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeFilter, buscaAplicada]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function aplicarBusca(event: FormEvent) {
+    event.preventDefault()
+    setBuscaAplicada(busca.trim())
+  }
 
   function openCreate() {
     setEditingUser(undefined)
@@ -163,24 +177,36 @@ export default function UserManagement({ client }: { client: UserManagementClien
           {message}
         </Alert>
       )}
-      <FilterToolbar>
+      <FilterToolbar component="form" onSubmit={aplicarBusca}>
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           justifyContent="space-between"
           alignItems={{ sm: 'center' }}
           gap={2}
         >
-          <TextField
-            select
-            label="Status"
-            value={activeFilter}
-            onChange={(e) => setActiveFilter(e.target.value)}
-            sx={{ minWidth: { xs: '100%', sm: 220 }, width: { xs: '100%', sm: 'auto' } }}
-          >
-            <MenuItem value="">Todos</MenuItem>
-            <MenuItem value="true">Ativos</MenuItem>
-            <MenuItem value="false">Inativos</MenuItem>
-          </TextField>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} flexWrap="wrap" useFlexGap sx={{ flex: 1 }}>
+            <TextField
+              label="Busca"
+              placeholder="Nome ou parte do nome"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              sx={{ minWidth: { xs: '100%', sm: 260 }, flex: { sm: 1 } }}
+            />
+            <TextField
+              select
+              label="Status"
+              value={activeFilter}
+              onChange={(e) => setActiveFilter(e.target.value)}
+              sx={{ minWidth: { xs: '100%', sm: 180 }, width: { xs: '100%', sm: 'auto' } }}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              <MenuItem value="true">Ativos</MenuItem>
+              <MenuItem value="false">Inativos</MenuItem>
+            </TextField>
+            <Button type="submit" variant="contained" startIcon={<SearchRounded />} disabled={loading}>
+              Buscar
+            </Button>
+          </Stack>
           <Typography variant="body2" color="text.secondary">
             {result.totalElements} usuário{result.totalElements === 1 ? '' : 's'}
           </Typography>

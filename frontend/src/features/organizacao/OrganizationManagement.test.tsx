@@ -123,4 +123,51 @@ describe('estrutura organizacional — co-líderes', () => {
       expect(JSON.parse(String(put?.[1]?.body))).toEqual({ usuarioIds: [3] })
     })
   })
+
+  it('filtra gerências e discipulados por trecho do nome', async () => {
+    const user = userEvent.setup()
+    const outraGerencia: Gerencia = {
+      id: 11,
+      nome: 'Gerência Norte',
+      sexo: 'MASCULINO',
+      faixasEtarias: ['DE_15_MAIS'],
+      gerenteId: 1,
+      ativo: true,
+    }
+    const outroDiscipulado: Discipulado = {
+      id: 21,
+      nome: 'Fonte de vida',
+      sexo: 'MASCULINO',
+      faixaEtaria: 'DE_15_MAIS',
+      gerenciaId: 11,
+      discipuladorId: 1,
+      discipuladorNome: 'Administrador',
+      ativo: true,
+      coLideres: [],
+    }
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/usuarios?')) return json(page([admin, discipulador, coLider, outroCoLider]))
+      if (url.includes('/gerencias?')) return json(page([gerencia, outraGerencia]))
+      if (url.includes('/discipulados?')) return json(page([discipulado, outroDiscipulado]))
+      throw new Error(`Requisição inesperada: ${url}`)
+    })
+
+    render(<OrganizationManagement />)
+    expect(await screen.findByText('Gerência Beatriz Ferreira')).toBeInTheDocument()
+    expect(screen.getByText('Gerência Norte')).toBeInTheDocument()
+
+    await user.type(screen.getByPlaceholderText('Nome ou parte do nome'), 'Beatriz')
+    expect(screen.getByText('Gerência Beatriz Ferreira')).toBeInTheDocument()
+    expect(screen.queryByText('Gerência Norte')).not.toBeInTheDocument()
+
+    await user.clear(screen.getByPlaceholderText('Nome ou parte do nome'))
+    await user.click(screen.getByRole('tab', { name: 'Discipulados' }))
+    expect(await screen.findByText('Luz do mundo')).toBeInTheDocument()
+    expect(screen.getByText('Fonte de vida')).toBeInTheDocument()
+
+    await user.type(screen.getByPlaceholderText('Nome ou parte do nome'), 'andressa')
+    expect(screen.getByText('Luz do mundo')).toBeInTheDocument()
+    expect(screen.queryByText('Fonte de vida')).not.toBeInTheDocument()
+  })
 })

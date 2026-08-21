@@ -127,6 +127,17 @@ describe('gestão de usuários', () => {
     )
     expect(await screen.findByText('Usuário atualizado com sucesso.')).toBeInTheDocument()
   })
+
+  it('busca usuários por trecho do nome', async () => {
+    const client = createClient({ ...emptyPage, content: [discipulador], totalElements: 1, totalPages: 1 })
+    render(<UserManagement client={client} />)
+    await waitFor(() => expect(client.list).toHaveBeenCalledWith(0, 20, undefined, undefined))
+
+    await userEvent.type(screen.getByLabelText('Busca'), 'João')
+    await userEvent.click(screen.getByRole('button', { name: 'Buscar' }))
+
+    await waitFor(() => expect(client.list).toHaveBeenCalledWith(0, 20, undefined, 'João'))
+  })
 })
 
 function createClient(page = emptyPage) {

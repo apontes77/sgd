@@ -28,9 +28,11 @@ export type {
 } from '@/shared/api/types'
 
 export const organizationApi = {
-  listarUsuarios: (page = 0, size = 100, ativo?: boolean) => {
+  listarUsuarios: (page = 0, size = 100, ativo?: boolean, busca?: string) => {
     const params = new URLSearchParams({ page: String(page), size: String(size) })
     if (ativo !== undefined) params.set('ativo', String(ativo))
+    const termo = busca?.trim()
+    if (termo) params.set('busca', termo)
     return request<Pagina<Usuario>>(`/usuarios?${params}`)
   },
   listarTodosUsuarios: async (ativo?: boolean) => {

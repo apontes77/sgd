@@ -1,5 +1,6 @@
 package br.com.sgd.user;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -79,6 +80,18 @@ class UserHttpTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"perfis\":[\"ADMIN\"]}"))
         .andExpect(status().isForbidden());
+  }
+
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  void listaUsuariosPorTrechoDoNome() throws Exception {
+    criarUsuario("João Líder", "DISCIPULADOR");
+    criarUsuario("Maria Gestora", "GERENTE");
+
+    mvc.perform(get("/api/v1/usuarios").param("busca", "joão"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[?(@.nome == 'João Líder')]").isNotEmpty())
+        .andExpect(jsonPath("$.content[?(@.nome == 'Maria Gestora')]").isEmpty());
   }
 
   private long criarUsuario(String nome, String perfil) throws Exception {

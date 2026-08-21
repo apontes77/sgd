@@ -1,6 +1,7 @@
 import { AddRounded } from '@mui/icons-material'
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Checkbox,
@@ -70,6 +71,16 @@ function formatFaixas(faixas: FaixaEtaria[]) {
   return faixas.map((faixa) => faixaEtariaLabel[faixa]).join(', ')
 }
 
+function normalizarBusca(valor: string) {
+  return valor.trim().toLocaleLowerCase('pt-BR')
+}
+
+function nomeContem(valor: string | undefined, termoBruto: string) {
+  const termo = normalizarBusca(termoBruto)
+  if (!termo) return true
+  return normalizarBusca(valor ?? '').includes(termo)
+}
+
 export default function OrganizationManagement() {
   const [tab, setTab] = useState(0)
   const [users, setUsers] = useState<Usuario[]>([])
@@ -83,8 +94,10 @@ export default function OrganizationManagement() {
   const [pendingDeactivate, setPendingDeactivate] = useState<Discipulado>()
   const [filtroGerenciaSexo, setFiltroGerenciaSexo] = useState<SexoOrganizacional | ''>('')
   const [filtroGerenciaFaixa, setFiltroGerenciaFaixa] = useState<FaixaEtaria | ''>('')
+  const [filtroGerenciaBusca, setFiltroGerenciaBusca] = useState('')
   const [filtroDiscipuladoSexo, setFiltroDiscipuladoSexo] = useState<SexoOrganizacional | ''>('')
   const [filtroDiscipuladoFaixa, setFiltroDiscipuladoFaixa] = useState<FaixaEtaria | ''>('')
+  const [filtroDiscipuladoBusca, setFiltroDiscipuladoBusca] = useState('')
   const [gerenciaSelecionadaId, setGerenciaSelecionadaId] = useState<number>()
 
   const load = useCallback(async () => {
@@ -115,9 +128,11 @@ export default function OrganizationManagement() {
       gerencias.filter((item) => {
         if (filtroGerenciaSexo && item.sexo !== filtroGerenciaSexo) return false
         if (filtroGerenciaFaixa && !item.faixasEtarias.includes(filtroGerenciaFaixa)) return false
-        return true
+        return (
+          nomeContem(item.nome, filtroGerenciaBusca) || nomeContem(userName(users, item.gerenteId), filtroGerenciaBusca)
+        )
       }),
-    [filtroGerenciaFaixa, filtroGerenciaSexo, gerencias],
+    [filtroGerenciaBusca, filtroGerenciaFaixa, filtroGerenciaSexo, gerencias, users],
   )
 
   const gerenciaSelecionada = useMemo(
@@ -135,9 +150,15 @@ export default function OrganizationManagement() {
       discipulados.filter((item) => {
         if (filtroDiscipuladoSexo && item.sexo !== filtroDiscipuladoSexo) return false
         if (filtroDiscipuladoFaixa && item.faixaEtaria !== filtroDiscipuladoFaixa) return false
-        return true
+        const gerenciaNome = gerencias.find((gerencia) => gerencia.id === item.gerenciaId)?.nome
+        const discipuladorNome = item.discipuladorNome ?? userName(users, item.discipuladorId)
+        return (
+          nomeContem(item.nome, filtroDiscipuladoBusca) ||
+          nomeContem(discipuladorNome, filtroDiscipuladoBusca) ||
+          nomeContem(gerenciaNome, filtroDiscipuladoBusca)
+        )
       }),
-    [discipulados, filtroDiscipuladoFaixa, filtroDiscipuladoSexo],
+    [discipulados, filtroDiscipuladoBusca, filtroDiscipuladoFaixa, filtroDiscipuladoSexo, gerencias, users],
   )
 
   useEffect(() => {
@@ -274,8 +295,10 @@ export default function OrganizationManagement() {
               selectedId={gerenciaSelecionada?.id}
               filtroSexo={filtroGerenciaSexo}
               filtroFaixa={filtroGerenciaFaixa}
+              filtroBusca={filtroGerenciaBusca}
               onFiltroSexo={setFiltroGerenciaSexo}
               onFiltroFaixa={setFiltroGerenciaFaixa}
+              onFiltroBusca={setFiltroGerenciaBusca}
               onSelect={(item) => setGerenciaSelecionadaId((atual) => (atual === item.id ? undefined : item.id))}
               onEdit={(item) => setModal({ kind: 'gerencia', item })}
             />
@@ -311,8 +334,10 @@ export default function OrganizationManagement() {
               idPrefix="discipulado"
               filtroSexo={filtroDiscipuladoSexo}
               filtroFaixa={filtroDiscipuladoFaixa}
+              filtroBusca={filtroDiscipuladoBusca}
               onFiltroSexo={setFiltroDiscipuladoSexo}
               onFiltroFaixa={setFiltroDiscipuladoFaixa}
+              onFiltroBusca={setFiltroDiscipuladoBusca}
             />
             <DiscipuladoList
               items={discipuladosFiltrados}
@@ -372,17 +397,29 @@ function OrganizacaoFiltros({
   idPrefix,
   filtroSexo,
   filtroFaixa,
+  filtroBusca,
   onFiltroSexo,
   onFiltroFaixa,
+  onFiltroBusca,
 }: {
   idPrefix: string
   filtroSexo: SexoOrganizacional | ''
   filtroFaixa: FaixaEtaria | ''
+  filtroBusca: string
   onFiltroSexo: (value: SexoOrganizacional | '') => void
   onFiltroFaixa: (value: FaixaEtaria | '') => void
+  onFiltroBusca: (value: string) => void
 }) {
   return (
     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ p: 2 }}>
+      <TextField
+        size="small"
+        label="Busca"
+        placeholder="Nome ou parte do nome"
+        value={filtroBusca}
+        onChange={(event) => onFiltroBusca(event.target.value)}
+        sx={{ minWidth: { xs: '100%', sm: 240 }, flex: { sm: 1 } }}
+      />
       <FormControl size="small" sx={{ minWidth: 160 }}>
         <InputLabel id={`${idPrefix}-filtro-sexo-label`}>Sexo</InputLabel>
         <Select
@@ -422,8 +459,10 @@ function GerenciaList({
   selectedId,
   filtroSexo,
   filtroFaixa,
+  filtroBusca,
   onFiltroSexo,
   onFiltroFaixa,
+  onFiltroBusca,
   onSelect,
   onEdit,
 }: {
@@ -432,8 +471,10 @@ function GerenciaList({
   selectedId?: number
   filtroSexo: SexoOrganizacional | ''
   filtroFaixa: FaixaEtaria | ''
+  filtroBusca: string
   onFiltroSexo: (value: SexoOrganizacional | '') => void
   onFiltroFaixa: (value: FaixaEtaria | '') => void
+  onFiltroBusca: (value: string) => void
   onSelect: (item: Gerencia) => void
   onEdit: (item: Gerencia) => void
 }) {
@@ -443,8 +484,10 @@ function GerenciaList({
         idPrefix="gerencia"
         filtroSexo={filtroSexo}
         filtroFaixa={filtroFaixa}
+        filtroBusca={filtroBusca}
         onFiltroSexo={onFiltroSexo}
         onFiltroFaixa={onFiltroFaixa}
+        onFiltroBusca={onFiltroBusca}
       />
       <List disablePadding>
         {items.length === 0 ? (
@@ -980,24 +1023,26 @@ function UserSelect({
   fullWidth?: boolean
   onChange: (value: string) => void
 }) {
-  const labelId = `${label.toLowerCase().replaceAll(' ', '-')}-label`
+  const selecionado = users.find((user) => String(user.id) === value) ?? null
+  const rotulo = (user: Usuario) => `${user.nome} · ${user.perfis.map((perfil) => roleLabel[perfil]).join(', ')}`
   return (
-    <FormControl required={required} disabled={disabled} fullWidth={fullWidth}>
-      <InputLabel id={labelId}>{label}</InputLabel>
-      <Select
-        labelId={labelId}
-        label={label}
-        value={value}
-        displayEmpty={!required}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        {!required && <MenuItem value="">Nenhum</MenuItem>}
-        {users.map((user) => (
-          <MenuItem key={user.id} value={String(user.id)}>
-            {user.nome} · {user.perfis.map((perfil) => roleLabel[perfil]).join(', ')}
-          </MenuItem>
-        ))}
-      </Select>
-    </FormControl>
+    <Autocomplete
+      disabled={disabled}
+      fullWidth={fullWidth}
+      options={users}
+      value={selecionado}
+      onChange={(_, user) => onChange(user ? String(user.id) : '')}
+      getOptionLabel={rotulo}
+      isOptionEqualToValue={(option, current) => option.id === current.id}
+      filterOptions={(options, state) => {
+        const termo = normalizarBusca(state.inputValue)
+        if (!termo || (selecionado && normalizarBusca(rotulo(selecionado)) === termo)) return options
+        return options.filter((user) => nomeContem(user.nome, termo))
+      }}
+      noOptionsText="Nenhum usuário encontrado"
+      renderInput={(params) => (
+        <TextField {...params} required={required} label={label} placeholder="Pesquisar por nome" />
+      )}
+    />
   )
 }

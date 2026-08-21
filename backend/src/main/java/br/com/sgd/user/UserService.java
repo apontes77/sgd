@@ -33,8 +33,14 @@ public class UserService {
   }
 
   @Transactional(readOnly = true)
-  public Page<User> list(Boolean ativo, Pageable pageable) {
-    return ativo == null ? users.findAll(pageable) : users.findAllByAtivo(ativo, pageable);
+  public Page<User> list(Boolean ativo, String busca, Pageable pageable) {
+    String termo = busca == null || busca.isBlank() ? null : busca.trim();
+    if (termo == null) {
+      return ativo == null ? users.findAll(pageable) : users.findAllByAtivo(ativo, pageable);
+    }
+    return ativo == null
+        ? users.findByNomeContainingIgnoreCase(termo, pageable)
+        : users.findByAtivoAndNomeContainingIgnoreCase(ativo, termo, pageable);
   }
 
   public User create(String nome, String email, String password, Set<Role> perfis) {

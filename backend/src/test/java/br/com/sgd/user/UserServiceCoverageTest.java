@@ -89,11 +89,17 @@ class UserServiceCoverageTest {
     Page<User> page = new PageImpl<>(List.of());
     when(users.findAll(pageable)).thenReturn(page);
     when(users.findAllByAtivo(true, pageable)).thenReturn(page);
+    when(users.findByNomeContainingIgnoreCase("joao", pageable)).thenReturn(page);
+    when(users.findByAtivoAndNomeContainingIgnoreCase(true, "joao", pageable)).thenReturn(page);
 
-    assertThat(service.list(null, pageable)).isSameAs(page);
-    assertThat(service.list(true, pageable)).isSameAs(page);
+    assertThat(service.list(null, null, pageable)).isSameAs(page);
+    assertThat(service.list(true, "  ", pageable)).isSameAs(page);
+    assertThat(service.list(null, " joao ", pageable)).isSameAs(page);
+    assertThat(service.list(true, "joao", pageable)).isSameAs(page);
     verify(users).findAll(pageable);
     verify(users).findAllByAtivo(true, pageable);
+    verify(users).findByNomeContainingIgnoreCase("joao", pageable);
+    verify(users).findByAtivoAndNomeContainingIgnoreCase(true, "joao", pageable);
   }
 
   private UserService service(
