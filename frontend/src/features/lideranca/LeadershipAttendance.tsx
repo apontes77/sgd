@@ -3,6 +3,10 @@ import {
   Alert,
   Box,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   InputLabel,
   MenuItem,
@@ -18,12 +22,15 @@ import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react
 
 import {
   type ChamadaLiderancaResponse,
+  type ConflitoPresencaLideranca,
   type DiscipuladoChamadaLideranca,
   type FiltroSexoLideranca,
   liderancaApi,
+  type RegistroPresencaDoDia,
   type SalvarChamadaLiderancaRequest,
   type SituacaoPresencaLideranca,
 } from '@/features/lideranca/api'
+import { ApiError } from '@/shared/api/httpClient'
 import { FilterToolbar, PageHeader, SectionCard } from '@/shared/ui'
 
 const hojeLocal = () => {
@@ -39,6 +46,10 @@ const SEXO_OPCOES: { value: FiltroSexoLideranca; label: string }[] = [
 
 type PresencasState = Record<number, Record<number, SituacaoPresencaLideranca | null>>
 type ObservacoesState = Record<number, string>
+type PendenciaConfirmacao = {
+  payload: SalvarChamadaLiderancaRequest['discipulados']
+  conflitos: ConflitoPresencaLideranca[]
+}
 
 function normalizarBusca(valor: string) {
   return valor.trim().toLocaleLowerCase('pt-BR')
@@ -49,6 +60,89 @@ function combinaBusca(d: DiscipuladoChamadaLideranca, termo: string) {
   if (!t) return true
   if (normalizarBusca(d.discipuladoNome).includes(t)) return true
   return d.presencas.some((p) => normalizarBusca(p.nome).includes(t))
+}
+
+function rotuloSituacao(situacao: SituacaoPresencaLideranca) {
+  return situacao === 'PRESENTE' ? 'Presente' : 'Ausente'
+}
+
+function situacaoDestaLinha(
+  discipuladoId: number,
+  situacao: SituacaoPresencaLideranca | null,
+  registroDoDia?: RegistroPresencaDoDia | null,
+) {
+  if (registroDoDia && registroDoDia.discipuladoId !== discipuladoId) return null
+  return situacao
+}
+
+function indexarRegistrosPersistidos(discipulados: DiscipuladoChamadaLideranca[]) {
+  const registros = new Map<number, RegistroPresencaDoDia>()
+  for (const d of discipulados) {
+    for (const p of d.presencas) {
+      if (p.registroDoDia && !registros.has(p.usuarioId)) registros.set(p.usuarioId, p.registroDoDia)
+    }
+  }
+  return registros
+}
+
+function nomeDoUsuario(discipulados: DiscipuladoChamadaLideranca[], usuarioId: number) {
+  return (
+    discipulados.flatMap((d) => d.presencas).find((p) => p.usuarioId === usuarioId)?.nome ??
+    'Este discipulador/co-líder'
+  )
+}
+
+function conflitosDoPayload(
+  payload: SalvarChamadaLiderancaRequest['discipulados'],
+  discipulados: DiscipuladoChamadaLideranca[],
+): ConflitoPresencaLideranca[] {
+  const persistidos = indexarRegistrosPersistidos(discipulados)
+  const conflitos: ConflitoPresencaLideranca[] = []
+  const vistos = new Set<number>()
+  for (const d of payload) {
+    for (const p of d.presencas) {
+      const existente = persistidos.get(p.usuarioId)
+      if (!existente) continue
+      if (existente.discipuladoId === d.discipuladoId && existente.situacao === p.situacao) continue
+      if (!vistos.add(p.usuarioId)) continue
+      conflitos.push({
+        usuarioId: p.usuarioId,
+        nome: nomeDoUsuario(discipulados, p.usuarioId),
+        discipuladoId: existente.discipuladoId,
+        discipuladoNome: existente.discipuladoNome,
+        situacao: existente.situacao,
+      })
+    }
+  }
+  return conflitos
+}
+
+function conflitosDoErro(erro: unknown): ConflitoPresencaLideranca[] | undefined {
+  if (!(erro instanceof ApiError) || erro.status !== 409 || !Array.isArray(erro.body?.conflitos)) return undefined
+  const conflitos = erro.body.conflitos.filter(isConflitoPresenca)
+  return conflitos.length > 0 ? conflitos : undefined
+}
+
+function isConflitoPresenca(valor: unknown): valor is ConflitoPresencaLideranca {
+  if (!valor || typeof valor !== 'object') return false
+  const item = valor as Record<string, unknown>
+  return (
+    typeof item.usuarioId === 'number' &&
+    typeof item.nome === 'string' &&
+    typeof item.discipuladoId === 'number' &&
+    typeof item.discipuladoNome === 'string' &&
+    (item.situacao === 'PRESENTE' || item.situacao === 'AUSENTE')
+  )
+}
+
+function semUsuarios(
+  payload: SalvarChamadaLiderancaRequest['discipulados'],
+  usuarioIds: Set<number>,
+): SalvarChamadaLiderancaRequest['discipulados'] {
+  return payload.map((d) => ({
+    ...d,
+    presencas: d.presencas.filter((p) => !usuarioIds.has(p.usuarioId)),
+  }))
 }
 
 function discipuladosParaSalvar(
@@ -83,6 +177,7 @@ export default function LeadershipAttendance() {
   const [erro, setErro] = useState('')
   const [sucesso, setSucesso] = useState('')
   const [alterado, setAlterado] = useState(false)
+  const [pendencia, setPendencia] = useState<PendenciaConfirmacao>()
 
   const aplicarGrade = useCallback((resposta: ChamadaLiderancaResponse) => {
     setGrade(resposta)
@@ -93,7 +188,7 @@ export default function LeadershipAttendance() {
       nextObs[d.discipuladoId] = d.observacao ?? ''
       nextPresencas[d.discipuladoId] = {}
       for (const p of d.presencas) {
-        nextPresencas[d.discipuladoId][p.usuarioId] = p.situacao
+        nextPresencas[d.discipuladoId][p.usuarioId] = situacaoDestaLinha(d.discipuladoId, p.situacao, p.registroDoDia)
       }
     }
     setPresencas(nextPresencas)
@@ -130,35 +225,64 @@ export default function LeadershipAttendance() {
     })
   }, [grade, filtroSexo, buscaNome])
 
+  const registrosPersistidos = useMemo(() => indexarRegistrosPersistidos(grade?.discipulados ?? []), [grade])
+
   function marcar(discipuladoId: number, usuarioId: number, situacao: SituacaoPresencaLideranca) {
-    setPresencas((prev) => ({
-      ...prev,
-      [discipuladoId]: { ...prev[discipuladoId], [usuarioId]: situacao },
-    }))
+    setPresencas((prev) => {
+      const next: PresencasState = {}
+      for (const [id, situacoes] of Object.entries(prev)) {
+        const atual = Number(id)
+        next[atual] =
+          atual === discipuladoId ? { ...situacoes, [usuarioId]: situacao } : { ...situacoes, [usuarioId]: null }
+      }
+      if (!next[discipuladoId]) next[discipuladoId] = { [usuarioId]: situacao }
+      return next
+    })
     setAlterado(true)
     setSucesso('')
   }
 
-  async function salvar(event: FormEvent) {
-    event.preventDefault()
+  async function persistir(
+    payloadDiscipulados: SalvarChamadaLiderancaRequest['discipulados'],
+    confirmarAtualizacao: boolean,
+  ) {
     if (!grade) return
+    setPendencia(undefined)
     setErro('')
     setSucesso('')
-    const payloadDiscipulados = discipuladosParaSalvar(discipuladosVisiveis, presencas, observacoes)
     setSalvando(true)
     try {
       const resposta = await liderancaApi.salvar({
         data: grade.data,
         observacaoGeral: observacaoGeral.trim() || null,
         discipulados: payloadDiscipulados,
+        confirmarAtualizacao: confirmarAtualizacao || undefined,
       })
       aplicarGrade(resposta)
       setSucesso('Chamada de liderança salva.')
     } catch (e) {
+      const conflitos = conflitosDoErro(e)
+      if (conflitos) {
+        setPendencia({ payload: payloadDiscipulados, conflitos })
+        return
+      }
       setErro(e instanceof Error ? e.message : 'Não foi possível salvar a chamada.')
     } finally {
       setSalvando(false)
     }
+  }
+
+  async function salvar(event: FormEvent) {
+    event.preventDefault()
+    if (!grade) return
+    const payloadDiscipulados = discipuladosParaSalvar(discipuladosVisiveis, presencas, observacoes)
+    const conflitos = conflitosDoPayload(payloadDiscipulados, grade.discipulados)
+    if (conflitos.length > 0) {
+      setPendencia({ payload: payloadDiscipulados, conflitos })
+      setSucesso('')
+      return
+    }
+    await persistir(payloadDiscipulados, false)
   }
 
   const mensagemVazia =
@@ -170,7 +294,7 @@ export default function LeadershipAttendance() {
     <Stack spacing={3} component="form" onSubmit={salvar}>
       <PageHeader
         title="Chamada de liderança"
-        description="Registre a presença dos discipuladores e co-líderes por discipulado na sexta-feira. É possível salvar parcialmente e continuar depois."
+        description="Registre a presença dos discipuladores e co-líderes por discipulado na sexta-feira. Se a chamada da pessoa já tiver sido salva, outro admin poderá atualizar depois de confirmar. É possível salvar parcialmente e continuar depois."
         eyebrow="Operações"
       />
       <FilterToolbar>
@@ -239,6 +363,7 @@ export default function LeadershipAttendance() {
                 setSucesso('')
               }}
               situacoes={presencas[d.discipuladoId] ?? {}}
+              registrosPersistidos={registrosPersistidos}
               onMarcar={(usuarioId, situacao) => marcar(d.discipuladoId, usuarioId, situacao)}
             />
           ))}
@@ -259,6 +384,51 @@ export default function LeadershipAttendance() {
           </SectionCard>
         </Stack>
       )}
+      <Dialog
+        open={Boolean(pendencia)}
+        onClose={() => setPendencia(undefined)}
+        fullWidth
+        maxWidth="sm"
+        transitionDuration={0}
+      >
+        <DialogTitle>Chamada já salva</DialogTitle>
+        <DialogContent>
+          <Typography color="text.secondary">
+            Este discipulador/co-líder já teve chamada salva. Tem certeza que quer atualizar essa chamada?
+          </Typography>
+          {pendencia && (
+            <Stack component="ul" spacing={0.5} sx={{ pl: 2.5, mt: 2, mb: 0 }}>
+              {pendencia.conflitos.map((conflito) => (
+                <Typography key={conflito.usuarioId} component="li">
+                  {conflito.nome} — {rotuloSituacao(conflito.situacao)} no discipulado {conflito.discipuladoNome}
+                </Typography>
+              ))}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            type="button"
+            onClick={() => {
+              if (!pendencia) return
+              const ids = new Set(pendencia.conflitos.map((c) => c.usuarioId))
+              void persistir(semUsuarios(pendencia.payload, ids), false)
+            }}
+          >
+            Manter o que já estava
+          </Button>
+          <Button
+            type="button"
+            variant="contained"
+            onClick={() => {
+              if (!pendencia) return
+              void persistir(pendencia.payload, true)
+            }}
+          >
+            Atualizar chamada
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   )
 }
@@ -269,6 +439,7 @@ function DiscipuladoCard({
   observacao,
   onObservacao,
   situacoes,
+  registrosPersistidos,
   onMarcar,
 }: {
   item: DiscipuladoChamadaLideranca
@@ -276,6 +447,7 @@ function DiscipuladoCard({
   observacao: string
   onObservacao: (valor: string) => void
   situacoes: Record<number, SituacaoPresencaLideranca | null>
+  registrosPersistidos: Map<number, RegistroPresencaDoDia>
   onMarcar: (usuarioId: number, situacao: SituacaoPresencaLideranca) => void
 }) {
   return (
@@ -297,9 +469,11 @@ function DiscipuladoCard({
         <Stack spacing={1.25}>
           {item.presencas.map((p) => {
             const situacao = situacoes[p.usuarioId] ?? null
+            const registro = registrosPersistidos.get(p.usuarioId)
+            const avisoId = `aviso-${item.discipuladoId}-${p.usuarioId}`
             return (
               <Stack
-                key={p.usuarioId}
+                key={`${p.usuarioId}-${p.papel}`}
                 direction={{ xs: 'column', sm: 'row' }}
                 spacing={1}
                 alignItems={{ sm: 'center' }}
@@ -310,6 +484,13 @@ function DiscipuladoCard({
                   <Typography variant="caption" color="text.secondary">
                     {p.papel === 'DISCIPULADOR' ? 'Discipulador' : 'Co-líder'}
                   </Typography>
+                  {registro && (
+                    <Typography id={avisoId} variant="caption" color="text.secondary" display="block">
+                      {registro.discipuladoId === item.discipuladoId
+                        ? `Chamada já salva nesta sexta como ${rotuloSituacao(registro.situacao)}`
+                        : `Chamada já salva em ${registro.discipuladoNome} nesta sexta`}
+                    </Typography>
+                  )}
                 </Box>
                 <Stack direction="row" spacing={1}>
                   <Button
@@ -317,6 +498,7 @@ function DiscipuladoCard({
                     variant={situacao === 'PRESENTE' ? 'contained' : 'outlined'}
                     color="success"
                     startIcon={<CheckRounded />}
+                    aria-describedby={registro ? avisoId : undefined}
                     onClick={() => onMarcar(p.usuarioId, 'PRESENTE')}
                     sx={{
                       bgcolor: situacao === 'PRESENTE' ? undefined : (theme) => alpha(theme.palette.success.main, 0.04),

@@ -70,6 +70,11 @@ public class ChamadaLiderancaDiscipulado {
     }
   }
 
+  public void removerPresenca(Long usuarioId) {
+    if (usuarioId == null) return;
+    presencas.removeIf(presenca -> usuarioId.equals(presenca.getUsuario().getId()));
+  }
+
   public void mesclarPresencas(List<PresencaLideranca> novas) {
     if (novas == null || novas.isEmpty()) return;
     for (PresencaLideranca nova : novas) {

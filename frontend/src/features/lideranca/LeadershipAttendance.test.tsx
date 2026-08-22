@@ -179,4 +179,143 @@ describe('chamada de liderança', () => {
     expect(screen.queryByText('Beta')).not.toBeInTheDocument()
     expect(screen.queryByText('Líder Beta')).not.toBeInTheDocument()
   })
+
+  it('pede confirmação para atualizar chamada já salva e envia o flag ao confirmar', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const gradeComRegistro = {
+      id: 1,
+      data: '2026-08-14',
+      observacaoGeral: null,
+      discipulados: [
+        {
+          discipuladoId: 10,
+          discipuladoNome: 'Alpha',
+          sexo: 'MASCULINO',
+          gerenciaNome: 'Centro',
+          observacao: null,
+          presencas: [
+            {
+              usuarioId: 1,
+              nome: 'Líder Alpha',
+              papel: 'DISCIPULADOR',
+              situacao: 'PRESENTE',
+              registroDoDia: { discipuladoId: 10, discipuladoNome: 'Alpha', situacao: 'PRESENTE' },
+            },
+          ],
+        },
+      ],
+    }
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input)
+      if (url.includes('/chamadas-lideranca') && (!init?.method || init.method === 'GET')) {
+        return new Response(JSON.stringify(gradeComRegistro), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      if (url.includes('/chamadas-lideranca') && init?.method === 'PUT') {
+        return new Response(
+          JSON.stringify({
+            ...gradeComRegistro,
+            discipulados: [
+              {
+                ...gradeComRegistro.discipulados[0],
+                presencas: [
+                  {
+                    ...gradeComRegistro.discipulados[0].presencas[0],
+                    situacao: 'AUSENTE',
+                    registroDoDia: { discipuladoId: 10, discipuladoNome: 'Alpha', situacao: 'AUSENTE' },
+                  },
+                ],
+              },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        )
+      }
+      return new Response('not found', { status: 404 })
+    })
+
+    render(<LeadershipAttendance />)
+    expect(await screen.findByText('Chamada já salva nesta sexta como Presente')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Ausente' }))
+    await user.click(screen.getByRole('button', { name: /Salvar/i }))
+
+    expect(await screen.findByRole('dialog', { name: 'Chamada já salva' })).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Este discipulador/co-líder já teve chamada salva. Tem certeza que quer atualizar essa chamada?',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Líder Alpha — Presente no discipulado Alpha/)).toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false)
+
+    await user.click(screen.getByRole('button', { name: 'Atualizar chamada' }))
+    await waitFor(() => expect(screen.getByText('Chamada de liderança salva.')).toBeInTheDocument())
+    const putCall = fetchMock.mock.calls.find(([, init]) => init?.method === 'PUT')
+    const payload = JSON.parse(String(putCall?.[1]?.body))
+    expect(payload.confirmarAtualizacao).toBe(true)
+    expect(payload.discipulados[0].presencas).toEqual([{ usuarioId: 1, papel: 'DISCIPULADOR', situacao: 'AUSENTE' }])
+  })
+
+  it('mantém o registro anterior quando o admin recusa a atualização', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const gradeComRegistro = {
+      id: 1,
+      data: '2026-08-14',
+      observacaoGeral: null,
+      discipulados: [
+        {
+          discipuladoId: 10,
+          discipuladoNome: 'Alpha',
+          sexo: 'MASCULINO',
+          gerenciaNome: 'Centro',
+          observacao: null,
+          presencas: [
+            {
+              usuarioId: 1,
+              nome: 'Líder Alpha',
+              papel: 'DISCIPULADOR',
+              situacao: 'PRESENTE',
+              registroDoDia: { discipuladoId: 10, discipuladoNome: 'Alpha', situacao: 'PRESENTE' },
+            },
+            { usuarioId: 2, nome: 'Co Alpha', papel: 'CO_LIDER', situacao: null },
+          ],
+        },
+      ],
+    }
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input)
+      if (url.includes('/chamadas-lideranca') && (!init?.method || init.method === 'GET')) {
+        return new Response(JSON.stringify(gradeComRegistro), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      if (url.includes('/chamadas-lideranca') && init?.method === 'PUT') {
+        return new Response(JSON.stringify(gradeComRegistro), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      return new Response('not found', { status: 404 })
+    })
+
+    render(<LeadershipAttendance />)
+    expect(await screen.findByText('Líder Alpha')).toBeInTheDocument()
+
+    await user.click(screen.getAllByRole('button', { name: 'Ausente' })[0])
+    await user.click(screen.getAllByRole('button', { name: 'Presente' })[1])
+    await user.click(screen.getByRole('button', { name: /Salvar/i }))
+
+    expect(await screen.findByRole('dialog', { name: 'Chamada já salva' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Manter o que já estava' }))
+    await waitFor(() => expect(screen.getByText('Chamada de liderança salva.')).toBeInTheDocument())
+
+    const putCall = fetchMock.mock.calls.find(([, init]) => init?.method === 'PUT')
+    const payload = JSON.parse(String(putCall?.[1]?.body))
+    expect(payload.confirmarAtualizacao).toBeUndefined()
+    expect(payload.discipulados[0].presencas).toEqual([{ usuarioId: 2, papel: 'CO_LIDER', situacao: 'PRESENTE' }])
+  })
 })

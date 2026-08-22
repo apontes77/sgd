@@ -65,6 +65,8 @@ public class ChamadaLiderancaService {
       }
     }
 
+    Map<Long, RegistroDoDiaResponse> registrosDoDia = ChamadaLiderancaConflitos.indexar(salva);
+
     List<DiscipuladoChamadaResponse> discipuladoResponses = new ArrayList<>();
     for (Discipulado d : ativos) {
       ChamadaLiderancaDiscipulado item = itensSalvos.get(d.getId());
@@ -75,7 +77,8 @@ public class ChamadaLiderancaService {
         }
       }
       discipuladoResponses.add(
-          montarDiscipulado(d, item == null ? null : item.getObservacao(), situacoes));
+          montarDiscipulado(
+              d, item == null ? null : item.getObservacao(), situacoes, registrosDoDia));
     }
 
     return new ChamadaLiderancaResponse(
@@ -100,9 +103,18 @@ public class ChamadaLiderancaService {
         discipulados.findAllByAtivoTrue().stream()
             .collect(Collectors.toMap(Discipulado::getId, d -> d, (a, b) -> a, LinkedHashMap::new));
 
+    List<ChamadaLiderancaDiscipulado> novosItens =
+        montarItensDoPayload(comando.discipulados(), ativosPorId);
+    aplicarPresencas(chamada, novosItens, comando.confirmarAtualizacao(), agora);
+    chamadas.save(chamada);
+    return consultar(ator, comando.data());
+  }
+
+  private List<ChamadaLiderancaDiscipulado> montarItensDoPayload(
+      List<DiscipuladoChamadaCommand> comandos, Map<Long, Discipulado> ativosPorId) {
     Set<Long> vistos = new HashSet<>();
     List<ChamadaLiderancaDiscipulado> novosItens = new ArrayList<>();
-    for (DiscipuladoChamadaCommand itemCmd : comando.discipulados()) {
+    for (DiscipuladoChamadaCommand itemCmd : comandos) {
       if (itemCmd == null || itemCmd.discipuladoId() == null)
         throw badRequest("Cada item deve informar o discipulado.");
       if (!vistos.add(itemCmd.discipuladoId()))
@@ -119,10 +131,24 @@ public class ChamadaLiderancaService {
       item.substituirPresencas(presencas);
       novosItens.add(item);
     }
+    return novosItens;
+  }
 
+  private static void aplicarPresencas(
+      ChamadaLideranca chamada,
+      List<ChamadaLiderancaDiscipulado> novosItens,
+      boolean confirmarAtualizacao,
+      Instant agora) {
+    ChamadaLiderancaConflitos.exigirSemDuplicidadeNoPayload(novosItens);
+    List<ConflitoPresenca> conflitos = ChamadaLiderancaConflitos.detectar(chamada, novosItens);
+    if (!conflitos.isEmpty() && !confirmarAtualizacao) {
+      throw new AtualizacaoPresencaNaoConfirmadaException(conflitos);
+    }
+    if (confirmarAtualizacao) {
+      chamada.removerPresencasDeOutrosDiscipulados(
+          ChamadaLiderancaConflitos.destinosDoPayload(novosItens));
+    }
     chamada.mesclarItens(novosItens, agora);
-    chamadas.save(chamada);
-    return consultar(ator, comando.data());
   }
 
   private List<PresencaLideranca> montarPresencas(
@@ -189,27 +215,34 @@ public class ChamadaLiderancaService {
   }
 
   private static DiscipuladoChamadaResponse montarDiscipulado(
-      Discipulado d, String observacao, Map<Long, SituacaoFrequencia> situacoes) {
+      Discipulado d,
+      String observacao,
+      Map<Long, SituacaoFrequencia> situacoes,
+      Map<Long, RegistroDoDiaResponse> registrosDoDia) {
     List<PresencaResponse> presencas = new ArrayList<>();
     User lider = d.getDiscipulador();
-    presencas.add(
-        new PresencaResponse(
-            lider.getId(),
-            lider.getNome(),
-            PapelLideranca.DISCIPULADOR,
-            situacoes.get(lider.getId())));
+    presencas.add(presencaDaGrade(lider, PapelLideranca.DISCIPULADOR, situacoes, registrosDoDia));
     d.getCoLideres().stream()
         .sorted(Comparator.comparing(User::getNome, String.CASE_INSENSITIVE_ORDER))
         .forEach(
             co ->
                 presencas.add(
-                    new PresencaResponse(
-                        co.getId(),
-                        co.getNome(),
-                        PapelLideranca.CO_LIDER,
-                        situacoes.get(co.getId()))));
+                    presencaDaGrade(co, PapelLideranca.CO_LIDER, situacoes, registrosDoDia)));
     return new DiscipuladoChamadaResponse(
         d.getId(), d.getNome(), d.getSexo(), d.getGerencia().getNome(), observacao, presencas);
+  }
+
+  private static PresencaResponse presencaDaGrade(
+      User usuario,
+      PapelLideranca papel,
+      Map<Long, SituacaoFrequencia> situacoes,
+      Map<Long, RegistroDoDiaResponse> registrosDoDia) {
+    return new PresencaResponse(
+        usuario.getId(),
+        usuario.getNome(),
+        papel,
+        situacoes.get(usuario.getId()),
+        registrosDoDia.get(usuario.getId()));
   }
 
   private static void exigirAdmin(User ator) {
@@ -226,7 +259,10 @@ public class ChamadaLiderancaService {
   }
 
   public record SalvarChamadaLiderancaCommand(
-      LocalDate data, String observacaoGeral, List<DiscipuladoChamadaCommand> discipulados) {}
+      LocalDate data,
+      String observacaoGeral,
+      List<DiscipuladoChamadaCommand> discipulados,
+      boolean confirmarAtualizacao) {}
 
   public record DiscipuladoChamadaCommand(
       Long discipuladoId, String observacao, List<PresencaCommand> presencas) {}
@@ -249,5 +285,33 @@ public class ChamadaLiderancaService {
       List<PresencaResponse> presencas) {}
 
   public record PresencaResponse(
-      long usuarioId, String nome, PapelLideranca papel, SituacaoFrequencia situacao) {}
+      long usuarioId,
+      String nome,
+      PapelLideranca papel,
+      SituacaoFrequencia situacao,
+      RegistroDoDiaResponse registroDoDia) {}
+
+  public record RegistroDoDiaResponse(
+      long discipuladoId, String discipuladoNome, SituacaoFrequencia situacao) {}
+
+  public record ConflitoPresenca(
+      long usuarioId,
+      String nome,
+      long discipuladoId,
+      String discipuladoNome,
+      SituacaoFrequencia situacao) {}
+
+  public static class AtualizacaoPresencaNaoConfirmadaException extends RuntimeException {
+    private final List<ConflitoPresenca> conflitos;
+
+    AtualizacaoPresencaNaoConfirmadaException(List<ConflitoPresenca> conflitos) {
+      super(
+          "Este discipulador/co-líder já teve chamada salva. Tem certeza que quer atualizar essa chamada?");
+      this.conflitos = List.copyOf(conflitos);
+    }
+
+    public List<ConflitoPresenca> getConflitos() {
+      return conflitos;
+    }
+  }
 }

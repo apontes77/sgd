@@ -225,6 +225,164 @@ class ChamadaLiderancaHttpTest {
   }
 
   @Test
+  void pedeConfirmacaoAoAtualizarPresencaJaSalvaNoMesmoDia() throws Exception {
+    Discipulado beta = criarBetaComMesmoLider();
+    String token = token(admin);
+
+    mvc.perform(
+            put("/api/v1/chamadas-lideranca")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(payloadPresenca(alpha.getId(), lider.getId(), "DISCIPULADOR", "PRESENTE")))
+        .andExpect(status().isOk());
+
+    JsonNode grade = consultar(token);
+    JsonNode presencaNoBeta = presenca(discipuladoPorNome(grade, "Beta CL"), lider.getId());
+    assertThat(presencaNoBeta.get("situacao").isNull()).isTrue();
+    assertThat(presencaNoBeta.get("registroDoDia").get("discipuladoNome").asText())
+        .isEqualTo("Alpha CL");
+    assertThat(presencaNoBeta.get("registroDoDia").get("situacao").asText()).isEqualTo("PRESENTE");
+
+    mvc.perform(
+            put("/api/v1/chamadas-lideranca")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(payloadPresenca(beta.getId(), lider.getId(), "DISCIPULADOR", "AUSENTE")))
+        .andExpect(status().isConflict())
+        .andExpect(
+            jsonPath("$.detail")
+                .value(org.hamcrest.Matchers.containsString("já teve chamada salva")))
+        .andExpect(jsonPath("$.conflitos[0].usuarioId").value(lider.getId()))
+        .andExpect(jsonPath("$.conflitos[0].discipuladoNome").value("Alpha CL"))
+        .andExpect(jsonPath("$.conflitos[0].situacao").value("PRESENTE"));
+
+    JsonNode depoisDaRecusa = consultar(token);
+    assertThat(situacao(discipuladoPorNome(depoisDaRecusa, "Alpha CL"), lider.getId()))
+        .isEqualTo("PRESENTE");
+    assertThat(situacao(discipuladoPorNome(depoisDaRecusa, "Beta CL"), lider.getId())).isNull();
+  }
+
+  @Test
+  void outroAdminAtualizaPresencaAposConfirmacao() throws Exception {
+    User outroAdmin = usuario("Admin 2", "admin2-cl-" + UUID.randomUUID(), Role.ADMIN);
+    String tokenAdmin2 = token(outroAdmin);
+
+    mvc.perform(
+            put("/api/v1/chamadas-lideranca")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(admin)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(payloadPresenca(alpha.getId(), lider.getId(), "DISCIPULADOR", "PRESENTE")))
+        .andExpect(status().isOk());
+
+    mvc.perform(
+            put("/api/v1/chamadas-lideranca")
+                .header(HttpHeaders.AUTHORIZATION, bearer(tokenAdmin2))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    payloadPresenca(
+                        alpha.getId(), lider.getId(), "DISCIPULADOR", "AUSENTE", false)))
+        .andExpect(status().isConflict());
+
+    mvc.perform(
+            put("/api/v1/chamadas-lideranca")
+                .header(HttpHeaders.AUTHORIZATION, bearer(tokenAdmin2))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    payloadPresenca(alpha.getId(), lider.getId(), "DISCIPULADOR", "AUSENTE", true)))
+        .andExpect(status().isOk());
+
+    JsonNode depois = discipuladoPorNome(consultar(tokenAdmin2), "Alpha CL");
+    assertThat(situacao(depois, lider.getId())).isEqualTo("AUSENTE");
+  }
+
+  @Test
+  void confirmacaoMovePresencaParaOutroDiscipulado() throws Exception {
+    Discipulado beta = criarBetaComMesmoLider();
+    String token = token(admin);
+    mvc.perform(
+            put("/api/v1/chamadas-lideranca")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(payloadPresenca(alpha.getId(), lider.getId(), "DISCIPULADOR", "PRESENTE")))
+        .andExpect(status().isOk());
+
+    mvc.perform(
+            put("/api/v1/chamadas-lideranca")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    payloadPresenca(beta.getId(), lider.getId(), "DISCIPULADOR", "AUSENTE", true)))
+        .andExpect(status().isOk());
+
+    JsonNode grade = consultar(token);
+    assertThat(situacao(discipuladoPorNome(grade, "Alpha CL"), lider.getId())).isNull();
+    assertThat(situacao(discipuladoPorNome(grade, "Beta CL"), lider.getId())).isEqualTo("AUSENTE");
+    assertThat(
+            presenca(discipuladoPorNome(grade, "Alpha CL"), lider.getId())
+                .get("registroDoDia")
+                .get("discipuladoNome")
+                .asText())
+        .isEqualTo("Beta CL");
+  }
+
+  @Test
+  void reenvioIdenticoNaoPedeConfirmacao() throws Exception {
+    String token = token(admin);
+    mvc.perform(
+            put("/api/v1/chamadas-lideranca")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(payloadPresenca(alpha.getId(), lider.getId(), "DISCIPULADOR", "PRESENTE")))
+        .andExpect(status().isOk());
+
+    mvc.perform(
+            put("/api/v1/chamadas-lideranca")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(payloadPresenca(alpha.getId(), lider.getId(), "DISCIPULADOR", "PRESENTE")))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  void rejeitaMesmaPessoaEmDoisDiscipuladosNoMesmoPayload() throws Exception {
+    Discipulado beta = criarBetaComMesmoLider();
+    String payload =
+        """
+        {
+          "data": "%s",
+          "observacaoGeral": null,
+          "discipulados": [
+            {
+              "discipuladoId": %d,
+              "observacao": null,
+              "presencas": [
+                {"usuarioId": %d, "papel": "DISCIPULADOR", "situacao": "PRESENTE"}
+              ]
+            },
+            {
+              "discipuladoId": %d,
+              "observacao": null,
+              "presencas": [
+                {"usuarioId": %d, "papel": "DISCIPULADOR", "situacao": "AUSENTE"}
+              ]
+            }
+          ]
+        }
+        """
+            .formatted(DATA, alpha.getId(), lider.getId(), beta.getId(), lider.getId());
+
+    mvc.perform(
+            put("/api/v1/chamadas-lideranca")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(admin)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(payload))
+        .andExpect(status().isConflict())
+        .andExpect(
+            jsonPath("$.detail")
+                .value(org.hamcrest.Matchers.containsString("apenas um lançamento por pessoa")));
+  }
+
+  @Test
   void naoAdminRecebeForbidden() throws Exception {
     mvc.perform(
             get("/api/v1/chamadas-lideranca")
@@ -254,13 +412,54 @@ class ChamadaLiderancaHttpTest {
   }
 
   private static String situacao(JsonNode discipulado, long usuarioId) {
-    for (JsonNode presenca : discipulado.get("presencas")) {
-      if (presenca.get("usuarioId").asLong() == usuarioId) {
-        JsonNode situacao = presenca.get("situacao");
-        return situacao.isNull() ? null : situacao.asText();
-      }
+    JsonNode valor = presenca(discipulado, usuarioId).get("situacao");
+    return valor.isNull() ? null : valor.asText();
+  }
+
+  private static JsonNode presenca(JsonNode discipulado, long usuarioId) {
+    for (JsonNode item : discipulado.get("presencas")) {
+      if (item.get("usuarioId").asLong() == usuarioId) return item;
     }
     throw new AssertionError("Usuário não encontrado: " + usuarioId);
+  }
+
+  private Discipulado criarBetaComMesmoLider() {
+    return discipulados.saveAndFlush(
+        new Discipulado(
+            "Beta CL", Sexo.FEMININO, FaixaEtaria.DE_15_MAIS, alpha.getGerencia(), lider));
+  }
+
+  private static String payloadPresenca(
+      long discipuladoId, long usuarioId, String papel, String situacao) {
+    return payloadPresenca(discipuladoId, usuarioId, papel, situacao, null);
+  }
+
+  private static String payloadPresenca(
+      long discipuladoId,
+      long usuarioId,
+      String papel,
+      String situacao,
+      Boolean confirmarAtualizacao) {
+    String confirmacao =
+        confirmarAtualizacao == null
+            ? ""
+            : ",\n          \"confirmarAtualizacao\": " + confirmarAtualizacao;
+    return """
+        {
+          "data": "%s",
+          "observacaoGeral": null,
+          "discipulados": [
+            {
+              "discipuladoId": %d,
+              "observacao": null,
+              "presencas": [
+                {"usuarioId": %d, "papel": "%s", "situacao": "%s"}
+              ]
+            }
+          ]%s
+        }
+        """
+        .formatted(DATA, discipuladoId, usuarioId, papel, situacao, confirmacao);
   }
 
   private User usuario(String nome, String prefixo, Role... perfis) {

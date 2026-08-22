@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -51,6 +52,16 @@ public class ChamadaLideranca {
   public void atualizarObservacaoGeral(String observacaoGeral, Instant agora) {
     this.observacaoGeral = normalizar(observacaoGeral, 1000);
     this.atualizadoEm = agora;
+  }
+
+  public void removerPresencasDeOutrosDiscipulados(Map<Long, Long> destinoPorUsuario) {
+    if (destinoPorUsuario == null || destinoPorUsuario.isEmpty()) return;
+    for (ChamadaLiderancaDiscipulado item : itens) {
+      Long discipuladoId = item.getDiscipulado().getId();
+      for (Map.Entry<Long, Long> destino : destinoPorUsuario.entrySet()) {
+        if (!destino.getValue().equals(discipuladoId)) item.removerPresenca(destino.getKey());
+      }
+    }
   }
 
   public void mesclarItens(List<ChamadaLiderancaDiscipulado> atualizacoes, Instant agora) {

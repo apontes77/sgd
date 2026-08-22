@@ -4,6 +4,7 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    readonly body: Record<string, unknown> | null = null,
   ) {
     super(message)
   }
@@ -106,8 +107,10 @@ export async function request<T>(path: string, options: RequestInit = {}, retry 
   }
 
   if (!response.ok) {
-    const problem = (await response.json().catch(() => null)) as { detail?: string; title?: string } | null
-    throw new ApiError(problem?.detail ?? problem?.title ?? 'Não foi possível concluir a operação.', response.status)
+    const problem = (await response.json().catch(() => null)) as Record<string, unknown> | null
+    const detail = typeof problem?.detail === 'string' ? problem.detail : undefined
+    const title = typeof problem?.title === 'string' ? problem.title : undefined
+    throw new ApiError(detail ?? title ?? 'Não foi possível concluir a operação.', response.status, problem)
   }
 
   if (response.status === 204) return undefined as T
@@ -135,8 +138,10 @@ export async function requestBlob(
   }
 
   if (!response.ok) {
-    const problem = (await response.json().catch(() => null)) as { detail?: string; title?: string } | null
-    throw new ApiError(problem?.detail ?? problem?.title ?? 'Não foi possível concluir a operação.', response.status)
+    const problem = (await response.json().catch(() => null)) as Record<string, unknown> | null
+    const detail = typeof problem?.detail === 'string' ? problem.detail : undefined
+    const title = typeof problem?.title === 'string' ? problem.title : undefined
+    throw new ApiError(detail ?? title ?? 'Não foi possível concluir a operação.', response.status, problem)
   }
 
   const disposition = response.headers.get('Content-Disposition')

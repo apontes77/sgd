@@ -56,13 +56,15 @@ public class ChamadaLiderancaController {
                                         new ChamadaLiderancaService.PresencaCommand(
                                             p.usuarioId(), p.papel(), p.situacao()))
                                 .toList()))
-                .toList()));
+                .toList(),
+            Boolean.TRUE.equals(body.confirmarAtualizacao())));
   }
 
   public record SalvarRequest(
       @NotNull LocalDate data,
       @Size(max = 1000) String observacaoGeral,
-      @NotNull List<@NotNull @Valid DiscipuladoRequest> discipulados) {}
+      @NotNull List<@NotNull @Valid DiscipuladoRequest> discipulados,
+      Boolean confirmarAtualizacao) {}
 
   public record DiscipuladoRequest(
       @NotNull Long discipuladoId,

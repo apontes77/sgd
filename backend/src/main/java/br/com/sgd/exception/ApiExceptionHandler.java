@@ -1,5 +1,6 @@
 package br.com.sgd.exception;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import jakarta.validation.ConstraintViolationException;
 
@@ -18,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import br.com.sgd.auth.AuthService;
 import br.com.sgd.auth.OAuthIdentityService;
+import br.com.sgd.lideranca.ChamadaLiderancaService;
 import br.com.sgd.observability.TraceIds;
 import br.com.sgd.organizacao.Discipulado;
 import br.com.sgd.organizacao.DiscipuladoService;
@@ -193,6 +195,13 @@ public class ApiExceptionHandler {
     return response(HttpStatus.CONFLICT, detail);
   }
 
+  @ExceptionHandler(ChamadaLiderancaService.AtualizacaoPresencaNaoConfirmadaException.class)
+  public ResponseEntity<Map<String, Object>> handleAtualizacaoPresencaNaoConfirmada(
+      ChamadaLiderancaService.AtualizacaoPresencaNaoConfirmadaException exception) {
+    return response(
+        HttpStatus.CONFLICT, exception.getMessage(), Map.of("conflitos", exception.getConflitos()));
+  }
+
   @ExceptionHandler(Exception.class)
   public ResponseEntity<Map<String, Object>> handleUnexpected(Exception exception) {
     LOGGER.error("Erro inesperado ao processar requisição", exception);
@@ -200,14 +209,20 @@ public class ApiExceptionHandler {
   }
 
   private ResponseEntity<Map<String, Object>> response(HttpStatus status, String message) {
+    return response(status, message, Map.of());
+  }
+
+  private ResponseEntity<Map<String, Object>> response(
+      HttpStatus status, String message, Map<String, Object> extras) {
+    Map<String, Object> body = new LinkedHashMap<>();
+    body.put("type", "about:blank");
+    body.put("title", status.getReasonPhrase());
+    body.put("status", status.value());
+    body.put("detail", message);
+    body.put("traceId", TraceIds.currentOrRandom());
+    body.putAll(extras);
     return ResponseEntity.status(status)
         .contentType(org.springframework.http.MediaType.APPLICATION_PROBLEM_JSON)
-        .body(
-            Map.of(
-                "type", "about:blank",
-                "title", status.getReasonPhrase(),
-                "status", status.value(),
-                "detail", message,
-                "traceId", TraceIds.currentOrRandom()));
+        .body(body);
   }
 }

@@ -5,11 +5,23 @@ export type PapelLideranca = 'DISCIPULADOR' | 'CO_LIDER'
 export type SituacaoPresencaLideranca = 'PRESENTE' | 'AUSENTE'
 export type FiltroSexoLideranca = 'TODOS' | SexoOrganizacional
 
+export interface RegistroPresencaDoDia {
+  discipuladoId: number
+  discipuladoNome: string
+  situacao: SituacaoPresencaLideranca
+}
+
+export interface ConflitoPresencaLideranca extends RegistroPresencaDoDia {
+  usuarioId: number
+  nome: string
+}
+
 export interface PresencaLideranca {
   usuarioId: number
   nome: string
   papel: PapelLideranca
   situacao: SituacaoPresencaLideranca | null
+  registroDoDia?: RegistroPresencaDoDia | null
 }
 
 export interface DiscipuladoChamadaLideranca {
@@ -40,6 +52,7 @@ export interface SalvarChamadaLiderancaRequest {
       situacao: SituacaoPresencaLideranca
     }[]
   }[]
+  confirmarAtualizacao?: boolean
 }
 
 export const liderancaApi = {
