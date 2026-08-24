@@ -19,6 +19,7 @@ import {
 import type { FormEvent } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 
+import { AVISO_LANCAMENTO_PENDENTE } from '@/features/frequencia/prazoLancamento'
 import { organizationApi } from '@/features/organizacao/api'
 import { relatorioApi, type RelatorioEncontro, type RelatorioPeriodoResponse } from '@/features/relatorios/api'
 import { type Discipulado, labelDiscipulado, type Usuario } from '@/shared/api/types'
@@ -283,6 +284,7 @@ function PaginaRelatorio({
             <strong>Situação:</strong> {naoRealizado ? 'Não houve discipulado' : 'Houve discipulado'}
           </Typography>
         </Box>
+        {item.fechamentoAutomatico && <Alert severity="warning">{AVISO_LANCAMENTO_PENDENTE}</Alert>}
         {naoRealizado ? (
           <Alert severity="warning">
             <strong>Justificativa:</strong> {item.justificativa || 'Não informada'}

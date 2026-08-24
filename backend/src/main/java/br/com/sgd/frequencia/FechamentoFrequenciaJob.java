@@ -45,13 +45,14 @@ public class FechamentoFrequenciaJob {
         var existente = encontros.findByDiscipuladoIdAndData(d.getId(), sexta);
         if (existente.isEmpty()) {
           var criado =
-              encontros.save(
-                  new Encontro(
-                      d,
-                      sexta,
-                      SituacaoEncontro.NAO_REALIZADO,
-                      PrazoLancamentoFrequencia.JUSTIFICATIVA_AUTOMATICA,
-                      agora));
+              new Encontro(
+                  d,
+                  sexta,
+                  SituacaoEncontro.NAO_REALIZADO,
+                  PrazoLancamentoFrequencia.JUSTIFICATIVA_AUTOMATICA,
+                  agora);
+          criado.marcarFechamentoAutomatico();
+          encontros.save(criado);
           auditar(criado, "CRIAR");
           fechados++;
           continue;
@@ -73,6 +74,7 @@ public class FechamentoFrequenciaJob {
             PrazoLancamentoFrequencia.JUSTIFICATIVA_AUTOMATICA,
             encontro.getObservacao(),
             agora);
+        encontro.marcarFechamentoAutomatico();
         auditar(encontro, "CONVERTER");
         fechados++;
       }
@@ -88,6 +90,7 @@ public class FechamentoFrequenciaJob {
       detalhes.put("discipuladoId", encontro.getDiscipulado().getId());
       detalhes.put("data", encontro.getData().toString());
       detalhes.put("justificativa", PrazoLancamentoFrequencia.JUSTIFICATIVA_AUTOMATICA);
+      detalhes.put("fechamentoAutomatico", true);
       auditoria.save(
           new AuditLog(
               null, "ENCONTRO", "FECHAMENTO_AUTOMATICO", json.writeValueAsString(detalhes)));

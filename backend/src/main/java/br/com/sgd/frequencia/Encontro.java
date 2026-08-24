@@ -44,6 +44,9 @@ public class Encontro {
   @Column(name = "chamada_salva_em")
   private Instant chamadaSalvaEm;
 
+  @Column(name = "fechamento_automatico", nullable = false)
+  private boolean fechamentoAutomatico;
+
   protected Encontro() {}
 
   public Encontro(
@@ -65,6 +68,11 @@ public class Encontro {
     this.justificativa = justificativa;
     this.criadoEm = agora;
     this.atualizadoEm = agora;
+  }
+
+  /** Marca o encontro como resultado do fechamento automático do prazo (RN047). */
+  public void marcarFechamentoAutomatico() {
+    this.fechamentoAutomatico = true;
   }
 
   public void atualizar(
@@ -129,5 +137,9 @@ public class Encontro {
 
   public Instant getChamadaSalvaEm() {
     return chamadaSalvaEm;
+  }
+
+  public boolean isFechamentoAutomatico() {
+    return fechamentoAutomatico;
   }
 }

@@ -76,6 +76,7 @@ erDiagram
         string justificativa
         string observacao
         datetime chamada_salva_em
+        boolean fechamento_automatico
     }
     FREQUENCIA {
         bigint id PK
@@ -123,8 +124,8 @@ erDiagram
 - Um mesmo `USUARIO` pode aparecer como discipulador ou co-líder em somente um `DISCIPULADO` no total. A implementação deve validar as duas relações em conjunto, na mesma transação, e proteger o invariante contra associações concorrentes.
 - `VINCULO_ADOLESCENTE_DISCIPULADO` preserva o histórico. Deve existir somente um vínculo ativo por adolescente; o vínculo do período do encontro mantém o histórico associado ao discipulado correto.
 - Cada `ADOLESCENTE` possui exatamente uma `FICHA_FAMILIA` (1:1), com dois responsáveis (ordens 1 e 2).
-- Deve haver, no máximo, um `ENCONTRO` para cada par (`discipulado_id`, `data`) e uma `FREQUENCIA` para cada par (`encontro_id`, `adolescente_id`). O status do encontro é `REALIZADO` ou `NAO_REALIZADO`; encontros não realizados exigem `justificativa` e encontros realizados mantêm esse campo nulo. `observacao` é texto livre opcional (até 500 caracteres), independente da situação. `chamada_salva_em` registra o instante do primeiro salvamento da chamada e ancora a janela de edição de três horas.
-- Alterações em frequência devem gerar `AUDITORIA`, com usuário responsável, data/hora e valores anterior e novo.
+- Deve haver, no máximo, um `ENCONTRO` para cada par (`discipulado_id`, `data`) e uma `FREQUENCIA` para cada par (`encontro_id`, `adolescente_id`). O status do encontro é `REALIZADO` ou `NAO_REALIZADO`; encontros não realizados exigem `justificativa` e encontros realizados mantêm esse campo nulo. `observacao` é texto livre opcional (até 500 caracteres), independente da situação. `chamada_salva_em` registra o instante do primeiro salvamento da chamada e ancora a janela de edição de três horas. `fechamento_automatico` indica que o encontro veio do job de prazo (RN047) e permanece após correção administrativa (RN052).
+- Alterações em frequência devem gerar `AUDITORIA`, com usuário responsável, data/hora e valores anterior e novo. A exclusão administrativa do encontro (RN053) também gera auditoria.
 
 ## Entidades Principais
 
@@ -187,6 +188,7 @@ erDiagram
 - justificativa
 - observacao
 - chamada_salva_em
+- fechamento_automatico
 
 ### Frequencia
 

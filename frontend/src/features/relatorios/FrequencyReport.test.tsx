@@ -33,6 +33,7 @@ const relatorio: RelatorioPeriodoResponse = {
       data: '2026-07-21',
       situacao: 'REALIZADO',
       justificativa: null,
+      fechamentoAutomatico: false,
       gerencia: { id: 1, nome: 'Centro' },
       discipulado: { id: 2, nome: 'Alpha', sexo: 'MASCULINO' },
       discipulador: { id: 3, nome: 'Líder Alpha' },
@@ -49,6 +50,7 @@ const relatorio: RelatorioPeriodoResponse = {
       data: '2026-07-21',
       situacao: 'REALIZADO',
       justificativa: null,
+      fechamentoAutomatico: false,
       gerencia: { id: 1, nome: 'Centro' },
       discipulado: { id: 7, nome: 'Beta', sexo: 'FEMININO' },
       discipulador: { id: 8, nome: 'Líder Beta' },
@@ -62,6 +64,7 @@ const relatorio: RelatorioPeriodoResponse = {
       data: '2026-07-19',
       situacao: 'NAO_REALIZADO',
       justificativa: 'Problema de saúde',
+      fechamentoAutomatico: false,
       gerencia: { id: 1, nome: 'Centro' },
       discipulado: { id: 2, nome: 'Alpha', sexo: 'MASCULINO' },
       discipulador: { id: 3, nome: 'Líder Alpha' },
@@ -321,5 +324,47 @@ describe('relatório diário de frequência', () => {
     await userEvent.type(campo, 'João')
     expect(await screen.findByRole('option', { name: /João Costa/ })).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: /Maria Silva/ })).not.toBeInTheDocument()
+  })
+
+  it('exibe aviso persistente quando o encontro veio de fechamento automático', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/discipulados')) {
+        return new Response(JSON.stringify({ content: [], page: 0, size: 100, totalElements: 0, totalPages: 0 }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      return new Response(
+        JSON.stringify({
+          dataInicio: '2026-07-17',
+          dataFim: '2026-07-17',
+          emitidoEm: '2026-07-21T22:00:00Z',
+          relatorios: [
+            {
+              ...relatorio.relatorios[0],
+              encontroId: 13,
+              data: '2026-07-17',
+              fechamentoAutomatico: true,
+              participantes: [{ adolescenteId: 5, nome: 'Ana', telefone: null, situacao: 'PRESENTE' }],
+              resumo: { presentes: 1, ausentes: 0, participantes: 1, visitantes: 0, percentualPresenca: 100 },
+            },
+          ],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      )
+    })
+
+    render(<FrequencyReport currentUser={adminUser} />)
+    const dataInicial = await screen.findByLabelText(/^Data inicial/)
+    await userEvent.clear(dataInicial)
+    await userEvent.type(dataInicial, '2026-07-17')
+    const dataFinal = screen.getByLabelText(/^Data final/)
+    await userEvent.clear(dataFinal)
+    await userEvent.type(dataFinal, '2026-07-17')
+    await userEvent.click(screen.getByRole('button', { name: 'Consultar' }))
+
+    expect(await screen.findByText(/não lançou a frequência no prazo/i)).toBeInTheDocument()
+    expect(screen.getByText('Ana')).toBeInTheDocument()
   })
 })

@@ -112,6 +112,26 @@ public class EncontroService {
     return e;
   }
 
+  public void excluir(User ator, long id) {
+    if (!ator.getPerfis().contains(Role.ADMIN))
+      throw new ResponseStatusException(
+          HttpStatus.FORBIDDEN, "Somente administradores podem excluir um encontro.");
+    var e = encontro(id);
+    var frequenciasDoEncontro = frequencias.findAllByEncontroIdOrderByAdolescenteNome(id);
+    int qtdFrequencias = frequenciasDoEncontro.size();
+    int qtdVisitantes = visitantes.findByEncontroId(id).map(Visitante::getQuantidade).orElse(0);
+    var detalhes = new LinkedHashMap<String, Object>();
+    detalhes.put("id", id);
+    detalhes.put("discipuladoId", e.getDiscipulado().getId());
+    detalhes.putAll(estado(e));
+    detalhes.put("quantidadeFrequencias", qtdFrequencias);
+    detalhes.put("quantidadeVisitantes", qtdVisitantes);
+    frequencias.deleteAll(frequenciasDoEncontro);
+    visitantes.findByEncontroId(id).ifPresent(visitantes::delete);
+    encontros.delete(e);
+    auditar(ator, "ENCONTRO", "EXCLUIR", detalhes);
+  }
+
   private void exigirPermissaoSituacao(
       User ator, SituacaoEncontro atual, SituacaoEncontro novaSituacao) {
     if (atual == SituacaoEncontro.NAO_REALIZADO && novaSituacao == SituacaoEncontro.REALIZADO)
@@ -212,6 +232,7 @@ public class EncontroService {
     estado.put("justificativa", e.getJustificativa());
     estado.put("observacao", e.getObservacao());
     estado.put("chamadaSalvaEm", e.getChamadaSalvaEm());
+    estado.put("fechamentoAutomatico", e.isFechamentoAutomatico());
     return estado;
   }
 

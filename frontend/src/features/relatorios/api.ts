@@ -28,6 +28,7 @@ export interface RelatorioEncontro {
   situacao: SituacaoEncontroRelatorio
   justificativa: string | null
   observacao?: string | null
+  fechamentoAutomatico?: boolean
   gerencia: IdentificacaoRelatorio
   discipulado: DiscipuladoRelatorio
   discipulador: IdentificacaoRelatorio

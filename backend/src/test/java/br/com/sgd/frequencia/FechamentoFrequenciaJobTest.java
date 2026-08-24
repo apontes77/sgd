@@ -59,6 +59,7 @@ class FechamentoFrequenciaJobTest {
     assertThat(captor.getValue().getSituacao()).isEqualTo(SituacaoEncontro.NAO_REALIZADO);
     assertThat(captor.getValue().getJustificativa())
         .isEqualTo(PrazoLancamentoFrequencia.JUSTIFICATIVA_AUTOMATICA);
+    assertThat(captor.getValue().isFechamentoAutomatico()).isTrue();
     verify(auditoria).save(any());
   }
 
@@ -75,6 +76,7 @@ class FechamentoFrequenciaJobTest {
     assertThat(orfao.getSituacao()).isEqualTo(SituacaoEncontro.NAO_REALIZADO);
     assertThat(orfao.getJustificativa())
         .isEqualTo(PrazoLancamentoFrequencia.JUSTIFICATIVA_AUTOMATICA);
+    assertThat(orfao.isFechamentoAutomatico()).isTrue();
     verify(encontros, never()).save(any());
   }
 

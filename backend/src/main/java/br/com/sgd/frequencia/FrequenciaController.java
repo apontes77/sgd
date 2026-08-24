@@ -50,6 +50,12 @@ public class FrequenciaController {
         encontros.atualizar(u, id, r.data(), r.situacao(), r.justificativa(), r.observacao()));
   }
 
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void excluir(@AuthenticationPrincipal User u, @PathVariable long id) {
+    encontros.excluir(u, id);
+  }
+
   @GetMapping("/{id}/frequencias")
   public List<FrequenciaResponse> chamada(@AuthenticationPrincipal User u, @PathVariable long id) {
     return chamadas.listar(u, id).stream().map(FrequenciaResponse::of).toList();
@@ -116,7 +122,8 @@ public class FrequenciaController {
       String observacao,
       Instant criadoEm,
       Instant atualizadoEm,
-      Instant chamadaSalvaEm) {
+      Instant chamadaSalvaEm,
+      boolean fechamentoAutomatico) {
     static EncontroResponse of(Encontro e) {
       return new EncontroResponse(
           e.getId(),
@@ -127,7 +134,8 @@ public class FrequenciaController {
           e.getObservacao(),
           e.getCriadoEm(),
           e.getAtualizadoEm(),
-          e.getChamadaSalvaEm());
+          e.getChamadaSalvaEm(),
+          e.isFechamentoAutomatico());
     }
   }
 

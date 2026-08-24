@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import br.com.sgd.frequencia.PrazoLancamentoFrequencia;
 import br.com.sgd.frequencia.SituacaoEncontro;
 import br.com.sgd.frequencia.SituacaoFrequencia;
 import br.com.sgd.organizacao.DiscipuladoRepository;
@@ -95,6 +96,13 @@ public class RelatorioFrequenciaService {
             && naoRealizado
             && item.justificativa() != null) {
           observacaoDiscipulador = item.justificativa();
+        }
+        if (item.fechamentoAutomatico()) {
+          String aviso = PrazoLancamentoFrequencia.AVISO_LANCAMENTO_PENDENTE;
+          observacaoDiscipulador =
+              observacaoDiscipulador == null || observacaoDiscipulador.isBlank()
+                  ? aviso
+                  : aviso + " " + observacaoDiscipulador;
         }
         Row row = sheet.createRow(linha++);
         row.createCell(0).setCellValue(item.discipulador().nome());
@@ -224,6 +232,7 @@ public class RelatorioFrequenciaService {
         situacao,
         null,
         encontro.getObservacao(),
+        Boolean.TRUE.equals(encontro.getFechamentoAutomatico()),
         new GerenciaInfo(encontro.getGerenciaId(), encontro.getGerenciaNome()),
         new DiscipuladoInfo(
             encontro.getDiscipuladoId(), encontro.getDiscipuladoNome(), encontro.getSexo()),
@@ -248,6 +257,7 @@ public class RelatorioFrequenciaService {
         SituacaoEncontro.NAO_REALIZADO,
         encontro.getJustificativa(),
         encontro.getObservacao(),
+        Boolean.TRUE.equals(encontro.getFechamentoAutomatico()),
         new GerenciaInfo(encontro.getGerenciaId(), encontro.getGerenciaNome()),
         new DiscipuladoInfo(
             encontro.getDiscipuladoId(), encontro.getDiscipuladoNome(), encontro.getSexo()),
@@ -341,6 +351,7 @@ public class RelatorioFrequenciaService {
       SituacaoEncontro situacao,
       String justificativa,
       String observacao,
+      boolean fechamentoAutomatico,
       GerenciaInfo gerencia,
       DiscipuladoInfo discipulado,
       LiderInfo discipulador,

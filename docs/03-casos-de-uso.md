@@ -48,7 +48,8 @@ Fluxo:
 Fluxo alternativo:
 
 - O administrador ou o discipulador do próprio grupo pode selecionar “Não realizado”, sendo obrigatório informar uma justificativa.
-- O administrador ou o discipulador responsável pode corrigir a justificativa; somente o administrador pode voltar o encontro para “Realizado”, desde que não haja chamada ou visitantes registrados.
+- O administrador ou o discipulador responsável pode corrigir a justificativa; somente o administrador pode voltar o encontro para “Realizado”, desde que não haja chamada ou visitantes registrados. Encontros de fechamento automático revertidos pelo administrador preservam o aviso de que o líder não lançou no prazo (RN052).
+- Somente o administrador pode excluir o encontro da data (chamada, visitantes e registro), liberando a data para novo lançamento (RN053). A exclusão não desfaz promoção de visitante a discípulo.
 - Gerentes consultam as não realizações da própria gerência no painel, sem permissão de alteração.
 - A observação é independente da justificativa: pode existir em encontros realizados ou não realizados e não substitui a justificativa obrigatória de não realização.
 
@@ -57,13 +58,18 @@ Fluxo alternativo:
 ## UC004 - Registrar Frequência
 
 Ator:
-Discipulador
+Discipulador, Co-líder ou Administrador
 
 Fluxo:
 
 1. Selecionar encontro.
 2. Marcar presença.
 3. Salvar.
+
+Fluxo alternativo:
+
+- Após o fechamento automático do prazo, somente o administrador modifica a frequência (reverte para realizado e preenche a chamada), mantendo o aviso de não lançamento pelo líder (RN052).
+- Somente o administrador pode excluir a frequência de uma data lançada por engano (RN053).
 
 ---
 

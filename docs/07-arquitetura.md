@@ -77,7 +77,7 @@ flowchart LR
 
 - **Prazo de lançamento**: sexta-feira lançável até domingo 23:59:59 `America/Sao_Paulo` para líder/co-líder; admin ignora o prazo.
 - **Janela da chamada**: primeiro `PUT .../frequencias` grava `chamadaSalvaEm`; depois disso, líderes têm 3 horas; admin sempre pode.
-- **Fechamento automático**: após o prazo, `FechamentoFrequenciaJob` marca sexta sem chamada como `NAO_REALIZADO` com justificativa padrão.
+- **Fechamento automático**: após o prazo, `FechamentoFrequenciaJob` marca sexta sem chamada como `NAO_REALIZADO` com justificativa padrão e `fechamentoAutomatico=true`. ADMIN pode reverter e preencher a chamada sem limpar o flag; só ADMIN exclui o encontro (`DELETE /encontros/{id}`).
 - **Observação do encontro**: campo opcional atualizado via `PATCH /encontros/{id}` (não entra no `POST` de criação).
 
 ## Estrutura Frontend

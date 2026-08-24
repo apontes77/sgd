@@ -1,5 +1,6 @@
 package br.com.sgd.frequencia;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -7,6 +8,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Set;
 import java.util.UUID;
 
@@ -383,6 +386,82 @@ class FrequenciaHttpTest {
             get("/api/v1/encontros/{id}/visitantes", 999999L)
                 .header(HttpHeaders.AUTHORIZATION, bearer(tokenDiscipulador)))
         .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void adminReverteFechamentoAutomaticoMantemFlagEPermiteChamada() throws Exception {
+    Encontro fechado =
+        new Encontro(
+            proprio,
+            LocalDate.of(2026, 7, 17),
+            SituacaoEncontro.NAO_REALIZADO,
+            PrazoLancamentoFrequencia.JUSTIFICATIVA_AUTOMATICA,
+            Instant.parse("2026-07-20T06:20:00Z"));
+    fechado.marcarFechamentoAutomatico();
+    fechado = encontros.saveAndFlush(fechado);
+    String tokenAdmin = token(admin);
+
+    mvc.perform(
+            patch("/api/v1/encontros/{id}", fechado.getId())
+                .header(HttpHeaders.AUTHORIZATION, bearer(tokenAdmin))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"situacao\":\"REALIZADO\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.situacao").value("REALIZADO"))
+        .andExpect(jsonPath("$.fechamentoAutomatico").value(true))
+        .andExpect(jsonPath("$.justificativa").doesNotExist());
+
+    long adolescenteId = criarAdolescente(tokenAdmin, "Ana");
+    salvarChamada(
+        tokenAdmin,
+        fechado.getId(),
+        "{\"frequencias\":[{\"adolescenteId\":" + adolescenteId + ",\"situacao\":\"PRESENTE\"}]}",
+        200);
+
+    mvc.perform(
+            get("/api/v1/encontros")
+                .param("discipuladoId", String.valueOf(proprio.getId()))
+                .param("dataInicio", "2026-07-17")
+                .param("dataFim", "2026-07-17")
+                .header(HttpHeaders.AUTHORIZATION, bearer(tokenAdmin)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].fechamentoAutomatico").value(true))
+        .andExpect(jsonPath("$[0].situacao").value("REALIZADO"));
+  }
+
+  @Test
+  void adminExcluiEncontroELiberaData_outrosPerfisRecebem403() throws Exception {
+    String tokenAdmin = token(admin);
+    String tokenDiscipulador = token(discipulador);
+    String tokenGerente = token(gerente);
+    long encontroId = criarEncontro(tokenAdmin, proprio.getId(), "2026-07-10", 201);
+    long adolescenteId = criarAdolescente(tokenAdmin, "Bruno");
+    salvarChamada(
+        tokenAdmin,
+        encontroId,
+        "{\"frequencias\":[{\"adolescenteId\":" + adolescenteId + ",\"situacao\":\"PRESENTE\"}]}",
+        200);
+
+    mvc.perform(
+            delete("/api/v1/encontros/{id}", encontroId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(tokenDiscipulador)))
+        .andExpect(status().isForbidden());
+    mvc.perform(
+            delete("/api/v1/encontros/{id}", encontroId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(tokenGerente)))
+        .andExpect(status().isForbidden());
+
+    mvc.perform(
+            delete("/api/v1/encontros/{id}", encontroId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(tokenAdmin)))
+        .andExpect(status().isNoContent());
+
+    mvc.perform(
+            get("/api/v1/encontros/{id}/frequencias", encontroId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(tokenAdmin)))
+        .andExpect(status().isNotFound());
+
+    criarEncontro(tokenAdmin, proprio.getId(), "2026-07-10", 201);
   }
 
   private User usuario(String nome, String prefixo, Role role) {

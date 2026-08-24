@@ -32,7 +32,11 @@ RN012 - O sistema deve registrar auditoria das alterações.
 
 RN046 - Encontros com data de sexta-feira podem ser lançados (criação do encontro, primeiro salvamento da chamada ou marcação de não realizado) até o domingo subsequente às 23:59:59 no fuso `America/Sao_Paulo`. Após esse prazo, discipulador e co-líder não podem mais lançar aquela sexta; administradores podem.
 
-RN047 - Se, após o domingo subsequente, um discipulado ativo não tiver chamada salva nem encontro não realizado para aquela sexta, o sistema registra automaticamente o encontro como `NAO_REALIZADO` com a justificativa `discipulador ou colider não registraram a frequência`. Encontros `REALIZADO` sem chamada salva são convertidos para essa situação.
+RN047 - Se, após o domingo subsequente, um discipulado ativo não tiver chamada salva nem encontro não realizado para aquela sexta, o sistema registra automaticamente o encontro como `NAO_REALIZADO` com a justificativa `discipulador ou colider não registraram a frequência` e marca `fechamento_automatico`. Encontros `REALIZADO` sem chamada salva são convertidos para essa situação.
+
+RN052 - Administradores podem reverter um encontro de fechamento automático (`fechamento_automatico`) de `NAO_REALIZADO` para `REALIZADO` e lançar ou alterar a chamada a qualquer momento. O flag permanece verdadeiro após a correção, para que o sistema continue informando que o discipulador/co-líder não lançou a frequência no prazo.
+
+RN053 - Somente administradores podem excluir um encontro (chamada, visitantes e o registro da data). A exclusão é auditada, libera o par discipulado+data para novo lançamento e não desfaz promoção automática de categoria (RN045).
 
 ---
 

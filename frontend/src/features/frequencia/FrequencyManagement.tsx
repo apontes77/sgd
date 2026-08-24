@@ -1,6 +1,7 @@
 import {
   CheckRounded,
   CloseRounded,
+  DeleteOutlineRounded,
   EventAvailableRounded,
   EventBusyRounded,
   EventRounded,
@@ -35,7 +36,7 @@ import {
   frequenciaApi,
   type SituacaoFrequencia,
 } from '@/features/frequencia/api'
-import { dentroDoPrazoLancamento, ehSexta } from '@/features/frequencia/prazoLancamento'
+import { AVISO_LANCAMENTO_PENDENTE, dentroDoPrazoLancamento, ehSexta } from '@/features/frequencia/prazoLancamento'
 import { ApiError } from '@/shared/api/httpClient'
 import type { Discipulado } from '@/shared/api/types'
 import { BOTTOM_NAV_OFFSET, DiscipuladoLiderancaInfo, EmptyState, SectionCard } from '@/shared/ui'
@@ -92,6 +93,7 @@ export default function FrequencyManagement({
   const [sucesso, setSucesso] = useState('')
   const [visitante, setVisitante] = useState<DadosPessoaisAdolescente>()
   const [familiaVisitante, setFamiliaVisitante] = useState<FamiliaInput>(familiaNaoConsta())
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
   const requisicao = useRef(0)
 
   const prazoAberto = useMemo(() => podeAdministrar || dentroDoPrazoLancamento(data), [podeAdministrar, data])
@@ -279,7 +281,28 @@ export default function FrequencyManagement({
       requisicao.current++
       setSelecionado(atualizado)
       await carregarChamada(atualizado, adolescentesAtuais)
-      setSucesso('Corrigido: discipulado marcado como realizado.')
+      setSucesso(
+        atualizado.fechamentoAutomatico
+          ? 'Frequência liberada para preenchimento. O aviso de não lançamento pelo líder permanece.'
+          : 'Corrigido: discipulado marcado como realizado.',
+      )
+    } catch (e) {
+      setErro(mensagem(e))
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  async function excluirFrequencia() {
+    if (!selecionado) return
+    setSalvando(true)
+    setErro('')
+    setSucesso('')
+    try {
+      await frequenciaApi.excluirEncontro(selecionado.id)
+      setConfirmandoExclusao(false)
+      await carregarData(data)
+      setSucesso('Frequência excluída. A data ficou livre para um novo lançamento.')
     } catch (e) {
       setErro(mensagem(e))
     } finally {
@@ -478,6 +501,7 @@ export default function FrequencyManagement({
           icon={<EventBusyRounded />}
         >
           <Stack spacing={2}>
+            {selecionado.fechamentoAutomatico && <Alert severity="warning">{AVISO_LANCAMENTO_PENDENTE}</Alert>}
             <Alert severity="warning">
               <strong>Justificativa:</strong> {selecionado.justificativa}
             </Alert>
@@ -494,7 +518,7 @@ export default function FrequencyManagement({
                   helperText={`${justificativa.length}/500 caracteres`}
                   inputProps={{ maxLength: 500 }}
                 />
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} flexWrap="wrap" useFlexGap>
                   <Button
                     variant="contained"
                     disabled={salvando || !justificativa.trim()}
@@ -509,7 +533,20 @@ export default function FrequencyManagement({
                       disabled={salvando}
                       onClick={() => void corrigirParaRealizado()}
                     >
-                      Corrigir: houve discipulado nesta data
+                      {selecionado.fechamentoAutomatico
+                        ? 'Modificar frequência'
+                        : 'Corrigir: houve discipulado nesta data'}
+                    </Button>
+                  )}
+                  {podeAdministrar && (
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      startIcon={<DeleteOutlineRounded />}
+                      disabled={salvando}
+                      onClick={() => setConfirmandoExclusao(true)}
+                    >
+                      Excluir frequência
                     </Button>
                   )}
                 </Stack>
@@ -536,6 +573,7 @@ export default function FrequencyManagement({
           icon={<CheckRounded />}
         >
           <Stack spacing={2.5}>
+            {selecionado.fechamentoAutomatico && <Alert severity="warning">{AVISO_LANCAMENTO_PENDENTE}</Alert>}
             {discipulado && (
               <DiscipuladoLiderancaInfo
                 discipuladorNome={discipulado.discipuladorNome}
@@ -548,6 +586,18 @@ export default function FrequencyManagement({
                   ? 'Frequência em modo somente leitura: a janela de três horas foi encerrada.'
                   : 'Frequência em modo somente leitura: o prazo de lançamento desta sexta encerrou no domingo subsequente.'}
               </Alert>
+            )}
+            {podeAdministrar && (
+              <Button
+                variant="outlined"
+                color="error"
+                startIcon={<DeleteOutlineRounded />}
+                disabled={salvando}
+                onClick={() => setConfirmandoExclusao(true)}
+                sx={{ alignSelf: 'flex-start' }}
+              >
+                Excluir frequência
+              </Button>
             )}
 
             <TextField
@@ -792,6 +842,30 @@ export default function FrequencyManagement({
             disabled={salvando || !visitante?.nome.trim() || !visitante?.dataNascimento || !visitante?.consentimentoEm}
           >
             Adicionar
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={confirmandoExclusao}
+        onClose={() => !salvando && setConfirmandoExclusao(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Excluir frequência?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary">
+            Isso remove o encontro de {selecionado ? formatarData(selecionado.data) : dataFormatada}
+            {discipulado ? ` do discipulado ${discipulado.nome}` : ''}, incluindo a chamada e os visitantes. A data fica
+            livre para um novo lançamento. A exclusão não desfaz promoção automática de visitante a discípulo.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmandoExclusao(false)} disabled={salvando}>
+            Cancelar
+          </Button>
+          <Button color="error" variant="contained" disabled={salvando} onClick={() => void excluirFrequencia()}>
+            Excluir
           </Button>
         </DialogActions>
       </Dialog>

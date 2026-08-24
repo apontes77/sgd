@@ -13,6 +13,7 @@ export interface Encontro {
   criadoEm: string
   atualizadoEm: string
   chamadaSalvaEm: string | null
+  fechamentoAutomatico: boolean
 }
 export interface Frequencia {
   id: number
@@ -40,6 +41,7 @@ export const frequenciaApi = {
     id: number,
     body: { data?: string; situacao?: SituacaoEncontro; justificativa?: string; observacao?: string | null },
   ) => request<Encontro>(`/encontros/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  excluirEncontro: (id: number) => request<void>(`/encontros/${id}`, { method: 'DELETE' }),
   listarChamada: (id: number) => request<Frequencia[]>(`/encontros/${id}/frequencias`),
   salvarChamada: (id: number, frequencias: Array<{ adolescenteId: number; situacao: SituacaoFrequencia }>) =>
     request<Frequencia[]>(`/encontros/${id}/frequencias`, { method: 'PUT', body: JSON.stringify({ frequencias }) }),

@@ -21,3 +21,4 @@ export function dentroDoPrazoLancamento(dataIso: string, agora = new Date()): bo
 }
 
 export const JUSTIFICATIVA_FECHAMENTO_AUTOMATICO = 'discipulador ou colider não registraram a frequência'
+export const AVISO_LANCAMENTO_PENDENTE = 'O discipulador/co-líder não lançou a frequência no prazo.'

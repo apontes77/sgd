@@ -16,6 +16,7 @@ public interface RelatorioFrequenciaRepository extends Repository<Encontro, Long
           """
           select e.id as encontroId, e.data as data, e.situacao as situacao,
                  e.justificativa as justificativa, e.observacao as observacao,
+                 e.fechamento_automatico as fechamentoAutomatico,
                  g.id as gerenciaId, g.nome as gerenciaNome,
                  d.id as discipuladoId, d.nome as discipuladoNome, d.sexo as sexo,
                  lider.id as discipuladorId, lider.nome as discipuladorNome,
@@ -37,6 +38,7 @@ public interface RelatorioFrequenciaRepository extends Repository<Encontro, Long
           """
           select e.id as encontroId, e.data as data, e.situacao as situacao,
                  e.justificativa as justificativa, e.observacao as observacao,
+                 e.fechamento_automatico as fechamentoAutomatico,
                  g.id as gerenciaId, g.nome as gerenciaNome,
                  d.id as discipuladoId, d.nome as discipuladoNome, d.sexo as sexo,
                  lider.id as discipuladorId, lider.nome as discipuladorNome,
@@ -141,6 +143,8 @@ public interface RelatorioFrequenciaRepository extends Repository<Encontro, Long
     String getJustificativa();
 
     String getObservacao();
+
+    Boolean getFechamentoAutomatico();
 
     Long getGerenciaId();
 

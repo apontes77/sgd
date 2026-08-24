@@ -268,6 +268,51 @@ class EncontroServiceTest {
   }
 
   @Test
+  void adminReverteFechamentoAutomaticoPreservandoFlag() throws Exception {
+    Encontro fechado =
+        new Encontro(
+            discipulado,
+            LocalDate.of(2026, 7, 17),
+            SituacaoEncontro.NAO_REALIZADO,
+            PrazoLancamentoFrequencia.JUSTIFICATIVA_AUTOMATICA,
+            AGORA);
+    fechado.marcarFechamentoAutomatico();
+    withId(fechado, 1L);
+    when(encontros.findById(1L)).thenReturn(Optional.of(fechado));
+    when(json.writeValueAsString(any())).thenReturn("{}");
+
+    service.atualizar(usuario(Role.ADMIN), 1L, null, SituacaoEncontro.REALIZADO, null);
+
+    assertThat(fechado.getSituacao()).isEqualTo(SituacaoEncontro.REALIZADO);
+    assertThat(fechado.getJustificativa()).isNull();
+    assertThat(fechado.isFechamentoAutomatico()).isTrue();
+  }
+
+  @Test
+  void adminExcluiEncontroComChamadaEVisitantes() throws Exception {
+    Encontro encontro = withId(encontro(AGORA), 1L);
+    when(encontros.findById(1L)).thenReturn(Optional.of(encontro));
+    when(discipulado.getId()).thenReturn(10L);
+    when(frequencias.findAllByEncontroIdOrderByAdolescenteNome(1L)).thenReturn(List.of());
+    when(visitantes.findByEncontroId(1L)).thenReturn(Optional.empty());
+    when(json.writeValueAsString(any())).thenReturn("{}");
+
+    service.excluir(usuario(Role.ADMIN), 1L);
+
+    verify(encontros).delete(encontro);
+    verify(auditoria).save(any());
+  }
+
+  @Test
+  void discipuladorNaoPodeExcluirEncontro() {
+    assertThatThrownBy(() -> service.excluir(usuario(Role.DISCIPULADOR), 1L))
+        .isInstanceOf(ResponseStatusException.class)
+        .satisfies(
+            e -> assertThat(((ResponseStatusException) e).getStatusCode().value()).isEqualTo(403));
+    verify(encontros, never()).delete(any());
+  }
+
+  @Test
   void rejeitaEdicaoDeEncontroCanceladoAntesDeAvaliarJanela() {
     Encontro cancelado =
         new Encontro(discipulado, LocalDate.now(), SituacaoEncontro.NAO_REALIZADO, AGORA);

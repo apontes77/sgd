@@ -17,6 +17,7 @@ const encontro = {
   criadoEm: new Date().toISOString(),
   atualizadoEm: new Date().toISOString(),
   chamadaSalvaEm: null as string | null,
+  fechamentoAutomatico: false,
 }
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -254,5 +255,91 @@ describe('registro de frequência', () => {
     expect(toggle).toHaveAttribute('aria-pressed', 'false')
     await userEvent.click(toggle.closest('.MuiPaper-root')!)
     expect(await screen.findByRole('button', { name: /Ana: presente/i })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('ADMIN vê banner e botão Modificar frequência em fechamento automático', async () => {
+    const fechado = {
+      ...encontro,
+      situacao: 'NAO_REALIZADO' as const,
+      justificativa: 'discipulador ou colider não registraram a frequência',
+      fechamentoAutomatico: true,
+    }
+    const realizado = { ...fechado, situacao: 'REALIZADO' as const, justificativa: null }
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input)
+      const method = init?.method ?? 'GET'
+      if (url.includes('/adolescentes?'))
+        return json({ content: [{ id: 1, nome: 'Ana' }], page: 0, size: 100, totalElements: 1, totalPages: 1 })
+      if (url.includes('/encontros?')) return json([fechado])
+      if (url.endsWith('/encontros/10') && method === 'PATCH') return json(realizado)
+      if (url.endsWith('/encontros/10/frequencias') && method === 'GET') return json([])
+      throw new Error(`Requisição inesperada: ${method} ${url}`)
+    })
+
+    render(<FrequencyManagement discipuladoId={1} podeAdministrar podeRegistrarNaoRealizacao />)
+    expect(await screen.findByText(/não lançou a frequência no prazo/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Modificar frequência' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Excluir frequência' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Modificar frequência' }))
+    expect(await screen.findByText(/Frequência liberada para preenchimento/i)).toBeInTheDocument()
+    expect(screen.getByText(/não lançou a frequência no prazo/i)).toBeInTheDocument()
+  })
+
+  it('ADMIN exclui frequência após confirmação e libera a data', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input)
+      const method = init?.method ?? 'GET'
+      if (url.includes('/adolescentes?'))
+        return json({ content: [{ id: 1, nome: 'Ana' }], page: 0, size: 100, totalElements: 1, totalPages: 1 })
+      if (url.includes('/encontros?')) {
+        const jaExcluiu = fetchMock.mock.calls.some(
+          ([u, i]) => String(u).endsWith('/encontros/10') && i?.method === 'DELETE',
+        )
+        return json(jaExcluiu ? [] : [encontro])
+      }
+      if (url.endsWith('/encontros/10/frequencias') && method === 'GET')
+        return json([
+          {
+            id: 20,
+            encontroId: 10,
+            adolescenteId: 1,
+            adolescenteNome: 'Ana',
+            situacao: 'PRESENTE',
+            registradaEm: encontro.criadoEm,
+          },
+        ])
+      if (url.endsWith('/encontros/10') && method === 'DELETE') return new Response(null, { status: 204 })
+      throw new Error(`Requisição inesperada: ${method} ${url}`)
+    })
+
+    render(<FrequencyManagement discipuladoId={1} podeAdministrar />)
+    expect(await screen.findByRole('button', { name: /Ana: presente/i })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Excluir frequência' }))
+    expect(await screen.findByRole('heading', { name: 'Excluir frequência?' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Excluir' }))
+    expect(await screen.findByText(/Frequência excluída/i)).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /Houve discipulado/i })).toBeInTheDocument()
+  })
+
+  it('líder não vê Excluir frequência nem Modificar frequência', async () => {
+    const fechado = {
+      ...encontro,
+      situacao: 'NAO_REALIZADO' as const,
+      justificativa: 'discipulador ou colider não registraram a frequência',
+      fechamentoAutomatico: true,
+    }
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/adolescentes?'))
+        return json({ content: [], page: 0, size: 100, totalElements: 0, totalPages: 0 })
+      if (url.includes('/encontros?')) return json([fechado])
+      throw new Error(`Requisição inesperada: ${url}`)
+    })
+
+    render(<FrequencyManagement discipuladoId={1} podeRegistrarNaoRealizacao />)
+    expect(await screen.findByText(/não lançou a frequência no prazo/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Modificar frequência' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Excluir frequência' })).not.toBeInTheDocument()
   })
 })
