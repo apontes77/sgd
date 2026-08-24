@@ -12,8 +12,8 @@ jobs:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
@@ -28,11 +28,11 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
         with:
           version: 11.7.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: pnpm
@@ -46,7 +46,7 @@ jobs:
   infrastructure:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Validate Render Blueprint YAML
         run: |
           ruby -e "require 'yaml'; spec = YAML.safe_load(File.read('render.yaml'), aliases: true); abort 'missing Render services' unless spec.fetch('services').map { |service| service.fetch('name') }.sort == %w[sgd-api sgd-web]; abort 'missing Render database' unless spec.fetch('databases').map { |database| database.fetch('name') } == %w[sgd-db]"

@@ -70,57 +70,65 @@ public class RelatorioFrequenciaService {
     RelatorioPeriodoResponse periodo = consultarPeriodo(usuario, inicio, fim, discipuladoId, false);
     try (SXSSFWorkbook workbook = new SXSSFWorkbook(100)) {
       Sheet sheet = workbook.createSheet("Frequências");
-      Row cabecalho = sheet.createRow(0);
-      String[] colunas = {
-        "Discipulador(a)",
-        "Gerente",
-        "Data",
-        "Presentes",
-        "Ausentes",
-        "Visitantes",
-        "Total de presentes",
-        "Observação do discipulador",
-        "Observação estrutura"
-      };
-      for (int i = 0; i < colunas.length; i++) {
-        cabecalho.createCell(i).setCellValue(colunas[i]);
-      }
+      escreverCabecalhoExcel(sheet);
       int linha = 1;
       for (RelatorioEncontro item : periodo.relatorios()) {
-        boolean naoRealizado = item.situacao() == SituacaoEncontro.NAO_REALIZADO;
-        long presentes = naoRealizado ? 0 : item.resumo().presentes();
-        long ausentes = naoRealizado ? 0 : item.resumo().ausentes();
-        int visitantes = naoRealizado ? 0 : item.visitantes();
-        String observacaoDiscipulador = item.observacao();
-        if ((observacaoDiscipulador == null || observacaoDiscipulador.isBlank())
-            && naoRealizado
-            && item.justificativa() != null) {
-          observacaoDiscipulador = item.justificativa();
-        }
-        if (item.fechamentoAutomatico()) {
-          String aviso = PrazoLancamentoFrequencia.AVISO_LANCAMENTO_PENDENTE;
-          observacaoDiscipulador =
-              observacaoDiscipulador == null || observacaoDiscipulador.isBlank()
-                  ? aviso
-                  : aviso + " " + observacaoDiscipulador;
-        }
-        Row row = sheet.createRow(linha++);
-        row.createCell(0).setCellValue(item.discipulador().nome());
-        row.createCell(1).setCellValue(item.gerenteNome());
-        row.createCell(2)
-            .setCellValue(
-                item.data().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")));
-        row.createCell(3).setCellValue(presentes);
-        row.createCell(4).setCellValue(ausentes);
-        row.createCell(5).setCellValue(visitantes);
-        row.createCell(6).setCellValue(presentes + visitantes);
-        row.createCell(7)
-            .setCellValue(observacaoDiscipulador == null ? "" : observacaoDiscipulador);
-        row.createCell(8).setCellValue("");
+        preencherLinhaExcel(sheet.createRow(linha++), item);
       }
       workbook.write(out);
       workbook.dispose();
     }
+  }
+
+  private static void escreverCabecalhoExcel(Sheet sheet) {
+    Row cabecalho = sheet.createRow(0);
+    String[] colunas = {
+      "Discipulador(a)",
+      "Gerente",
+      "Data",
+      "Presentes",
+      "Ausentes",
+      "Visitantes",
+      "Total de presentes",
+      "Observação do discipulador",
+      "Observação estrutura"
+    };
+    for (int i = 0; i < colunas.length; i++) {
+      cabecalho.createCell(i).setCellValue(colunas[i]);
+    }
+  }
+
+  private static void preencherLinhaExcel(Row row, RelatorioEncontro item) {
+    boolean naoRealizado = item.situacao() == SituacaoEncontro.NAO_REALIZADO;
+    long presentes = naoRealizado ? 0 : item.resumo().presentes();
+    long ausentes = naoRealizado ? 0 : item.resumo().ausentes();
+    int visitantes = naoRealizado ? 0 : item.visitantes();
+    row.createCell(0).setCellValue(item.discipulador().nome());
+    row.createCell(1).setCellValue(item.gerenteNome());
+    row.createCell(2)
+        .setCellValue(
+            item.data().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+    row.createCell(3).setCellValue(presentes);
+    row.createCell(4).setCellValue(ausentes);
+    row.createCell(5).setCellValue(visitantes);
+    row.createCell(6).setCellValue(presentes + visitantes);
+    row.createCell(7).setCellValue(observacaoExcel(item));
+    row.createCell(8).setCellValue("");
+  }
+
+  private static String observacaoExcel(RelatorioEncontro item) {
+    String observacao = item.observacao();
+    if ((observacao == null || observacao.isBlank())
+        && item.situacao() == SituacaoEncontro.NAO_REALIZADO
+        && item.justificativa() != null) {
+      observacao = item.justificativa();
+    }
+    if (!item.fechamentoAutomatico()) {
+      return observacao == null ? "" : observacao;
+    }
+    String aviso = PrazoLancamentoFrequencia.AVISO_LANCAMENTO_PENDENTE;
+    if (observacao == null || observacao.isBlank()) return aviso;
+    return aviso + " " + observacao;
   }
 
   private RelatorioPeriodoResponse consultarPeriodo(
