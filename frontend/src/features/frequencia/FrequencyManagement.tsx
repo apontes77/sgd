@@ -5,6 +5,7 @@ import {
   EventAvailableRounded,
   EventBusyRounded,
   EventRounded,
+  GroupsRounded,
   PersonAddAltRounded,
   SaveRounded,
 } from '@mui/icons-material'
@@ -13,6 +14,7 @@ import {
   Avatar,
   Box,
   Button,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -32,6 +34,7 @@ import { type FamiliaInput, familiaNaoConsta, toFamiliaPayload } from '@/feature
 import { FamilyFormFields } from '@/features/familia/FamilyFormFields'
 import {
   type AdolescenteResumo,
+  type CategoriaAdolescente,
   type Encontro,
   frequenciaApi,
   type SituacaoFrequencia,
@@ -109,11 +112,18 @@ export default function FrequencyManagement({
     () => Boolean(podeAdministrar || (podeRegistrarNaoRealizacao && prazoAberto)),
     [podeAdministrar, podeRegistrarNaoRealizacao, prazoAberto],
   )
-  const presentes = useMemo(
-    () => participantes.filter((a) => chamada[a.id] === 'PRESENTE').length,
+  const presentesOpcionais = useMemo(
+    () => participantes.filter((a) => presencaOpcional(a.categoria) && chamada[a.id] === 'PRESENTE').length,
     [participantes, chamada],
   )
-  const ausentes = participantes.length - presentes
+  const discipulos = useMemo(() => participantes.filter((a) => !presencaOpcional(a.categoria)), [participantes])
+  const opcionais = useMemo(() => participantes.filter((a) => presencaOpcional(a.categoria)), [participantes])
+  const presentesDiscipulos = useMemo(
+    () => discipulos.filter((a) => chamada[a.id] === 'PRESENTE').length,
+    [discipulos, chamada],
+  )
+  const presentes = presentesDiscipulos + presentesOpcionais
+  const ausentes = discipulos.length - presentesDiscipulos
 
   const carregarChamada = useCallback(async (encontro: Encontro, atuais: AdolescenteResumo[]) => {
     const atual = requisicao.current
@@ -124,11 +134,24 @@ export default function FrequencyManagement({
       ...atuais.map((a) => ({ ...a, registroAnterior: false })),
       ...existentes
         .filter((f) => !idsAtuais.has(f.adolescenteId))
-        .map((f) => ({ id: f.adolescenteId, nome: f.adolescenteNome, registroAnterior: true })),
+        .map((f) => ({
+          id: f.adolescenteId,
+          nome: f.adolescenteNome,
+          categoria: f.categoria,
+          registroAnterior: true,
+        })),
     ]
     const mapa: Record<number, SituacaoFrequencia> = {}
-    lista.forEach((a) => (mapa[a.id] = 'AUSENTE'))
-    existentes.forEach((f) => (mapa[f.adolescenteId] = f.situacao))
+    lista.forEach((a) => {
+      if (!presencaOpcional(a.categoria)) mapa[a.id] = 'AUSENTE'
+    })
+    existentes.forEach((f) => {
+      if (presencaOpcional(f.categoria)) {
+        if (f.situacao === 'PRESENTE') mapa[f.adolescenteId] = 'PRESENTE'
+        return
+      }
+      mapa[f.adolescenteId] = f.situacao
+    })
     setParticipantes(lista)
     setChamada(mapa)
     setAlterado(false)
@@ -228,10 +251,12 @@ export default function FrequencyManagement({
       const atualizado = await frequenciaApi.atualizarEncontro(selecionado.id, {
         observacao: observacao.trim() || null,
       })
-      await frequenciaApi.salvarChamada(
-        selecionado.id,
-        participantes.map((a) => ({ adolescenteId: a.id, situacao: chamada[a.id] ?? 'AUSENTE' })),
-      )
+      await frequenciaApi.salvarChamada(selecionado.id, [
+        ...discipulos.map((a) => ({ adolescenteId: a.id, situacao: chamada[a.id] ?? 'AUSENTE' })),
+        ...opcionais
+          .filter((a) => chamada[a.id] === 'PRESENTE')
+          .map((a) => ({ adolescenteId: a.id, situacao: 'PRESENTE' as const })),
+      ])
       setSelecionado({
         ...atualizado,
         atualizadoEm: atualizado.atualizadoEm ?? new Date().toISOString(),
@@ -346,7 +371,10 @@ export default function FrequencyManagement({
         dataInicio: data,
         ...(podeFamilia ? { familia: toFamiliaPayload(familiaVisitante) } : {}),
       })
-      setParticipantes((atual) => [...atual, { id: criado.id, nome: criado.nome, registroAnterior: false }])
+      setParticipantes((atual) => [
+        ...atual,
+        { id: criado.id, nome: criado.nome, categoria: 'VISITANTE', registroAnterior: false },
+      ])
       setChamada((atual) => ({ ...atual, [criado.id]: 'PRESENTE' }))
       setAlterado(true)
       setVisitante(undefined)
@@ -359,14 +387,21 @@ export default function FrequencyManagement({
     }
   }
 
-  function definirSituacao(id: number, situacao: SituacaoFrequencia) {
-    setChamada((atual) => ({ ...atual, [id]: situacao }))
+  function definirSituacao(id: number, situacao: SituacaoFrequencia | null) {
+    setChamada((atual) => {
+      const proximo = { ...atual }
+      if (situacao == null) delete proximo[id]
+      else proximo[id] = situacao
+      return proximo
+    })
     setAlterado(true)
   }
   function definirTodos(situacao: SituacaoFrequencia) {
-    const mapa: Record<number, SituacaoFrequencia> = {}
-    participantes.forEach((a) => (mapa[a.id] = situacao))
-    setChamada(mapa)
+    setChamada((atual) => {
+      const mapa = { ...atual }
+      discipulos.forEach((a) => (mapa[a.id] = situacao))
+      return mapa
+    })
     setAlterado(true)
   }
 
@@ -623,9 +658,9 @@ export default function FrequencyManagement({
               gap={1.5}
             >
               <Typography variant="body2" color="text.secondary">
-                {presentes} presentes · {ausentes} ausentes · {participantes.length} no total
+                {presentes} presentes · {ausentes} ausentes
               </Typography>
-              {editavel && participantes.length > 0 && (
+              {editavel && discipulos.length > 0 && (
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
                   <Button
                     size="small"
@@ -651,106 +686,83 @@ export default function FrequencyManagement({
               )}
             </Stack>
 
-            {editavel && (
-              <Button
-                variant="text"
-                startIcon={<PersonAddAltRounded />}
-                onClick={() => {
-                  setVisitante({ ...visitanteVazio, consentimentoEm: hoje() })
-                  setFamiliaVisitante(familiaNaoConsta())
-                  setErro('')
-                }}
-                sx={{ alignSelf: 'flex-start' }}
-              >
-                Adicionar visitante
-              </Button>
-            )}
-
-            {participantes.length ? (
+            {discipulos.length ? (
               <Box
                 sx={{
                   display: 'grid',
                   gridTemplateColumns: { xs: '1fr', md: 'repeat(2,minmax(0,1fr))' },
                   gap: 1,
                   overflowX: 'hidden',
-                  pb: { xs: editavel ? 14 : 0, sm: 0 },
                 }}
               >
-                {participantes.map((a) => {
-                  const presente = chamada[a.id] === 'PRESENTE'
-                  const alternar = () => {
-                    if (editavel) definirSituacao(a.id, presente ? 'AUSENTE' : 'PRESENTE')
-                  }
-                  return (
-                    <Paper
-                      key={a.id}
-                      variant="outlined"
-                      onClick={alternar}
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1.25,
-                        p: 1.5,
-                        minHeight: 56,
-                        overflow: 'hidden',
-                        cursor: editavel ? 'pointer' : 'default',
-                        borderColor: presente ? 'success.light' : 'divider',
-                        bgcolor: presente ? (theme) => alpha(theme.palette.success.main, 0.08) : 'background.paper',
-                        WebkitTapHighlightColor: 'transparent',
-                      }}
-                    >
-                      <Avatar
-                        sx={{
-                          width: 40,
-                          height: 40,
-                          fontSize: 14,
-                          fontWeight: 700,
-                          bgcolor: presente ? 'success.main' : 'grey.500',
-                          flexShrink: 0,
-                        }}
-                      >
-                        {iniciais(a.nome)}
-                      </Avatar>
-                      <Box minWidth={0} flexGrow={1}>
-                        <Typography variant="body2" fontWeight={700} noWrap>
-                          {a.nome}
-                        </Typography>
-                        {a.registroAnterior && (
-                          <Typography variant="caption" color="text.secondary">
-                            Registro anterior
-                          </Typography>
-                        )}
-                      </Box>
-                      <Button
-                        size="small"
-                        variant={presente ? 'contained' : 'outlined'}
-                        color={presente ? 'success' : 'error'}
-                        startIcon={presente ? <CheckRounded /> : <CloseRounded />}
-                        disabled={!editavel}
-                        aria-pressed={presente}
-                        aria-label={`${a.nome}: ${presente ? 'presente' : 'ausente'}. Clique para alterar.`}
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          alternar()
-                        }}
-                        sx={{
-                          minWidth: { xs: 112, sm: 118 },
-                          flexShrink: 0,
-                          pointerEvents: editavel ? 'auto' : 'none',
-                        }}
-                      >
-                        {presente ? 'Presente' : 'Ausente'}
-                      </Button>
-                    </Paper>
-                  )
-                })}
+                {discipulos.map((a) => (
+                  <CartaoFrequencia
+                    key={a.id}
+                    adolescente={a}
+                    presente={chamada[a.id] === 'PRESENTE'}
+                    editavel={editavel}
+                    opcional={false}
+                    onToggle={() => definirSituacao(a.id, chamada[a.id] === 'PRESENTE' ? 'AUSENTE' : 'PRESENTE')}
+                  />
+                ))}
               </Box>
             ) : (
               <EmptyState
-                title="Nenhum adolescente vinculado"
-                description="Adicione um visitante para registrar a primeira presença."
+                title="Nenhum discípulo vinculado"
+                description="Marque GOE ou visitantes abaixo, ou adicione um visitante para registrar a primeira presença."
               />
             )}
+
+            <Stack spacing={1.25} sx={{ pb: { xs: editavel ? 14 : 0, sm: 0 } }}>
+              <Stack direction="row" alignItems="center" gap={1}>
+                <GroupsRounded color="action" />
+                <Typography variant="subtitle2" fontWeight={700}>
+                  GOE e visitantes
+                </Typography>
+              </Stack>
+              <Typography variant="body2" color="text.secondary">
+                Marque a presença somente quando esses adolescentes comparecerem. Quem não vier não entra como falta.
+              </Typography>
+              {editavel && (
+                <Button
+                  variant="text"
+                  startIcon={<PersonAddAltRounded />}
+                  onClick={() => {
+                    setVisitante({ ...visitanteVazio, consentimentoEm: hoje() })
+                    setFamiliaVisitante(familiaNaoConsta())
+                    setErro('')
+                  }}
+                  sx={{ alignSelf: 'flex-start' }}
+                >
+                  Adicionar visitante
+                </Button>
+              )}
+              {opcionais.length ? (
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', md: 'repeat(2,minmax(0,1fr))' },
+                    gap: 1,
+                    overflowX: 'hidden',
+                  }}
+                >
+                  {opcionais.map((a) => (
+                    <CartaoFrequencia
+                      key={a.id}
+                      adolescente={a}
+                      presente={chamada[a.id] === 'PRESENTE'}
+                      editavel={editavel}
+                      opcional
+                      onToggle={() => definirSituacao(a.id, chamada[a.id] === 'PRESENTE' ? null : 'PRESENTE')}
+                    />
+                  ))}
+                </Box>
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  Nenhum GOE ou visitante cadastrado neste discipulado.
+                </Typography>
+              )}
+            </Stack>
 
             {editavel && (
               <Paper
@@ -871,6 +883,100 @@ export default function FrequencyManagement({
       </Dialog>
     </Stack>
   )
+}
+
+function CartaoFrequencia({
+  adolescente,
+  presente,
+  editavel,
+  opcional,
+  onToggle,
+}: {
+  adolescente: ParticipanteChamada
+  presente: boolean
+  editavel: boolean
+  opcional: boolean
+  onToggle: () => void
+}) {
+  const rotulo = rotuloCategoria(adolescente.categoria)
+  const estado = presente ? 'presente' : opcional ? 'não marcado' : 'ausente'
+  const alternar = () => {
+    if (editavel) onToggle()
+  }
+  return (
+    <Paper
+      variant="outlined"
+      onClick={alternar}
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1.25,
+        p: 1.5,
+        minHeight: 56,
+        overflow: 'hidden',
+        cursor: editavel ? 'pointer' : 'default',
+        borderColor: presente ? 'success.light' : 'divider',
+        bgcolor: presente ? (theme) => alpha(theme.palette.success.main, 0.08) : 'background.paper',
+        WebkitTapHighlightColor: 'transparent',
+      }}
+    >
+      <Avatar
+        sx={{
+          width: 40,
+          height: 40,
+          fontSize: 14,
+          fontWeight: 700,
+          bgcolor: presente ? 'success.main' : 'grey.500',
+          flexShrink: 0,
+        }}
+      >
+        {iniciais(adolescente.nome)}
+      </Avatar>
+      <Box minWidth={0} flexGrow={1}>
+        <Typography variant="body2" fontWeight={700} noWrap>
+          {adolescente.nome}
+        </Typography>
+        <Stack direction="row" alignItems="center" gap={0.75} flexWrap="wrap">
+          {rotulo && <Chip size="small" label={rotulo} variant="outlined" />}
+          {adolescente.registroAnterior && (
+            <Typography variant="caption" color="text.secondary">
+              Registro anterior
+            </Typography>
+          )}
+        </Stack>
+      </Box>
+      <Button
+        size="small"
+        variant={presente ? 'contained' : 'outlined'}
+        color={presente ? 'success' : opcional ? 'inherit' : 'error'}
+        startIcon={presente ? <CheckRounded /> : opcional ? undefined : <CloseRounded />}
+        disabled={!editavel}
+        aria-pressed={presente}
+        aria-label={`${adolescente.nome}: ${estado}. Clique para alterar.`}
+        onClick={(event) => {
+          event.stopPropagation()
+          alternar()
+        }}
+        sx={{
+          minWidth: { xs: 112, sm: 118 },
+          flexShrink: 0,
+          pointerEvents: editavel ? 'auto' : 'none',
+        }}
+      >
+        {presente ? 'Presente' : opcional ? 'Marcar' : 'Ausente'}
+      </Button>
+    </Paper>
+  )
+}
+
+function presencaOpcional(categoria?: CategoriaAdolescente) {
+  return categoria === 'VISITANTE' || categoria === 'DISCIPULO_GOE'
+}
+
+function rotuloCategoria(categoria?: CategoriaAdolescente) {
+  if (categoria === 'DISCIPULO_GOE') return 'GOE'
+  if (categoria === 'VISITANTE') return 'Visitante'
+  return undefined
 }
 
 function iniciais(nome: string) {

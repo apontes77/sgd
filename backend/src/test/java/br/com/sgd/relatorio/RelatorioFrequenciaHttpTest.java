@@ -79,6 +79,7 @@ class RelatorioFrequenciaHttpTest {
   private User coLiderAlpha;
   private User perfilAcumulado;
   private Discipulado alpha;
+  private Encontro alphaPrincipal;
 
   @BeforeEach
   void prepararDados() {
@@ -112,7 +113,7 @@ class RelatorioFrequenciaHttpTest {
         discipulados.saveAndFlush(
             new Discipulado("Gamma", Sexo.MASCULINO, FaixaEtaria.DE_11_A_13, norte, liderGamma));
 
-    Encontro alphaPrincipal = encontro(alpha, SituacaoEncontro.REALIZADO);
+    alphaPrincipal = encontro(alpha, SituacaoEncontro.REALIZADO);
     encontro(alpha, DATA.minusDays(1), SituacaoEncontro.REALIZADO);
     encontro(alpha, DATA.minusDays(2), SituacaoEncontro.NAO_REALIZADO);
     encontro(beta, SituacaoEncontro.REALIZADO);
@@ -220,6 +221,67 @@ class RelatorioFrequenciaHttpTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.relatorios.length()").value(3))
         .andExpect(jsonPath("$.relatorios[2].discipulado.nome").value("Gamma"));
+  }
+
+  @Test
+  void incluiGoePresenteNosPresentesEVisitanteNominaisNosVisitantes() throws Exception {
+    Adolescente goe =
+        adolescentes.saveAndFlush(
+            new Adolescente(
+                new DadosCadastroAdolescente(
+                    "Goe",
+                    LocalDate.of(2010, 3, 1),
+                    "(11) 91111-0000",
+                    null,
+                    LocalDate.of(2026, 1, 1),
+                    CategoriaAdolescente.DISCIPULO_GOE,
+                    null,
+                    "Afastou-se",
+                    false),
+                true));
+    Adolescente visitante =
+        adolescentes.saveAndFlush(
+            new Adolescente(
+                new DadosCadastroAdolescente(
+                    "Visitante",
+                    LocalDate.of(2011, 4, 1),
+                    null,
+                    null,
+                    LocalDate.of(2026, 1, 1),
+                    CategoriaAdolescente.VISITANTE,
+                    null,
+                    null,
+                    true),
+                true));
+    vinculos.saveAndFlush(new VinculoAdolescenteDiscipulado(goe, alpha, DATA));
+    vinculos.saveAndFlush(new VinculoAdolescenteDiscipulado(visitante, alpha, DATA));
+    frequencias.saveAndFlush(
+        new Frequencia(alphaPrincipal, goe, SituacaoFrequencia.PRESENTE, AGORA));
+    frequencias.saveAndFlush(
+        new Frequencia(alphaPrincipal, visitante, SituacaoFrequencia.PRESENTE, AGORA));
+    Adolescente goeAusente =
+        adolescentes.saveAndFlush(
+            new Adolescente(
+                new DadosCadastroAdolescente(
+                    "Goe Ausente",
+                    LocalDate.of(2010, 5, 1),
+                    "(11) 92222-0000",
+                    null,
+                    LocalDate.of(2026, 1, 1),
+                    CategoriaAdolescente.DISCIPULO_GOE,
+                    null,
+                    "Afastou-se",
+                    false),
+                true));
+    frequencias.saveAndFlush(
+        new Frequencia(alphaPrincipal, goeAusente, SituacaoFrequencia.AUSENTE, AGORA));
+
+    consultar(token(liderAlpha))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.relatorios[0].resumo.presentes").value(2))
+        .andExpect(jsonPath("$.relatorios[0].resumo.ausentes").value(1))
+        .andExpect(jsonPath("$.relatorios[0].visitantes").value(4))
+        .andExpect(jsonPath("$.relatorios[0].resumo.visitantes").value(4));
   }
 
   @Test

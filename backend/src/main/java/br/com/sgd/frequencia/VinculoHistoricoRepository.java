@@ -15,7 +15,6 @@ public interface VinculoHistoricoRepository
       where v.discipulado.id = :discipuladoId
         and v.ativo = true
         and v.adolescente.ativo = true
-        and v.adolescente.categoria <> br.com.sgd.adolescente.CategoriaAdolescente.DISCIPULO_GOE
       order by v.adolescente.nome
       """)
   List<VinculoAdolescenteDiscipulado> atuais(@Param("discipuladoId") Long discipuladoId);

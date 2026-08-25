@@ -240,7 +240,7 @@ class FrequenciaHttpTest {
   }
 
   @Test
-  void discipuloGoeNaoEntraNaChamadaDeParticipantesAtuais() throws Exception {
+  void discipuloGoeEVisitanteEntramNaChamadaSomenteComoPresentesOptIn() throws Exception {
     String token = token(discipulador);
     long anaId = criarAdolescente(token, "Ana");
     long goeId = criarDiscipuloGoe(token, "Goe");
@@ -259,18 +259,37 @@ class FrequenciaHttpTest {
             + ",\"situacao\":\"PRESENTE\"},{\"adolescenteId\":"
             + goeId
             + ",\"situacao\":\"AUSENTE\"}]}",
-        409);
+        400);
+    salvarChamada(
+        token,
+        encontroId,
+        "{\"frequencias\":[{\"adolescenteId\":"
+            + anaId
+            + ",\"situacao\":\"PRESENTE\"},{\"adolescenteId\":"
+            + goeId
+            + ",\"situacao\":\"PRESENTE\"}]}",
+        200);
 
     mvc.perform(
-            get("/api/v1/adolescentes")
-                .param("discipuladoId", String.valueOf(proprio.getId()))
-                .param("ativo", "true")
-                .param("categoria", "DISCIPULO")
-                .param("categoria", "VISITANTE")
+            get("/api/v1/encontros/{id}/frequencias", encontroId)
                 .header(HttpHeaders.AUTHORIZATION, bearer(token)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.content[?(@.id==" + anaId + ")]").exists())
-        .andExpect(jsonPath("$.content[?(@.id==" + goeId + ")]").doesNotExist());
+        .andExpect(jsonPath("$.length()").value(2))
+        .andExpect(jsonPath("$[1].adolescenteNome").value("Goe"))
+        .andExpect(jsonPath("$[1].categoria").value("DISCIPULO_GOE"))
+        .andExpect(jsonPath("$[1].situacao").value("PRESENTE"));
+
+    salvarChamada(
+        token,
+        encontroId,
+        "{\"frequencias\":[{\"adolescenteId\":" + anaId + ",\"situacao\":\"PRESENTE\"}]}",
+        200);
+    mvc.perform(
+            get("/api/v1/encontros/{id}/frequencias", encontroId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(token)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.length()").value(1))
+        .andExpect(jsonPath("$[0].adolescenteId").value(anaId));
   }
 
   @Test
@@ -340,8 +359,6 @@ class FrequenciaHttpTest {
         tokenCoLider,
         outroEncontroId,
         "{\"frequencias\":[{\"adolescenteId\":"
-            + visitanteId
-            + ",\"situacao\":\"AUSENTE\"},{\"adolescenteId\":"
             + segundoVisitanteId
             + ",\"situacao\":\"PRESENTE\"}]}",
         200);
@@ -349,7 +366,9 @@ class FrequenciaHttpTest {
             get("/api/v1/encontros/{id}/frequencias", outroEncontroId)
                 .header(HttpHeaders.AUTHORIZATION, bearer(tokenCoLider)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.length()").value(2));
+        .andExpect(jsonPath("$.length()").value(1))
+        .andExpect(jsonPath("$[0].adolescenteId").value(segundoVisitanteId))
+        .andExpect(jsonPath("$[0].categoria").value("VISITANTE"));
   }
 
   @Test

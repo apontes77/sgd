@@ -75,10 +75,15 @@ public interface RelatorioFrequenciaRepository extends Repository<Encontro, Long
       value =
           """
           select e.id as encontroId,
-                 coalesce(sum(case when e.situacao = 'REALIZADO' and f.situacao = 'PRESENTE' then 1 else 0 end), 0) as presentes,
-                 coalesce(sum(case when e.situacao = 'REALIZADO' and f.situacao = 'AUSENTE' then 1 else 0 end), 0) as ausentes
+                 coalesce(sum(case when e.situacao = 'REALIZADO' and f.situacao = 'PRESENTE'
+                   and a.categoria in ('DISCIPULO', 'DISCIPULO_GOE') then 1 else 0 end), 0) as presentes,
+                 coalesce(sum(case when e.situacao = 'REALIZADO' and f.situacao = 'AUSENTE'
+                   and a.categoria = 'DISCIPULO' then 1 else 0 end), 0) as ausentes,
+                 coalesce(sum(case when e.situacao = 'REALIZADO' and f.situacao = 'PRESENTE'
+                   and a.categoria = 'VISITANTE' then 1 else 0 end), 0) as visitantesNominais
             from encontros e
             left join frequencias f on f.encontro_id = e.id
+            left join adolescentes a on a.id = f.adolescente_id
            where e.id in (:encontroIds)
            group by e.id
           """,
@@ -177,6 +182,8 @@ public interface RelatorioFrequenciaRepository extends Repository<Encontro, Long
     Number getPresentes();
 
     Number getAusentes();
+
+    Number getVisitantesNominais();
   }
 
   interface ParticipanteRow {

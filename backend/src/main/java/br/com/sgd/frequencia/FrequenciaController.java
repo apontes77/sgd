@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import br.com.sgd.adolescente.CategoriaAdolescente;
 import br.com.sgd.user.User;
 
 @RestController
@@ -144,6 +145,7 @@ public class FrequenciaController {
       Long encontroId,
       Long adolescenteId,
       String adolescenteNome,
+      CategoriaAdolescente categoria,
       SituacaoFrequencia situacao,
       Instant registradaEm) {
     static FrequenciaResponse of(Frequencia f) {
@@ -152,6 +154,7 @@ public class FrequenciaController {
           f.getEncontro().getId(),
           f.getAdolescente().getId(),
           f.getAdolescente().getNome(),
+          f.getAdolescente().getCategoria(),
           f.getSituacao(),
           f.getRegistradaEm());
     }

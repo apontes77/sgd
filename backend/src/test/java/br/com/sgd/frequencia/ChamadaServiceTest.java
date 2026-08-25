@@ -25,6 +25,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import br.com.sgd.adolescente.Adolescente;
 import br.com.sgd.adolescente.AdolescenteService;
+import br.com.sgd.adolescente.CategoriaAdolescente;
 import br.com.sgd.adolescente.EscopoOrganizacionalService;
 import br.com.sgd.adolescente.VinculoAdolescenteDiscipulado;
 import br.com.sgd.organizacao.Discipulado;
@@ -141,10 +142,10 @@ class ChamadaServiceTest {
   }
 
   @Test
-  void incluiRegistroHistoricoDeDiscipuloGoeMesmoForaDosParticipantesAtuais() {
+  void incluiRegistroHistoricoDeDiscipuloGoeComoPresenteOptIn() {
     prepararEncontro();
     Adolescente ana = adolescente(1L, "Ana");
-    Adolescente goe = adolescente(3L, "Goe");
+    Adolescente goe = adolescente(3L, "Goe", CategoriaAdolescente.DISCIPULO_GOE);
     Frequencia historica =
         new Frequencia(encontro, goe, SituacaoFrequencia.AUSENTE, AGORA.minusSeconds(60));
     when(encontros.participantesAtuais(encontro)).thenReturn(List.of(vinculo(ana)));
@@ -155,27 +156,55 @@ class ChamadaServiceTest {
         service.salvar(
             ator,
             1L,
-            List.of(item(1L, SituacaoFrequencia.PRESENTE), item(3L, SituacaoFrequencia.AUSENTE)));
+            List.of(item(1L, SituacaoFrequencia.PRESENTE), item(3L, SituacaoFrequencia.PRESENTE)));
 
     assertThat(salvas).hasSize(2);
-    assertThat(historica.getSituacao()).isEqualTo(SituacaoFrequencia.AUSENTE);
+    assertThat(historica.getSituacao()).isEqualTo(SituacaoFrequencia.PRESENTE);
     verify(adolescentes).promoverVisitanteSeElegivel(ator, 1L);
-    verify(adolescentes, never()).promoverVisitanteSeElegivel(ator, 3L);
+    verify(adolescentes).promoverVisitanteSeElegivel(ator, 3L);
   }
 
   @Test
-  void naoExigeDiscipuloGoeNaChamadaQuandoForaDosParticipantesAtuais() {
+  void naoExigeGoeNemVisitanteNaChamadaEApagaQuandoOmitidos() {
     prepararEncontro();
     Adolescente ana = adolescente(1L, "Ana");
-    when(encontros.participantesAtuais(encontro)).thenReturn(List.of(vinculo(ana)));
-    when(frequencias.findAllByEncontroIdOrderByAdolescenteNome(1L)).thenReturn(List.of());
+    Adolescente goe = adolescente(3L, "Goe", CategoriaAdolescente.DISCIPULO_GOE);
+    Adolescente visitante = adolescente(4L, "Vis", CategoriaAdolescente.VISITANTE);
+    Frequencia goePresente =
+        new Frequencia(encontro, goe, SituacaoFrequencia.PRESENTE, AGORA.minusSeconds(60));
+    when(encontros.participantesAtuais(encontro))
+        .thenReturn(List.of(vinculo(ana), vinculo(goe), vinculo(visitante)));
+    when(frequencias.findAllByEncontroIdOrderByAdolescenteNome(1L))
+        .thenReturn(List.of(goePresente));
     when(frequencias.save(any())).thenAnswer(i -> i.getArgument(0));
 
     List<Frequencia> salvas =
         service.salvar(ator, 1L, List.of(item(1L, SituacaoFrequencia.PRESENTE)));
 
     assertThat(salvas).hasSize(1);
-    verify(encontros).participantesAtuais(encontro);
+    verify(frequencias).delete(goePresente);
+    verify(encontros).auditar(eq(ator), eq("FREQUENCIA"), eq("SUBSTITUIR_CHAMADA"), any());
+  }
+
+  @Test
+  void rejeitaGoeOuVisitanteComoAusente() {
+    prepararEncontro();
+    Adolescente ana = adolescente(1L, "Ana");
+    Adolescente goe = adolescente(3L, "Goe", CategoriaAdolescente.DISCIPULO_GOE);
+    when(encontros.participantesAtuais(encontro)).thenReturn(List.of(vinculo(ana), vinculo(goe)));
+    when(frequencias.findAllByEncontroIdOrderByAdolescenteNome(1L)).thenReturn(List.of());
+
+    assertThatThrownBy(
+            () ->
+                service.salvar(
+                    ator,
+                    1L,
+                    List.of(
+                        item(1L, SituacaoFrequencia.PRESENTE),
+                        item(3L, SituacaoFrequencia.AUSENTE))))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("presentes");
+    verify(frequencias, never()).save(any());
   }
 
   @Test
@@ -265,8 +294,13 @@ class ChamadaServiceTest {
   }
 
   private static Adolescente adolescente(long id, String nome) {
+    return adolescente(id, nome, CategoriaAdolescente.DISCIPULO);
+  }
+
+  private static Adolescente adolescente(long id, String nome, CategoriaAdolescente categoria) {
     Adolescente a = org.mockito.Mockito.mock(Adolescente.class);
     when(a.getId()).thenReturn(id);
+    when(a.getCategoria()).thenReturn(categoria);
     return a;
   }
 }

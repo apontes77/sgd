@@ -45,6 +45,7 @@ describe('registro de frequência', () => {
       throw new Error(`Requisição inesperada: ${method} ${url}`)
     })
 
+    const user = userEvent.setup({ delay: null })
     render(
       <FrequencyManagement
         discipuladoId={1}
@@ -60,19 +61,19 @@ describe('registro de frequência', () => {
         }}
       />,
     )
-    await userEvent.click(await screen.findByRole('button', { name: /Houve discipulado/i }))
+    await user.click(await screen.findByRole('button', { name: /Houve discipulado/i }))
 
     expect(await screen.findByText(/Discipulador:/i)).toBeInTheDocument()
     expect(screen.getByText(/João Discipulador/)).toBeInTheDocument()
-    await userEvent.type(screen.getByLabelText(/Observação/), 'Chegou só no culto')
-    await userEvent.click(await screen.findByRole('button', { name: /Ana: ausente/i }))
-    await userEvent.click(screen.getByRole('button', { name: 'Salvar frequência' }))
+    await user.type(screen.getByLabelText(/Observação/), 'Chegou só no culto')
+    await user.click(await screen.findByRole('button', { name: /Ana: ausente/i }))
+    await user.click(screen.getByRole('button', { name: 'Salvar frequência' }))
     expect(await screen.findByText('Frequência salva.')).toBeInTheDocument()
 
     const listagem = fetchMock.mock.calls.find(([url]) => String(url).includes('/adolescentes?'))
     expect(String(listagem?.[0])).toContain('categoria=DISCIPULO')
     expect(String(listagem?.[0])).toContain('categoria=VISITANTE')
-    expect(String(listagem?.[0])).not.toContain('DISCIPULO_GOE')
+    expect(String(listagem?.[0])).toContain('DISCIPULO_GOE')
 
     const observacaoPatch = fetchMock.mock.calls.find(
       ([url, init]) => String(url).endsWith('/encontros/10') && init?.method === 'PATCH',
@@ -83,6 +84,50 @@ describe('registro de frequência', () => {
       ([url, init]) => String(url).endsWith('/encontros/10/frequencias') && init?.method === 'PUT',
     )
     expect(JSON.parse(String(salvamento?.[1]?.body)).frequencias).toEqual([{ adolescenteId: 1, situacao: 'PRESENTE' }])
+  }, 15000)
+
+  it('mostra GOE e visitantes em seção separada e salva só os marcados como presentes', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input)
+      const method = init?.method ?? 'GET'
+      if (url.includes('/adolescentes?'))
+        return json({
+          content: [
+            { id: 1, nome: 'Ana', categoria: 'DISCIPULO' },
+            { id: 2, nome: 'Goe', categoria: 'DISCIPULO_GOE' },
+            { id: 3, nome: 'Vis', categoria: 'VISITANTE' },
+          ],
+          page: 0,
+          size: 100,
+          totalElements: 3,
+          totalPages: 1,
+        })
+      if (url.endsWith('/encontros') && method === 'POST') return json(encontro, 201)
+      if (url.includes('/encontros?')) return json([])
+      if (url.endsWith('/encontros/10') && method === 'PATCH') return json(encontro)
+      if (url.endsWith('/encontros/10/frequencias') && method === 'GET') return json([])
+      if (url.endsWith('/encontros/10/frequencias') && method === 'PUT') return json([])
+      throw new Error(`Requisição inesperada: ${method} ${url}`)
+    })
+
+    const user = userEvent.setup({ delay: null })
+    render(<FrequencyManagement discipuladoId={1} />)
+    await user.click(await screen.findByRole('button', { name: /Houve discipulado/i }))
+    expect(await screen.findByText('GOE e visitantes')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Ana: ausente/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Goe: não marcado/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Vis: não marcado/i })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /Goe: não marcado/i }))
+    expect(await screen.findByText(/Há alterações ainda não salvas/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Salvar frequência' }))
+    expect(await screen.findByText('Frequência salva.')).toBeInTheDocument()
+    const salvamento = fetchMock.mock.calls.find(
+      ([url, init]) => String(url).endsWith('/encontros/10/frequencias') && init?.method === 'PUT',
+    )
+    expect(JSON.parse(String(salvamento?.[1]?.body)).frequencias).toEqual([
+      { adolescenteId: 1, situacao: 'AUSENTE' },
+      { adolescenteId: 2, situacao: 'PRESENTE' },
+    ])
   })
 
   it('"Não houve discipulado" exige justificativa e envia situacao NAO_REALIZADO', async () => {
