@@ -107,10 +107,12 @@ function validarFormularioAdolescente(form: AdolescenteInput): string | null {
 }
 
 export default function AdolescentManagement({
+  discipuladoInicial,
   podeAnonimizar = false,
   podeEditar = true,
   podeFamilia = false,
 }: {
+  discipuladoInicial?: number
   podeAnonimizar?: boolean
   podeEditar?: boolean
   podeFamilia?: boolean
@@ -118,7 +120,7 @@ export default function AdolescentManagement({
   const [items, setItems] = useState<Adolescente[]>([])
   const [totalAtivos, setTotalAtivos] = useState(0)
   const [discipulados, setDiscipulados] = useState<DiscipuladoResumo[]>([])
-  const [filtro, setFiltro] = useState<number>(0)
+  const [filtro, setFiltro] = useState<number>(discipuladoInicial && discipuladoInicial > 0 ? discipuladoInicial : 0)
   const [form, setForm] = useState<AdolescenteInput>(vazio)
   const [familiaForm, setFamiliaForm] = useState<FamiliaInput>(familiaNaoConsta())
   const [editando, setEditando] = useState<Adolescente | null>(null)

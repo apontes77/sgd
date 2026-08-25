@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { pathForSection, resolveInitialSection, sectionFromPath } from './appNavigation'
+import { discipuladoIdFromSearch, pathForSection, resolveInitialSection, sectionFromPath } from './appNavigation'
 
 describe('appNavigation', () => {
   it('monta e interpreta caminhos /app/:secao', () => {
@@ -8,6 +8,18 @@ describe('appNavigation', () => {
     expect(sectionFromPath('/app/painel')).toBe('painel')
     expect(sectionFromPath('/app/desconhecida')).toBeUndefined()
     expect(sectionFromPath('/')).toBeUndefined()
+  })
+
+  it('monta caminho com discipuladoId na query', () => {
+    expect(pathForSection('adolescentes', { discipuladoId: 20 })).toBe('/app/adolescentes?discipuladoId=20')
+    expect(pathForSection('adolescentes', {})).toBe('/app/adolescentes')
+  })
+
+  it('lê discipuladoId válido da query', () => {
+    expect(discipuladoIdFromSearch('?discipuladoId=20')).toBe(20)
+    expect(discipuladoIdFromSearch('?discipuladoId=0')).toBeUndefined()
+    expect(discipuladoIdFromSearch('?discipuladoId=abc')).toBeUndefined()
+    expect(discipuladoIdFromSearch('')).toBeUndefined()
   })
 
   it('resolve a seção inicial a partir da URL quando disponível', () => {

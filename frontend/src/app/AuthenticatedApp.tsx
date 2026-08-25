@@ -41,7 +41,7 @@ import { motion, useReducedMotion } from 'framer-motion'
 import type { ReactNode, Ref } from 'react'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 
-import { type AppSection, navigateToSection, resolveInitialSection } from '@/app/appNavigation'
+import { type AppSection, discipuladoIdFromSearch, navigateToSection, resolveInitialSection } from '@/app/appNavigation'
 import { useColorMode } from '@/app/useColorMode'
 import { useSidebarCollapsed } from '@/app/useSidebarCollapsed'
 import AdolescentManagement from '@/features/adolescentes/AdolescentManagement'
@@ -182,6 +182,7 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
   }, [currentUser.perfis, isAdmin, isGerente])
   const available = useMemo(() => sections.map((item) => item.value), [sections])
   const [section, setSection] = useState<Section>(() => resolveInitialSection(available))
+  const [discipuladoFiltro, setDiscipuladoFiltro] = useState<number | undefined>(() => discipuladoIdFromSearch())
   const [moreOpen, setMoreOpen] = useState(false)
   const currentSection = sections.find((item) => item.value === section) ?? sections[0]
   const bottomPrimary = useMemo(() => primaryBottomItems(sections), [sections])
@@ -198,21 +199,34 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
     if (!available.includes(section)) {
       const next = resolveInitialSection(available)
       setSection(next)
+      setDiscipuladoFiltro(undefined)
       navigateToSection(next, true)
       return
     }
-    navigateToSection(section, true)
-  }, [available, section])
+    const search = section === 'adolescentes' && discipuladoFiltro ? { discipuladoId: discipuladoFiltro } : undefined
+    navigateToSection(section, true, search)
+  }, [available, section, discipuladoFiltro])
 
   useEffect(() => {
-    const onPopState = () => setSection(resolveInitialSection(available))
+    const onPopState = () => {
+      setSection(resolveInitialSection(available))
+      setDiscipuladoFiltro(discipuladoIdFromSearch())
+    }
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
   }, [available])
 
   function navigate(value: Section) {
     setSection(value)
+    setDiscipuladoFiltro(undefined)
     navigateToSection(value)
+    setMoreOpen(false)
+  }
+
+  function abrirAdolescentes(discipuladoId: number) {
+    setSection('adolescentes')
+    setDiscipuladoFiltro(discipuladoId)
+    navigateToSection('adolescentes', false, { discipuladoId })
     setMoreOpen(false)
   }
 
@@ -318,10 +332,12 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
               {section === 'painel' && <AdminDashboard />}
               {section === 'minha-gerencia' && <ManagerDashboard />}
               {section === 'meu-discipulado' && <LeaderDashboard />}
-              {section === 'estrutura' && <OrganizationManagement />}
+              {section === 'estrutura' && <OrganizationManagement onAbrirAdolescentes={abrirAdolescentes} />}
               {section === 'usuarios' && <UserManagement client={userManagementClient} />}
               {section === 'adolescentes' && (
                 <AdolescentManagement
+                  key={discipuladoFiltro ?? 'todos'}
+                  discipuladoInicial={discipuladoFiltro}
                   podeAnonimizar={isAdmin}
                   podeFamilia={isAdmin || isGerente}
                   podeEditar={currentUser.perfis.some(

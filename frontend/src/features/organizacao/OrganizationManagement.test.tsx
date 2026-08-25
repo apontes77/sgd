@@ -170,4 +170,64 @@ describe('estrutura organizacional — co-líderes', () => {
     expect(screen.getByText('Luz do mundo')).toBeInTheDocument()
     expect(screen.queryByText('Fonte de vida')).not.toBeInTheDocument()
   })
+
+  it('ao clicar no discipulado, abre a listagem de adolescentes', async () => {
+    const user = userEvent.setup()
+    const onAbrirAdolescentes = vi.fn()
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/usuarios?')) return json(page([admin, discipulador, coLider, outroCoLider]))
+      if (url.includes('/gerencias?')) return json(page([gerencia]))
+      if (url.includes('/discipulados?')) return json(page([discipulado]))
+      throw new Error(`Requisição inesperada: ${url}`)
+    })
+
+    render(<OrganizationManagement onAbrirAdolescentes={onAbrirAdolescentes} />)
+    await user.click(await screen.findByRole('tab', { name: 'Discipulados' }))
+
+    const link = await screen.findByRole('link', { name: 'Ver adolescentes de Luz do mundo' })
+    expect(link).toHaveAttribute('href', '/app/adolescentes?discipuladoId=20')
+    await user.click(link)
+
+    expect(onAbrirAdolescentes).toHaveBeenCalledWith(20)
+  })
+
+  it('ao clicar no discipulado da gerência selecionada, abre adolescentes', async () => {
+    const user = userEvent.setup()
+    const onAbrirAdolescentes = vi.fn()
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/usuarios?')) return json(page([admin, discipulador, coLider, outroCoLider]))
+      if (url.includes('/gerencias?')) return json(page([gerencia]))
+      if (url.includes('/discipulados?')) return json(page([discipulado]))
+      throw new Error(`Requisição inesperada: ${url}`)
+    })
+
+    render(<OrganizationManagement onAbrirAdolescentes={onAbrirAdolescentes} />)
+    await user.click(await screen.findByText('Gerência Beatriz Ferreira'))
+    const link = await screen.findByRole('link', { name: 'Ver adolescentes de Luz do mundo' })
+    await user.click(link)
+
+    expect(onAbrirAdolescentes).toHaveBeenCalledWith(20)
+  })
+
+  it('ações de editar não abrem a listagem de adolescentes', async () => {
+    const user = userEvent.setup()
+    const onAbrirAdolescentes = vi.fn()
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/usuarios?')) return json(page([admin, discipulador, coLider, outroCoLider]))
+      if (url.includes('/gerencias?')) return json(page([gerencia]))
+      if (url.includes('/discipulados?')) return json(page([discipulado]))
+      throw new Error(`Requisição inesperada: ${url}`)
+    })
+
+    render(<OrganizationManagement onAbrirAdolescentes={onAbrirAdolescentes} />)
+    await user.click(await screen.findByRole('tab', { name: 'Discipulados' }))
+    await user.click(await screen.findByRole('button', { name: 'Ações de Luz do mundo' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Editar' }))
+
+    expect(await screen.findByRole('heading', { name: 'Editar discipulado' })).toBeInTheDocument()
+    expect(onAbrirAdolescentes).not.toHaveBeenCalled()
+  })
 })

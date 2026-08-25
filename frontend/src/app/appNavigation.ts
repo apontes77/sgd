@@ -14,8 +14,13 @@ export const APP_SECTIONS = [
 
 export type AppSection = (typeof APP_SECTIONS)[number]
 
-export function pathForSection(section: AppSection) {
-  return `/app/${section}`
+export type SectionSearch = { discipuladoId?: number }
+
+export function pathForSection(section: AppSection, search?: SectionSearch) {
+  const base = `/app/${section}`
+  if (!search?.discipuladoId) return base
+  const params = new URLSearchParams({ discipuladoId: String(search.discipuladoId) })
+  return `${base}?${params}`
 }
 
 export function sectionFromPath(pathname: string): AppSection | undefined {
@@ -30,8 +35,15 @@ export function resolveInitialSection(available: AppSection[], pathname = window
   return available[0]
 }
 
-export function navigateToSection(section: AppSection, replace = false) {
-  const url = pathForSection(section)
+export function discipuladoIdFromSearch(search = window.location.search): number | undefined {
+  const raw = new URLSearchParams(search).get('discipuladoId')
+  if (!raw) return undefined
+  const id = Number(raw)
+  return Number.isInteger(id) && id > 0 ? id : undefined
+}
+
+export function navigateToSection(section: AppSection, replace = false, search?: SectionSearch) {
+  const url = pathForSection(section, search)
   if (replace) window.history.replaceState({}, '', url)
   else window.history.pushState({}, '', url)
 }

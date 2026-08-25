@@ -30,6 +30,7 @@ import {
 import type { FormEvent } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
+import { pathForSection } from '@/app/appNavigation'
 import { organizationApi } from '@/features/organizacao/api'
 import { LoadingState, PageHeader, RowActionsMenu } from '@/shared/ui'
 
@@ -81,7 +82,11 @@ function nomeContem(valor: string | undefined, termoBruto: string) {
   return normalizarBusca(valor ?? '').includes(termo)
 }
 
-export default function OrganizationManagement() {
+export default function OrganizationManagement({
+  onAbrirAdolescentes,
+}: {
+  onAbrirAdolescentes?: (discipuladoId: number) => void
+}) {
   const [tab, setTab] = useState(0)
   const [users, setUsers] = useState<Usuario[]>([])
   const [gerencias, setGerencias] = useState<Gerencia[]>([])
@@ -319,6 +324,7 @@ export default function OrganizationManagement() {
                     users={users}
                     gerencias={gerencias}
                     emptyLabel="Nenhum discipulado nesta gerência."
+                    onAbrirAdolescentes={onAbrirAdolescentes}
                     onEdit={(item) => setModal({ kind: 'discipulado', item })}
                     onDeactivate={setPendingDeactivate}
                   />
@@ -344,6 +350,7 @@ export default function OrganizationManagement() {
               users={users}
               gerencias={gerencias}
               emptyLabel="Nenhum discipulado encontrado."
+              onAbrirAdolescentes={onAbrirAdolescentes}
               onEdit={(item) => setModal({ kind: 'discipulado', item })}
               onDeactivate={setPendingDeactivate}
             />
@@ -537,6 +544,7 @@ function DiscipuladoList({
   users,
   gerencias,
   emptyLabel = 'Nenhum discipulado cadastrado.',
+  onAbrirAdolescentes,
   onEdit,
   onDeactivate,
 }: {
@@ -544,6 +552,7 @@ function DiscipuladoList({
   users: Usuario[]
   gerencias: Gerencia[]
   emptyLabel?: string
+  onAbrirAdolescentes?: (discipuladoId: number) => void
   onEdit: (item: Discipulado) => void
   onDeactivate: (item: Discipulado) => void
 }) {
@@ -552,23 +561,9 @@ function DiscipuladoList({
       {items.length === 0 ? (
         <EmptyState label={emptyLabel} />
       ) : (
-        items.map((item) => (
-          <ListItem
-            key={item.id}
-            divider
-            alignItems="flex-start"
-            secondaryAction={
-              <RowActionsMenu
-                ariaLabel={`Ações de ${item.nome}`}
-                actions={[
-                  { label: 'Editar', onClick: () => onEdit(item) },
-                  ...(item.ativo !== false
-                    ? [{ label: 'Inativar', onClick: () => onDeactivate(item), color: 'warning' as const }]
-                    : []),
-                ]}
-              />
-            }
-          >
+        items.map((item) => {
+          const href = pathForSection('adolescentes', { discipuladoId: item.id })
+          const conteudo = (
             <ListItemText
               primary={
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
@@ -604,8 +599,44 @@ function DiscipuladoList({
               secondaryTypographyProps={{ component: 'div', sx: { minWidth: 0, pr: 1 } }}
               sx={{ pr: 1, minWidth: 0 }}
             />
-          </ListItem>
-        ))
+          )
+          return (
+            <ListItem
+              key={item.id}
+              disablePadding={Boolean(onAbrirAdolescentes)}
+              divider
+              alignItems="flex-start"
+              secondaryAction={
+                <RowActionsMenu
+                  ariaLabel={`Ações de ${item.nome}`}
+                  actions={[
+                    { label: 'Editar', onClick: () => onEdit(item) },
+                    ...(item.ativo !== false
+                      ? [{ label: 'Inativar', onClick: () => onDeactivate(item), color: 'warning' as const }]
+                      : []),
+                  ]}
+                />
+              }
+            >
+              {onAbrirAdolescentes ? (
+                <ListItemButton
+                  component="a"
+                  href={href}
+                  aria-label={`Ver adolescentes de ${item.nome}`}
+                  onClick={(event) => {
+                    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
+                    event.preventDefault()
+                    onAbrirAdolescentes(item.id)
+                  }}
+                >
+                  {conteudo}
+                </ListItemButton>
+              ) : (
+                conteudo
+              )}
+            </ListItem>
+          )
+        })
       )}
     </List>
   )
