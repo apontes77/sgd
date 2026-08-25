@@ -63,13 +63,15 @@ Discipulador, Co-líder ou Administrador
 Fluxo:
 
 1. Selecionar encontro.
-2. Marcar presença.
-3. Salvar.
+2. Marcar presença dos discípulos.
+3. Opcionalmente marcar presença de GOE e visitantes cadastrados, somente se comparecerem.
+4. Salvar.
 
 Fluxo alternativo:
 
 - Após o fechamento automático do prazo, somente o administrador modifica a frequência (reverte para realizado e preenche a chamada), mantendo o aviso de não lançamento pelo líder (RN052).
 - Somente o administrador pode excluir a frequência de uma data lançada por engano (RN053).
+- GOE e visitantes não entram como falta quando não marcados (RN049).
 
 ---
 

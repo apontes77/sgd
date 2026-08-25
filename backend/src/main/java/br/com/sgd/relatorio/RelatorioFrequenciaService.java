@@ -233,7 +233,9 @@ public class RelatorioFrequenciaService {
     ResumoEncontro resumoSql = resumosPorEncontro.get(encontro.getEncontroId());
     long presentes = valor(resumoSql == null ? null : resumoSql.getPresentes());
     long ausentes = valor(resumoSql == null ? null : resumoSql.getAusentes());
-    int quantidadeVisitantes = visitantesPorEncontro.getOrDefault(encontro.getEncontroId(), 0);
+    int quantidadeVisitantes =
+        valorInt(resumoSql == null ? null : resumoSql.getVisitantesNominais())
+            + visitantesPorEncontro.getOrDefault(encontro.getEncontroId(), 0);
     return new RelatorioEncontro(
         encontro.getEncontroId(),
         encontro.getData(),

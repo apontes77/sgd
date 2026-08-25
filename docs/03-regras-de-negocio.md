@@ -75,7 +75,7 @@ RN048 - Cada adolescente possui exatamente uma ficha de família obrigatória (1
 
 RN051 - Leitura e escrita da ficha de família são exclusivas de ADMIN (qualquer registro) e GERENTE (somente na própria gerência). Discipulador e co-líder cadastram adolescentes sem informar a ficha; o sistema cria automaticamente a ficha com “Não consta”.
 
-RN049 - A lista de presença (chamada) de um encontro inclui somente adolescentes ativos nas categorias `DISCIPULO` e `VISITANTE`. Discípulos `DISCIPULO_GOE` permanecem na base para registro histórico e na gestão de adolescentes, mas não entram como participantes atuais da frequência. Registros de frequência já existentes de um GOE em um encontro continuam visíveis/editáveis como registro anterior.
+RN049 - A chamada obrigatória de um encontro inclui os adolescentes ativos na categoria `DISCIPULO`. Adolescentes ativos `VISITANTE` e `DISCIPULO_GOE` do discipulado aparecem em seção separada e só geram registro de frequência quando marcados como `PRESENTE`. Omitir ou desmarcar apaga o registro; não se lança `AUSENTE` para GOE ou visitante. Discípulos inativos com frequência já lançada no encontro continuam visíveis/editáveis como registro anterior.
 
 RN043 - Quando um adolescente ativo na categoria `DISCIPULO` acumula ao menos quatro faltas (`AUSENTE`) em encontros `REALIZADO` cuja data está nas últimas seis semanas (42 dias corridos, timezone America/Sao_Paulo), o sistema apresenta alerta de potencial Discípulo GOE. A mudança de categoria só ocorre mediante confirmação do usuário autorizado, com motivo informado.
 

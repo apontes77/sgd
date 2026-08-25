@@ -1,8 +1,10 @@
+import type { CategoriaAdolescente } from '@/features/adolescentes/api'
 import { request } from '@/shared/api/httpClient'
 import type { Pagina } from '@/shared/api/types'
 
 export type SituacaoEncontro = 'REALIZADO' | 'NAO_REALIZADO'
 export type SituacaoFrequencia = 'PRESENTE' | 'AUSENTE'
+export type { CategoriaAdolescente }
 export interface Encontro {
   id: number
   discipuladoId: number
@@ -20,12 +22,14 @@ export interface Frequencia {
   encontroId: number
   adolescenteId: number
   adolescenteNome: string
+  categoria?: CategoriaAdolescente
   situacao: SituacaoFrequencia
   registradaEm: string
 }
 export interface AdolescenteResumo {
   id: number
   nome: string
+  categoria?: CategoriaAdolescente
 }
 
 export const frequenciaApi = {
@@ -60,6 +64,7 @@ export const frequenciaApi = {
     })
     params.append('categoria', 'DISCIPULO')
     params.append('categoria', 'VISITANTE')
+    params.append('categoria', 'DISCIPULO_GOE')
     return request<Pagina<AdolescenteResumo>>(`/adolescentes?${params}`)
   },
 }
