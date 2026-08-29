@@ -2,10 +2,11 @@ import { cleanup, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { ChamadaLiderancaResponse } from '@/features/lideranca/api'
 import LeadershipAttendance from '@/features/lideranca/LeadershipAttendance'
 import { render } from '@/test/test-utils'
 
-const grade = {
+const grade: ChamadaLiderancaResponse = {
   id: null,
   data: '2026-08-14',
   observacaoGeral: null,
@@ -382,7 +383,11 @@ describe('chamada de liderança', () => {
       if (url.includes('/chamadas-lideranca') && init?.method === 'PUT') {
         const body = JSON.parse(String(init.body)) as {
           observacaoGeral: string | null
-          discipulados: { discipuladoId: number; observacao: string | null; presencas: { situacao: string }[] }[]
+          discipulados: {
+            discipuladoId: number
+            observacao: string | null
+            presencas: { usuarioId: number; papel: string; situacao: 'PRESENTE' | 'AUSENTE' }[]
+          }[]
         }
         return new Response(
           JSON.stringify({
