@@ -46,10 +46,14 @@ const SEXO_OPCOES: { value: FiltroSexoLideranca; label: string }[] = [
 
 type PresencasState = Record<number, Record<number, SituacaoPresencaLideranca | null>>
 type ObservacoesState = Record<number, string>
+type OpcoesPersistir = {
+  observacaoGeralEnviada: string | null
+  preservarObservacaoGeral: boolean
+}
 type PendenciaConfirmacao = {
   payload: SalvarChamadaLiderancaRequest['discipulados']
   conflitos: ConflitoPresencaLideranca[]
-}
+} & OpcoesPersistir
 
 function normalizarBusca(valor: string) {
   return valor.trim().toLocaleLowerCase('pt-BR')
@@ -163,6 +167,15 @@ function discipuladosParaSalvar(
   })
 }
 
+function idsNaoSalvos(alterados: Set<number>, payload: SalvarChamadaLiderancaRequest['discipulados']): Set<number> {
+  const salvos = new Set(payload.map((d) => d.discipuladoId))
+  const restantes = new Set<number>()
+  for (const id of alterados) {
+    if (!salvos.has(id)) restantes.add(id)
+  }
+  return restantes
+}
+
 export default function LeadershipAttendance() {
   const mobile = useMediaQuery('(max-width:599.95px)')
   const [data, setData] = useState(hojeLocal)
@@ -176,31 +189,53 @@ export default function LeadershipAttendance() {
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState('')
   const [sucesso, setSucesso] = useState('')
-  const [alterado, setAlterado] = useState(false)
+  const [discipuladosAlterados, setDiscipuladosAlterados] = useState<Set<number>>(new Set())
+  const [observacaoGeralAlterada, setObservacaoGeralAlterada] = useState(false)
   const [pendencia, setPendencia] = useState<PendenciaConfirmacao>()
 
-  const aplicarGrade = useCallback((resposta: ChamadaLiderancaResponse) => {
-    setGrade(resposta)
-    setObservacaoGeral(resposta.observacaoGeral ?? '')
-    const nextPresencas: PresencasState = {}
-    const nextObs: ObservacoesState = {}
-    for (const d of resposta.discipulados) {
-      nextObs[d.discipuladoId] = d.observacao ?? ''
-      nextPresencas[d.discipuladoId] = {}
-      for (const p of d.presencas) {
-        nextPresencas[d.discipuladoId][p.usuarioId] = situacaoDestaLinha(d.discipuladoId, p.situacao, p.registroDoDia)
+  const aplicarGrade = useCallback(
+    (
+      resposta: ChamadaLiderancaResponse,
+      preservar?: {
+        discipuladoIds: Set<number>
+        presencas: PresencasState
+        observacoes: ObservacoesState
+        observacaoGeral?: string
+      },
+    ) => {
+      setGrade(resposta)
+      const nextPresencas: PresencasState = {}
+      const nextObs: ObservacoesState = {}
+      for (const d of resposta.discipulados) {
+        nextObs[d.discipuladoId] = d.observacao ?? ''
+        nextPresencas[d.discipuladoId] = {}
+        for (const p of d.presencas) {
+          nextPresencas[d.discipuladoId][p.usuarioId] = situacaoDestaLinha(d.discipuladoId, p.situacao, p.registroDoDia)
+        }
+        if (preservar?.discipuladoIds.has(d.discipuladoId)) {
+          if (preservar.presencas[d.discipuladoId])
+            nextPresencas[d.discipuladoId] = { ...preservar.presencas[d.discipuladoId] }
+          if (preservar.observacoes[d.discipuladoId] !== undefined)
+            nextObs[d.discipuladoId] = preservar.observacoes[d.discipuladoId]
+        }
       }
-    }
-    setPresencas(nextPresencas)
-    setObservacoes(nextObs)
-    setAlterado(false)
-  }, [])
+      setPresencas(nextPresencas)
+      setObservacoes(nextObs)
+      setObservacaoGeral(
+        preservar?.observacaoGeral !== undefined ? preservar.observacaoGeral : (resposta.observacaoGeral ?? ''),
+      )
+      setDiscipuladosAlterados(preservar ? new Set(preservar.discipuladoIds) : new Set())
+      setObservacaoGeralAlterada(preservar?.observacaoGeral !== undefined)
+    },
+    [],
+  )
 
   const carregar = useCallback(
     async (dataConsulta: string) => {
       setCarregando(true)
       setErro('')
       setSucesso('')
+      setPendencia(undefined)
       try {
         aplicarGrade(await liderancaApi.consultar(dataConsulta))
       } catch (e) {
@@ -227,6 +262,18 @@ export default function LeadershipAttendance() {
 
   const registrosPersistidos = useMemo(() => indexarRegistrosPersistidos(grade?.discipulados ?? []), [grade])
 
+  const toolbarAlterada =
+    observacaoGeralAlterada || discipuladosVisiveis.some((d) => discipuladosAlterados.has(d.discipuladoId))
+
+  function marcarDiscipuladoAlterado(discipuladoId: number) {
+    setDiscipuladosAlterados((prev) => {
+      const next = new Set(prev)
+      next.add(discipuladoId)
+      return next
+    })
+    setSucesso('')
+  }
+
   function marcar(discipuladoId: number, usuarioId: number, situacao: SituacaoPresencaLideranca) {
     setPresencas((prev) => {
       const next: PresencasState = {}
@@ -238,15 +285,19 @@ export default function LeadershipAttendance() {
       if (!next[discipuladoId]) next[discipuladoId] = { [usuarioId]: situacao }
       return next
     })
-    setAlterado(true)
-    setSucesso('')
+    marcarDiscipuladoAlterado(discipuladoId)
   }
 
   async function persistir(
     payloadDiscipulados: SalvarChamadaLiderancaRequest['discipulados'],
     confirmarAtualizacao: boolean,
+    opcoes: OpcoesPersistir,
   ) {
     if (!grade) return
+    const snapshotPresencas = presencas
+    const snapshotObservacoes = observacoes
+    const snapshotAlterados = discipuladosAlterados
+    const snapshotObservacaoGeral = observacaoGeral
     setPendencia(undefined)
     setErro('')
     setSucesso('')
@@ -254,16 +305,28 @@ export default function LeadershipAttendance() {
     try {
       const resposta = await liderancaApi.salvar({
         data: grade.data,
-        observacaoGeral: observacaoGeral.trim() || null,
+        observacaoGeral: opcoes.observacaoGeralEnviada,
         discipulados: payloadDiscipulados,
         confirmarAtualizacao: confirmarAtualizacao || undefined,
       })
-      aplicarGrade(resposta)
+      const preservarIds = idsNaoSalvos(snapshotAlterados, payloadDiscipulados)
+      const devePreservar = preservarIds.size > 0 || opcoes.preservarObservacaoGeral
+      aplicarGrade(
+        resposta,
+        devePreservar
+          ? {
+              discipuladoIds: preservarIds,
+              presencas: snapshotPresencas,
+              observacoes: snapshotObservacoes,
+              observacaoGeral: opcoes.preservarObservacaoGeral ? snapshotObservacaoGeral : undefined,
+            }
+          : undefined,
+      )
       setSucesso('Chamada de liderança salva.')
     } catch (e) {
       const conflitos = conflitosDoErro(e)
       if (conflitos) {
-        setPendencia({ payload: payloadDiscipulados, conflitos })
+        setPendencia({ payload: payloadDiscipulados, conflitos, ...opcoes })
         return
       }
       setErro(e instanceof Error ? e.message : 'Não foi possível salvar a chamada.')
@@ -272,17 +335,37 @@ export default function LeadershipAttendance() {
     }
   }
 
-  async function salvar(event: FormEvent) {
-    event.preventDefault()
+  function iniciarSalvamento(
+    payloadDiscipulados: SalvarChamadaLiderancaRequest['discipulados'],
+    opcoes: OpcoesPersistir,
+  ) {
     if (!grade) return
-    const payloadDiscipulados = discipuladosParaSalvar(discipuladosVisiveis, presencas, observacoes)
     const conflitos = conflitosDoPayload(payloadDiscipulados, grade.discipulados)
     if (conflitos.length > 0) {
-      setPendencia({ payload: payloadDiscipulados, conflitos })
+      setPendencia({ payload: payloadDiscipulados, conflitos, ...opcoes })
       setSucesso('')
       return
     }
-    await persistir(payloadDiscipulados, false)
+    void persistir(payloadDiscipulados, false, opcoes)
+  }
+
+  async function salvar(event: FormEvent) {
+    event.preventDefault()
+    if (!grade) return
+    iniciarSalvamento(discipuladosParaSalvar(discipuladosVisiveis, presencas, observacoes), {
+      observacaoGeralEnviada: observacaoGeral.trim() || null,
+      preservarObservacaoGeral: false,
+    })
+  }
+
+  function salvarDiscipulado(item: DiscipuladoChamadaLideranca) {
+    if (!grade) return
+    const payload = discipuladosParaSalvar([item], presencas, observacoes)
+    if (payload.length === 0) return
+    iniciarSalvamento(payload, {
+      observacaoGeralEnviada: grade.observacaoGeral,
+      preservarObservacaoGeral: observacaoGeralAlterada,
+    })
   }
 
   const mensagemVazia =
@@ -339,9 +422,10 @@ export default function LeadershipAttendance() {
             type="submit"
             variant="contained"
             startIcon={<SaveRounded />}
-            disabled={salvando || carregando || !grade || !alterado}
+            disabled={salvando || carregando || !grade || !toolbarAlterada}
+            sx={{ width: { xs: '100%', sm: 'auto' }, flexShrink: 0 }}
           >
-            {salvando ? 'Salvando...' : alterado ? 'Salvar alterações' : 'Salvar'}
+            {salvando ? 'Salvando...' : toolbarAlterada ? 'Salvar alterações' : 'Salvar'}
           </Button>
         </Stack>
       </FilterToolbar>
@@ -359,12 +443,14 @@ export default function LeadershipAttendance() {
               observacao={observacoes[d.discipuladoId] ?? ''}
               onObservacao={(valor) => {
                 setObservacoes((prev) => ({ ...prev, [d.discipuladoId]: valor }))
-                setAlterado(true)
-                setSucesso('')
+                marcarDiscipuladoAlterado(d.discipuladoId)
               }}
               situacoes={presencas[d.discipuladoId] ?? {}}
               registrosPersistidos={registrosPersistidos}
               onMarcar={(usuarioId, situacao) => marcar(d.discipuladoId, usuarioId, situacao)}
+              alterado={discipuladosAlterados.has(d.discipuladoId)}
+              salvando={salvando}
+              onSalvar={() => salvarDiscipulado(d)}
             />
           ))}
           <SectionCard title="Observações gerais da sexta-feira">
@@ -376,7 +462,7 @@ export default function LeadershipAttendance() {
               value={observacaoGeral}
               onChange={(e) => {
                 setObservacaoGeral(e.target.value)
-                setAlterado(true)
+                setObservacaoGeralAlterada(true)
                 setSucesso('')
               }}
               inputProps={{ maxLength: 1000 }}
@@ -406,14 +492,26 @@ export default function LeadershipAttendance() {
             </Stack>
           )}
         </DialogContent>
-        <DialogActions>
+        <DialogActions
+          sx={{
+            flexDirection: { xs: 'column-reverse', sm: 'row' },
+            alignItems: { xs: 'stretch', sm: 'center' },
+            gap: 1,
+            px: { xs: 2, sm: 3 },
+            pb: { xs: 2, sm: 2 },
+          }}
+        >
           <Button
             type="button"
             onClick={() => {
               if (!pendencia) return
               const ids = new Set(pendencia.conflitos.map((c) => c.usuarioId))
-              void persistir(semUsuarios(pendencia.payload, ids), false)
+              void persistir(semUsuarios(pendencia.payload, ids), false, {
+                observacaoGeralEnviada: pendencia.observacaoGeralEnviada,
+                preservarObservacaoGeral: pendencia.preservarObservacaoGeral,
+              })
             }}
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
           >
             Manter o que já estava
           </Button>
@@ -422,8 +520,12 @@ export default function LeadershipAttendance() {
             variant="contained"
             onClick={() => {
               if (!pendencia) return
-              void persistir(pendencia.payload, true)
+              void persistir(pendencia.payload, true, {
+                observacaoGeralEnviada: pendencia.observacaoGeralEnviada,
+                preservarObservacaoGeral: pendencia.preservarObservacaoGeral,
+              })
             }}
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
           >
             Atualizar chamada
           </Button>
@@ -441,6 +543,9 @@ function DiscipuladoCard({
   situacoes,
   registrosPersistidos,
   onMarcar,
+  alterado,
+  salvando,
+  onSalvar,
 }: {
   item: DiscipuladoChamadaLideranca
   mobile: boolean
@@ -449,23 +554,47 @@ function DiscipuladoCard({
   situacoes: Record<number, SituacaoPresencaLideranca | null>
   registrosPersistidos: Map<number, RegistroPresencaDoDia>
   onMarcar: (usuarioId: number, situacao: SituacaoPresencaLideranca) => void
+  alterado: boolean
+  salvando: boolean
+  onSalvar: () => void
 }) {
   return (
     <Paper
       variant="outlined"
       sx={{
-        p: { xs: 2, sm: 2.5 },
+        p: { xs: 1.5, sm: 2.5 },
         borderRadius: '16px',
         borderColor: (theme) => theme.app.border.subtle,
       }}
     >
-      <Stack spacing={2}>
-        <Box>
-          <Typography variant="h6">{item.discipuladoNome}</Typography>
-          <Typography variant="body2" color="text.secondary">
-            {item.gerenciaNome} · {item.sexo === 'MASCULINO' ? 'Masculino' : 'Feminino'}
-          </Typography>
-        </Box>
+      <Stack spacing={{ xs: 1.5, sm: 2 }}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={1.25}
+          alignItems={{ xs: 'stretch', sm: 'flex-start' }}
+          justifyContent="space-between"
+        >
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Typography variant="h6" sx={{ overflowWrap: 'anywhere' }}>
+              {item.discipuladoNome}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
+              {item.gerenciaNome} · {item.sexo === 'MASCULINO' ? 'Masculino' : 'Feminino'}
+            </Typography>
+          </Box>
+          <Button
+            type="button"
+            variant="contained"
+            size={mobile ? 'medium' : 'small'}
+            startIcon={<SaveRounded />}
+            aria-label={`Salvar ${item.discipuladoNome}`}
+            disabled={salvando || !alterado}
+            onClick={onSalvar}
+            sx={{ width: { xs: '100%', sm: 'auto' }, flexShrink: 0, whiteSpace: 'nowrap' }}
+          >
+            {salvando ? 'Salvando...' : 'Salvar'}
+          </Button>
+        </Stack>
         <Stack spacing={1.25}>
           {item.presencas.map((p) => {
             const situacao = situacoes[p.usuarioId] ?? null
@@ -479,8 +608,10 @@ function DiscipuladoCard({
                 alignItems={{ sm: 'center' }}
                 justifyContent="space-between"
               >
-                <Box>
-                  <Typography fontWeight={600}>{p.nome}</Typography>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography fontWeight={600} sx={{ overflowWrap: 'anywhere' }}>
+                    {p.nome}
+                  </Typography>
                   <Typography variant="caption" color="text.secondary">
                     {p.papel === 'DISCIPULADOR' ? 'Discipulador' : 'Co-líder'}
                   </Typography>
@@ -492,7 +623,13 @@ function DiscipuladoCard({
                     </Typography>
                   )}
                 </Box>
-                <Stack direction="row" spacing={1}>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  useFlexGap
+                  flexWrap="wrap"
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
+                >
                   <Button
                     size={mobile ? 'medium' : 'small'}
                     variant={situacao === 'PRESENTE' ? 'contained' : 'outlined'}
@@ -501,6 +638,8 @@ function DiscipuladoCard({
                     aria-describedby={registro ? avisoId : undefined}
                     onClick={() => onMarcar(p.usuarioId, 'PRESENTE')}
                     sx={{
+                      flex: { xs: 1, sm: 'none' },
+                      minWidth: { xs: 0, sm: 'auto' },
                       bgcolor: situacao === 'PRESENTE' ? undefined : (theme) => alpha(theme.palette.success.main, 0.04),
                     }}
                   >
@@ -512,6 +651,10 @@ function DiscipuladoCard({
                     color="warning"
                     startIcon={<CloseRounded />}
                     onClick={() => onMarcar(p.usuarioId, 'AUSENTE')}
+                    sx={{
+                      flex: { xs: 1, sm: 'none' },
+                      minWidth: { xs: 0, sm: 'auto' },
+                    }}
                   >
                     Ausente
                   </Button>
