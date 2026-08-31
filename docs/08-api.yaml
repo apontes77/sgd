@@ -20,6 +20,7 @@ tags:
   - name: Adolescentes
   - name: Encontros
   - name: Frequências
+  - name: Chamada de liderança
   - name: Indicadores e relatórios
 paths:
   /autenticacao/login:
@@ -270,6 +271,34 @@ paths:
       parameters: [ { $ref: '#/components/parameters/EncontroId' } ]
       requestBody: { required: true, content: { application/json: { schema: { type: object, required: [quantidade], properties: { quantidade: { type: integer, minimum: 0 } } } } } }
       responses: { '200': { description: Visitantes registrados } }
+  /chamadas-lideranca:
+    get:
+      tags: [Chamada de liderança]
+      summary: Consulta a grade de chamada de liderança na data
+      description: Requer ADMIN. Devolve todos os discipulados ativos com discipulador e co-líderes; quando a pessoa já tem lançamento no dia, inclui `registroDoDia` (RN054).
+      parameters:
+        - { name: data, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200': { description: Grade do dia, content: { application/json: { schema: { $ref: '#/components/schemas/ChamadaLiderancaResponse' } } } }
+        '400': { description: Data ausente, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
+        '403': { $ref: '#/components/responses/Proibido' }
+    put:
+      tags: [Chamada de liderança]
+      summary: Salva (parcialmente) a chamada de liderança na data
+      description: |
+        Requer ADMIN. O payload pode incluir um subconjunto de discipulados; o servidor mescla observações e presenças (RN055).
+        Presenças aceitam somente o discipulador e os co-líderes atuais do grupo, com papel coerente.
+        Uma pessoa só pode constar uma vez por data: duplicidade no payload ou mudança em lançamento já salvo retorna 409; envie `confirmarAtualizacao: true` para sobrescrever e remover a presença anterior nos demais discipulados do dia (RN056).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SalvarChamadaLiderancaRequest' }
+      responses:
+        '200': { description: Chamada salva; resposta é a grade atualizada do dia, content: { application/json: { schema: { $ref: '#/components/schemas/ChamadaLiderancaResponse' } } } }
+        '400': { description: Payload inválido, discipulado inativo ou líder que não pertence ao grupo, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
+        '403': { $ref: '#/components/responses/Proibido' }
+        '409': { description: Conflito de presença no dia; corpo Problem Details inclui `conflitos` quando falta confirmação, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemaChamadaLideranca' } } } }
   /painel/lider:
     get:
       tags: [Indicadores e relatórios]
@@ -313,7 +342,6 @@ paths:
         '400': { description: Período ausente, invertido ou superior a 24 meses, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
         '401': { $ref: '#/components/responses/NaoAutorizado' }
         '403': { $ref: '#/components/responses/Proibido' }
-  /relatorios/frequencia-diaria:
   /relatorios/frequencia:
     get:
       tags: [Indicadores e relatórios]
@@ -329,7 +357,7 @@ paths:
         '401': { $ref: '#/components/responses/NaoAutorizado' }
         '403': { $ref: '#/components/responses/Proibido' }
         '404': { description: Usuário sem associação organizacional aplicável, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
-
+  /relatorios/frequencia-diaria:
     get:
       tags: [Indicadores e relatórios]
       summary: Consulta o relatório diário de frequência do escopo autenticado
@@ -343,6 +371,34 @@ paths:
         '401': { $ref: '#/components/responses/NaoAutorizado' }
         '403': { $ref: '#/components/responses/Proibido' }
         '404': { description: Usuário sem associação organizacional aplicável, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
+  /relatorios/chamadas-lideranca:
+    get:
+      tags: [Indicadores e relatórios]
+      summary: Consulta o relatório de chamada de liderança por período
+      description: Requer ADMIN. Período de um dia a 12 meses; filtro opcional por discipulado (RN057).
+      parameters:
+        - { name: dataInicio, in: query, required: true, schema: { type: string, format: date } }
+        - { name: dataFim, in: query, required: true, schema: { type: string, format: date } }
+        - { name: discipuladoId, in: query, required: false, schema: { type: integer, format: int64 } }
+      responses:
+        '200': { description: Relatórios das chamadas no período, content: { application/json: { schema: { $ref: '#/components/schemas/RelatorioChamadaLiderancaPeriodoResponse' } } } }
+        '400': { description: Período ausente, invertido ou superior a 12 meses, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
+        '403': { $ref: '#/components/responses/Proibido' }
+        '404': { description: Discipulado informado não encontrado, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
+  /relatorios/chamadas-lideranca/export:
+    get:
+      tags: [Indicadores e relatórios]
+      summary: Exporta a chamada de liderança em Excel
+      description: Requer ADMIN. Mesmos filtros do relatório JSON; responde XLSX.
+      parameters:
+        - { name: dataInicio, in: query, required: true, schema: { type: string, format: date } }
+        - { name: dataFim, in: query, required: true, schema: { type: string, format: date } }
+        - { name: discipuladoId, in: query, required: false, schema: { type: integer, format: int64 } }
+      responses:
+        '200': { description: Planilha gerada, content: { application/vnd.openxmlformats-officedocument.spreadsheetml.sheet: { schema: { type: string, format: binary } } } }
+        '400': { description: Período inválido, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
+        '403': { $ref: '#/components/responses/Proibido' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
   /relatorios/mensal:
     get:
       tags: [Indicadores e relatórios]
@@ -378,6 +434,21 @@ components:
     PaginaAdolescentes: { description: Página de adolescentes, content: { application/json: { schema: { $ref: '#/components/schemas/PaginaAdolescente' } } } }
   schemas:
     Problema: { type: object, required: [type, title, status, detail, traceId], properties: { type: { type: string, format: uri }, title: { type: string }, status: { type: integer }, detail: { type: string }, traceId: { type: string } } }
+    ProblemaChamadaLideranca: { allOf: [ { $ref: '#/components/schemas/Problema' }, { type: object, properties: { conflitos: { type: array, items: { $ref: '#/components/schemas/ConflitoPresencaLideranca' }, description: Presente quando a atualização exige confirmarAtualizacao. } } } ] }
+    PapelLideranca: { type: string, enum: [DISCIPULADOR, CO_LIDER] }
+    SalvarChamadaLiderancaRequest: { type: object, required: [data, discipulados], properties: { data: { type: string, format: date }, observacaoGeral: { type: [string, 'null'], maxLength: 1000 }, discipulados: { type: array, items: { $ref: '#/components/schemas/DiscipuladoChamadaLiderancaRequest' } }, confirmarAtualizacao: { type: boolean, description: Quando true, sobrescreve lançamentos conflitantes da mesma pessoa no dia (RN056). } } }
+    DiscipuladoChamadaLiderancaRequest: { type: object, required: [discipuladoId, presencas], properties: { discipuladoId: { type: integer, format: int64 }, observacao: { type: [string, 'null'], maxLength: 500 }, presencas: { type: array, items: { $ref: '#/components/schemas/PresencaLiderancaRequest' } } } }
+    PresencaLiderancaRequest: { type: object, required: [usuarioId, papel, situacao], properties: { usuarioId: { type: integer, format: int64 }, papel: { $ref: '#/components/schemas/PapelLideranca' }, situacao: { type: string, enum: [PRESENTE, AUSENTE] } } }
+    ChamadaLiderancaResponse: { type: object, required: [data, discipulados], properties: { id: { type: [integer, 'null'], format: int64 }, data: { type: string, format: date }, observacaoGeral: { type: [string, 'null'] }, discipulados: { type: array, items: { $ref: '#/components/schemas/DiscipuladoChamadaLiderancaResponse' } } } }
+    DiscipuladoChamadaLiderancaResponse: { type: object, required: [discipuladoId, discipuladoNome, sexo, gerenciaNome, presencas], properties: { discipuladoId: { type: integer, format: int64 }, discipuladoNome: { type: string }, sexo: { type: string, enum: [MASCULINO, FEMININO] }, gerenciaNome: { type: string }, observacao: { type: [string, 'null'] }, presencas: { type: array, items: { $ref: '#/components/schemas/PresencaLiderancaResponse' } } } }
+    PresencaLiderancaResponse: { type: object, required: [usuarioId, nome, papel], properties: { usuarioId: { type: integer, format: int64 }, nome: { type: string }, papel: { $ref: '#/components/schemas/PapelLideranca' }, situacao: { type: [string, 'null'], enum: [PRESENTE, AUSENTE] }, registroDoDia: { oneOf: [ { $ref: '#/components/schemas/RegistroDoDiaLideranca' }, { type: 'null' } ] } } }
+    RegistroDoDiaLideranca: { type: object, required: [discipuladoId, discipuladoNome, situacao], properties: { discipuladoId: { type: integer, format: int64 }, discipuladoNome: { type: string }, situacao: { type: string, enum: [PRESENTE, AUSENTE] } } }
+    ConflitoPresencaLideranca: { type: object, required: [usuarioId, nome, discipuladoId, discipuladoNome, situacao], properties: { usuarioId: { type: integer, format: int64 }, nome: { type: string }, discipuladoId: { type: integer, format: int64 }, discipuladoNome: { type: string }, situacao: { type: string, enum: [PRESENTE, AUSENTE] } } }
+    RelatorioChamadaLiderancaPeriodoResponse: { type: object, required: [dataInicio, dataFim, emitidoEm, relatorios], properties: { dataInicio: { type: string, format: date }, dataFim: { type: string, format: date }, emitidoEm: { type: string, format: date-time }, relatorios: { type: array, items: { $ref: '#/components/schemas/RelatorioChamadaLideranca' } } } }
+    RelatorioChamadaLideranca: { type: object, required: [chamadaId, data, discipulados, resumo], properties: { chamadaId: { type: integer, format: int64 }, data: { type: string, format: date }, observacaoGeral: { type: [string, 'null'] }, discipulados: { type: array, items: { $ref: '#/components/schemas/DiscipuladoRelatorioChamadaLideranca' } }, resumo: { $ref: '#/components/schemas/ResumoChamadaLideranca' } } }
+    DiscipuladoRelatorioChamadaLideranca: { type: object, required: [discipuladoId, discipuladoNome, sexo, gerenciaNome, presencas], properties: { discipuladoId: { type: integer, format: int64 }, discipuladoNome: { type: string }, sexo: { type: string }, gerenciaNome: { type: string }, observacao: { type: [string, 'null'] }, presencas: { type: array, items: { $ref: '#/components/schemas/PresencaRelatorioChamadaLideranca' } } } }
+    PresencaRelatorioChamadaLideranca: { type: object, required: [usuarioId, nome, papel, situacao], properties: { usuarioId: { type: integer, format: int64 }, nome: { type: string }, papel: { $ref: '#/components/schemas/PapelLideranca' }, situacao: { type: string, enum: [PRESENTE, AUSENTE] } } }
+    ResumoChamadaLideranca: { type: object, required: [presentes, ausentes, participantes, percentualPresenca], properties: { presentes: { type: integer, format: int64 }, ausentes: { type: integer, format: int64 }, participantes: { type: integer, format: int64 }, percentualPresenca: { type: number } } }
     LoginRequest: { type: object, required: [email, senha], properties: { email: { type: string, format: email }, senha: { type: string, format: password } } }
     RefreshTokenRequest: { type: object, required: [refreshToken], properties: { refreshToken: { type: string } } }
     EmailRequest: { type: object, required: [email], properties: { email: { type: string, format: email } } }
