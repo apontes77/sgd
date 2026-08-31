@@ -48,6 +48,10 @@ Reunião de um discipulado em determinada data. Pode ser realizado ou não reali
 
 Registro de presença de um adolescente em um encontro.
 
+## Chamada de liderança
+
+Registro administrativo (somente ADMIN) da presença de discipuladores e co-líderes por discipulado em uma data. Independente da chamada de adolescentes do encontro. Aceita salvamento parcial e no máximo um lançamento por pessoa no mesmo dia.
+
 ## Observação (encontro)
 
 Texto livre opcional (até 500 caracteres) associado ao encontro, distinto da justificativa de não realização. Usado para registrar ocorrências da chamada ou contexto pastoral do encontro.

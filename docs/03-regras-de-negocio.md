@@ -121,6 +121,18 @@ RN031 - O painel do discipulado considera somente o grupo no qual o usuário exe
 
 ---
 
+## Chamada de liderança
+
+RN054 - Somente administradores consultam e salvam a chamada de liderança (`GET`/`PUT /chamadas-lideranca`). A chamada registra presença de discipuladores e co-líderes atuais dos discipulados ativos, por data (uma chamada por data).
+
+RN055 - O salvamento é parcial e mescla: o payload pode incluir um subconjunto de discipulados. Líderes omitidos no payload não são apagados se já tinham presença naquele discipulado; novas ou alteradas situações são aplicadas. Observação geral (até 1000 caracteres) e observação por discipulado (até 500) são opcionais.
+
+RN056 - Cada pessoa (usuário) pode ter no máximo um lançamento de presença na mesma data, independentemente do discipulado. Duplicidade no mesmo payload retorna `409`. Se a pessoa já estiver salva em outro discipulado (ou no mesmo com situação diferente), o `PUT` retorna `409` com `conflitos` e só persiste após `confirmarAtualizacao: true`, que remove a presença anterior nos demais discipulados do dia.
+
+RN057 - Administradores consultam o relatório de chamada de liderança (`GET /relatorios/chamadas-lideranca`) e exportam Excel (`GET /relatorios/chamadas-lideranca/export`). O período aceita de um dia a 12 meses e pode filtrar por `discipuladoId`.
+
+---
+
 ## Relatório de frequência por período
 
 RN032 - Administradores consultam todos os discipulados; gerentes consultam os discipulados das suas gerências ativas; discipuladores e co-líderes consultam somente os grupos em que exercem liderança.
