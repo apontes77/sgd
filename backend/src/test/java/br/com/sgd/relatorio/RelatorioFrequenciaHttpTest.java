@@ -8,12 +8,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.io.ByteArrayInputStream;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +48,9 @@ import br.com.sgd.frequencia.SituacaoEncontro;
 import br.com.sgd.frequencia.SituacaoFrequencia;
 import br.com.sgd.frequencia.Visitante;
 import br.com.sgd.frequencia.VisitanteRepository;
+import br.com.sgd.lideranca.ChamadaLideranca;
+import br.com.sgd.lideranca.ChamadaLiderancaDiscipulado;
+import br.com.sgd.lideranca.ChamadaLiderancaRepository;
 import br.com.sgd.organizacao.Discipulado;
 import br.com.sgd.organizacao.DiscipuladoRepository;
 import br.com.sgd.organizacao.FaixaEtaria;
@@ -70,6 +79,7 @@ class RelatorioFrequenciaHttpTest {
   @Autowired FrequenciaRepository frequencias;
   @Autowired VisitanteRepository visitantes;
   @Autowired VinculoAdolescenteRepository vinculos;
+  @Autowired ChamadaLiderancaRepository chamadasLideranca;
   @Autowired PasswordEncoder passwords;
 
   private User admin;
@@ -224,7 +234,7 @@ class RelatorioFrequenciaHttpTest {
   }
 
   @Test
-  void incluiGoePresenteNosPresentesEVisitanteNominaisNosVisitantes() throws Exception {
+  void separaGoeDePresentesEMantemVisitanteNominaisNosVisitantes() throws Exception {
     Adolescente goe =
         adolescentes.saveAndFlush(
             new Adolescente(
@@ -278,7 +288,9 @@ class RelatorioFrequenciaHttpTest {
 
     consultar(token(liderAlpha))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.relatorios[0].resumo.presentes").value(2))
+        .andExpect(jsonPath("$.relatorios[0].resumo.presentes").value(1))
+        .andExpect(jsonPath("$.relatorios[0].goe").value(1))
+        .andExpect(jsonPath("$.relatorios[0].resumo.goe").value(1))
         .andExpect(jsonPath("$.relatorios[0].resumo.ausentes").value(1))
         .andExpect(jsonPath("$.relatorios[0].visitantes").value(4))
         .andExpect(jsonPath("$.relatorios[0].resumo.visitantes").value(4));
@@ -448,6 +460,59 @@ class RelatorioFrequenciaHttpTest {
     org.assertj.core.api.Assertions.assertThat(corpo[0]).isEqualTo((byte) 0x50); // 'P' de PK zip
   }
 
+  @Test
+  void exportaExcelComGoeEObservacaoDaChamadaDeLideranca() throws Exception {
+    Adolescente goe =
+        adolescentes.saveAndFlush(
+            new Adolescente(
+                new DadosCadastroAdolescente(
+                    "Goe Excel",
+                    LocalDate.of(2010, 3, 1),
+                    "(11) 91111-0000",
+                    null,
+                    LocalDate.of(2026, 1, 1),
+                    CategoriaAdolescente.DISCIPULO_GOE,
+                    null,
+                    "Afastou-se",
+                    false),
+                true));
+    vinculos.saveAndFlush(new VinculoAdolescenteDiscipulado(goe, alpha, DATA));
+    frequencias.saveAndFlush(
+        new Frequencia(alphaPrincipal, goe, SituacaoFrequencia.PRESENTE, AGORA));
+    ChamadaLideranca chamada = new ChamadaLideranca(DATA);
+    chamada.mesclarItens(
+        List.of(new ChamadaLiderancaDiscipulado(alpha, "Líder chegou atrasado")), AGORA);
+    chamadasLideranca.saveAndFlush(chamada);
+
+    byte[] corpo =
+        mvc.perform(
+                get("/api/v1/relatorios/frequencia/export")
+                    .param("dataInicio", DATA.toString())
+                    .param("dataFim", DATA.toString())
+                    .header(HttpHeaders.AUTHORIZATION, bearer(token(liderAlpha))))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsByteArray();
+
+    try (XSSFWorkbook workbook = new XSSFWorkbook(new ByteArrayInputStream(corpo))) {
+      Sheet sheet = workbook.getSheetAt(0);
+      Row cabecalho = sheet.getRow(0);
+      assertThat(texto(cabecalho, 5)).isEqualTo("Visitantes");
+      assertThat(texto(cabecalho, 6)).isEqualTo("GOE");
+      assertThat(texto(cabecalho, 7)).isEqualTo("Total de presentes");
+      assertThat(texto(cabecalho, 8)).isEqualTo("Observação do discipulador");
+      assertThat(texto(cabecalho, 9)).isEqualTo("Observação estrutura");
+      Row linha = sheet.getRow(1);
+      assertThat(numero(linha, 3)).isEqualTo(1d);
+      assertThat(numero(linha, 4)).isEqualTo(1d);
+      assertThat(numero(linha, 5)).isEqualTo(3d);
+      assertThat(numero(linha, 6)).isEqualTo(1d);
+      assertThat(numero(linha, 7)).isEqualTo(5d);
+      assertThat(texto(linha, 9)).isEqualTo("Líder chegou atrasado");
+    }
+  }
+
   private org.springframework.test.web.servlet.ResultActions consultar(String token)
       throws Exception {
     return mvc.perform(
@@ -507,5 +572,14 @@ class RelatorioFrequenciaHttpTest {
 
   private static String bearer(String token) {
     return "Bearer " + token;
+  }
+
+  private static String texto(Row row, int coluna) {
+    Cell cell = row.getCell(coluna);
+    return cell == null ? "" : cell.getStringCellValue();
+  }
+
+  private static double numero(Row row, int coluna) {
+    return row.getCell(coluna).getNumericCellValue();
   }
 }

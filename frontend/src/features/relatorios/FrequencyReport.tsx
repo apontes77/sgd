@@ -338,7 +338,7 @@ function PaginaRelatorio({
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(5,1fr)' },
+              gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(3,1fr)', md: 'repeat(6,1fr)' },
               gap: 1,
               p: 2,
               border: '1px solid',
@@ -350,6 +350,7 @@ function PaginaRelatorio({
             <Resumo label="Ausentes" valor={item.resumo.ausentes} />
             <Resumo label="Participantes" valor={item.resumo.participantes} />
             <Resumo label="Visitantes" valor={item.visitantes} />
+            <Resumo label="GOE" valor={item.goe} />
             <Resumo label="Presença" valor={percentual(item.resumo.percentualPresenca)} />
           </Box>
         )}

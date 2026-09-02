@@ -43,7 +43,8 @@ const relatorio: RelatorioPeriodoResponse = {
         { adolescenteId: 6, nome: 'Bia', telefone: null, situacao: 'PRESENTE' },
       ],
       visitantes: 3,
-      resumo: { presentes: 1, ausentes: 1, participantes: 2, visitantes: 3, percentualPresenca: 50 },
+      goe: 0,
+      resumo: { presentes: 1, ausentes: 1, participantes: 2, visitantes: 3, goe: 0, percentualPresenca: 50 },
     },
     {
       encontroId: 11,
@@ -57,7 +58,8 @@ const relatorio: RelatorioPeriodoResponse = {
       coLideres: [],
       participantes: [],
       visitantes: 0,
-      resumo: { presentes: 0, ausentes: 0, participantes: 0, visitantes: 0, percentualPresenca: 0 },
+      goe: 0,
+      resumo: { presentes: 0, ausentes: 0, participantes: 0, visitantes: 0, goe: 0, percentualPresenca: 0 },
     },
     {
       encontroId: 12,
@@ -71,7 +73,8 @@ const relatorio: RelatorioPeriodoResponse = {
       coLideres: [],
       participantes: [],
       visitantes: 0,
-      resumo: { presentes: 0, ausentes: 0, participantes: 0, visitantes: 0, percentualPresenca: 0 },
+      goe: 0,
+      resumo: { presentes: 0, ausentes: 0, participantes: 0, visitantes: 0, goe: 0, percentualPresenca: 0 },
     },
   ],
 }
@@ -190,6 +193,7 @@ describe('relatório diário de frequência', () => {
     expect(screen.getByText('Ausente')).toHaveClass('frequencia-ausente')
     expect(screen.getByText('Presente')).toHaveClass('frequencia-presente')
     expect(screen.getByText('Nenhuma frequência registrada neste encontro.')).toBeInTheDocument()
+    expect(screen.getAllByText('GOE').length).toBeGreaterThan(0)
   })
 
   it('informa quando não há encontros e mantém a impressão desabilitada', async () => {
@@ -347,7 +351,7 @@ describe('relatório diário de frequência', () => {
               data: '2026-07-17',
               fechamentoAutomatico: true,
               participantes: [{ adolescenteId: 5, nome: 'Ana', telefone: null, situacao: 'PRESENTE' }],
-              resumo: { presentes: 1, ausentes: 0, participantes: 1, visitantes: 0, percentualPresenca: 100 },
+              resumo: { presentes: 1, ausentes: 0, participantes: 1, visitantes: 0, goe: 0, percentualPresenca: 100 },
             },
           ],
         }),
