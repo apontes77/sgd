@@ -20,6 +20,7 @@ export interface ResumoRelatorio {
   ausentes: number
   participantes: number
   visitantes: number
+  goe: number
   percentualPresenca: number
 }
 export interface RelatorioEncontro {
@@ -28,6 +29,7 @@ export interface RelatorioEncontro {
   situacao: SituacaoEncontroRelatorio
   justificativa: string | null
   observacao?: string | null
+  observacaoEstrutura?: string | null
   fechamentoAutomatico?: boolean
   gerencia: IdentificacaoRelatorio
   discipulado: DiscipuladoRelatorio
@@ -35,6 +37,7 @@ export interface RelatorioEncontro {
   coLideres: IdentificacaoRelatorio[]
   participantes: ParticipanteRelatorio[]
   visitantes: number
+  goe: number
   resumo: ResumoRelatorio
 }
 export interface RelatorioDiarioResponse {

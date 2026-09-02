@@ -76,11 +76,13 @@ public interface RelatorioFrequenciaRepository extends Repository<Encontro, Long
           """
           select e.id as encontroId,
                  coalesce(sum(case when e.situacao = 'REALIZADO' and f.situacao = 'PRESENTE'
-                   and a.categoria in ('DISCIPULO', 'DISCIPULO_GOE') then 1 else 0 end), 0) as presentes,
+                   and a.categoria = 'DISCIPULO' then 1 else 0 end), 0) as presentes,
                  coalesce(sum(case when e.situacao = 'REALIZADO' and f.situacao = 'AUSENTE'
                    and a.categoria = 'DISCIPULO' then 1 else 0 end), 0) as ausentes,
                  coalesce(sum(case when e.situacao = 'REALIZADO' and f.situacao = 'PRESENTE'
-                   and a.categoria = 'VISITANTE' then 1 else 0 end), 0) as visitantesNominais
+                   and a.categoria = 'VISITANTE' then 1 else 0 end), 0) as visitantesNominais,
+                 coalesce(sum(case when e.situacao = 'REALIZADO' and f.situacao = 'PRESENTE'
+                   and a.categoria = 'DISCIPULO_GOE' then 1 else 0 end), 0) as goe
             from encontros e
             left join frequencias f on f.encontro_id = e.id
             left join adolescentes a on a.id = f.adolescente_id
@@ -115,6 +117,21 @@ public interface RelatorioFrequenciaRepository extends Repository<Encontro, Long
       nativeQuery = true)
   List<VisitantesPorEncontro> contarVisitantesPorEncontro(
       @Param("encontroIds") Collection<Long> encontroIds);
+
+  @Query(
+      value =
+          """
+          select c.data as data, i.discipulado_id as discipuladoId, i.observacao as observacao
+            from chamadas_lideranca c
+            join chamadas_lideranca_discipulados i on i.chamada_id = c.id
+           where c.data between :inicio and :fim
+             and i.discipulado_id in (:discipuladoIds)
+          """,
+      nativeQuery = true)
+  List<ObservacaoLiderancaRow> observacoesChamadaLideranca(
+      @Param("inicio") LocalDate inicio,
+      @Param("fim") LocalDate fim,
+      @Param("discipuladoIds") Collection<Long> discipuladoIds);
 
   @Query(
       value =
@@ -184,6 +201,8 @@ public interface RelatorioFrequenciaRepository extends Repository<Encontro, Long
     Number getAusentes();
 
     Number getVisitantesNominais();
+
+    Number getGoe();
   }
 
   interface ParticipanteRow {
@@ -202,5 +221,13 @@ public interface RelatorioFrequenciaRepository extends Repository<Encontro, Long
     Long getEncontroId();
 
     Number getVisitantes();
+  }
+
+  interface ObservacaoLiderancaRow {
+    LocalDate getData();
+
+    Long getDiscipuladoId();
+
+    String getObservacao();
   }
 }

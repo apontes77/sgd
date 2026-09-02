@@ -30,6 +30,7 @@ import br.com.sgd.frequencia.SituacaoFrequencia;
 import br.com.sgd.organizacao.DiscipuladoRepository;
 import br.com.sgd.relatorio.RelatorioFrequenciaRepository.CoLiderRow;
 import br.com.sgd.relatorio.RelatorioFrequenciaRepository.EncontroCabecalho;
+import br.com.sgd.relatorio.RelatorioFrequenciaRepository.ObservacaoLiderancaRow;
 import br.com.sgd.relatorio.RelatorioFrequenciaRepository.ParticipanteRow;
 import br.com.sgd.relatorio.RelatorioFrequenciaRepository.ResumoEncontro;
 import br.com.sgd.relatorio.RelatorioFrequenciaRepository.VisitantesPorEncontro;
@@ -89,6 +90,7 @@ public class RelatorioFrequenciaService {
       "Presentes",
       "Ausentes",
       "Visitantes",
+      "GOE",
       "Total de presentes",
       "Observação do discipulador",
       "Observação estrutura"
@@ -103,6 +105,7 @@ public class RelatorioFrequenciaService {
     long presentes = naoRealizado ? 0 : item.resumo().presentes();
     long ausentes = naoRealizado ? 0 : item.resumo().ausentes();
     int visitantes = naoRealizado ? 0 : item.visitantes();
+    int goe = naoRealizado ? 0 : item.goe();
     row.createCell(0).setCellValue(item.discipulador().nome());
     row.createCell(1).setCellValue(item.gerenteNome());
     row.createCell(2)
@@ -111,9 +114,10 @@ public class RelatorioFrequenciaService {
     row.createCell(3).setCellValue(presentes);
     row.createCell(4).setCellValue(ausentes);
     row.createCell(5).setCellValue(visitantes);
-    row.createCell(6).setCellValue(presentes + visitantes);
-    row.createCell(7).setCellValue(observacaoExcel(item));
-    row.createCell(8).setCellValue("");
+    row.createCell(6).setCellValue(goe);
+    row.createCell(7).setCellValue(presentes + visitantes + goe);
+    row.createCell(8).setCellValue(observacaoExcel(item));
+    row.createCell(9).setCellValue(texto(item.observacaoEstrutura()));
   }
 
   private static String observacaoExcel(RelatorioEncontro item) {
@@ -206,6 +210,7 @@ public class RelatorioFrequenciaService {
     Map<Long, List<LiderInfo>> coLideresPorDiscipulado = coLideres(discipuladoIds);
     Map<Long, ResumoEncontro> resumosPorEncontro = resumos(encontroIds);
     Map<Long, Integer> visitantesPorEncontro = visitantes(encontroIds);
+    Map<ChaveObservacao, String> observacoesEstrutura = observacoesEstrutura(encontrados);
     Map<Long, List<ParticipanteInfo>> participantesPorEncontro =
         incluirParticipantes ? participantes(encontroIds) : Map.of();
     return encontrados.stream()
@@ -216,6 +221,7 @@ public class RelatorioFrequenciaService {
                     coLideresPorDiscipulado,
                     resumosPorEncontro,
                     visitantesPorEncontro,
+                    observacoesEstrutura,
                     participantesPorEncontro))
         .toList();
   }
@@ -225,6 +231,7 @@ public class RelatorioFrequenciaService {
       Map<Long, List<LiderInfo>> coLideresPorDiscipulado,
       Map<Long, ResumoEncontro> resumosPorEncontro,
       Map<Long, Integer> visitantesPorEncontro,
+      Map<ChaveObservacao, String> observacoesEstrutura,
       Map<Long, List<ParticipanteInfo>> participantesPorEncontro) {
     SituacaoEncontro situacao = SituacaoEncontro.valueOf(encontro.getSituacao());
     if (situacao == SituacaoEncontro.NAO_REALIZADO) {
@@ -233,9 +240,13 @@ public class RelatorioFrequenciaService {
     ResumoEncontro resumoSql = resumosPorEncontro.get(encontro.getEncontroId());
     long presentes = valor(resumoSql == null ? null : resumoSql.getPresentes());
     long ausentes = valor(resumoSql == null ? null : resumoSql.getAusentes());
+    int goe = valorInt(resumoSql == null ? null : resumoSql.getGoe());
     int quantidadeVisitantes =
         valorInt(resumoSql == null ? null : resumoSql.getVisitantesNominais())
             + visitantesPorEncontro.getOrDefault(encontro.getEncontroId(), 0);
+    String observacaoEstrutura =
+        observacoesEstrutura.get(
+            new ChaveObservacao(encontro.getData(), encontro.getDiscipuladoId()));
     return new RelatorioEncontro(
         encontro.getEncontroId(),
         encontro.getData(),
@@ -251,11 +262,14 @@ public class RelatorioFrequenciaService {
         coLideresPorDiscipulado.getOrDefault(encontro.getDiscipuladoId(), List.of()),
         participantesPorEncontro.getOrDefault(encontro.getEncontroId(), List.of()),
         quantidadeVisitantes,
+        goe,
+        observacaoEstrutura,
         new ResumoFrequencia(
             presentes,
             ausentes,
             presentes + ausentes,
             quantidadeVisitantes,
+            goe,
             percentual(presentes, ausentes)));
   }
 
@@ -276,7 +290,32 @@ public class RelatorioFrequenciaService {
         coLideresPorDiscipulado.getOrDefault(encontro.getDiscipuladoId(), List.of()),
         List.of(),
         0,
-        new ResumoFrequencia(0, 0, 0, 0, BigDecimal.ZERO));
+        0,
+        null,
+        new ResumoFrequencia(0, 0, 0, 0, 0, BigDecimal.ZERO));
+  }
+
+  private Map<ChaveObservacao, String> observacoesEstrutura(List<EncontroCabecalho> encontrados) {
+    List<Long> discipuladoIds =
+        encontrados.stream().map(EncontroCabecalho::getDiscipuladoId).distinct().toList();
+    LocalDate inicio =
+        encontrados.stream()
+            .map(EncontroCabecalho::getData)
+            .min(Comparator.naturalOrder())
+            .orElseThrow();
+    LocalDate fim =
+        encontrados.stream()
+            .map(EncontroCabecalho::getData)
+            .max(Comparator.naturalOrder())
+            .orElseThrow();
+    Map<ChaveObservacao, String> porChave = new LinkedHashMap<>();
+    for (ObservacaoLiderancaRow row :
+        relatorios.observacoesChamadaLideranca(inicio, fim, discipuladoIds)) {
+      if (row.getObservacao() == null || row.getObservacao().isBlank()) continue;
+      porChave.putIfAbsent(
+          new ChaveObservacao(row.getData(), row.getDiscipuladoId()), row.getObservacao());
+    }
+    return porChave;
   }
 
   private Map<Long, ResumoEncontro> resumos(List<Long> encontroIds) {
@@ -335,6 +374,10 @@ public class RelatorioFrequenciaService {
     return n == null ? 0 : n.intValue();
   }
 
+  private static String texto(String valor) {
+    return valor == null ? "" : valor;
+  }
+
   private static BigDecimal percentual(long presentes, long ausentes) {
     long total = presentes + ausentes;
     return total == 0
@@ -345,6 +388,8 @@ public class RelatorioFrequenciaService {
   }
 
   private record Escopo(Set<Long> discipuladoIds) {}
+
+  private record ChaveObservacao(LocalDate data, Long discipuladoId) {}
 
   public record RelatorioDiarioResponse(
       LocalDate data, Instant emitidoEm, List<RelatorioEncontro> relatorios) {}
@@ -369,6 +414,8 @@ public class RelatorioFrequenciaService {
       List<LiderInfo> coLideres,
       List<ParticipanteInfo> participantes,
       int visitantes,
+      int goe,
+      String observacaoEstrutura,
       ResumoFrequencia resumo) {}
 
   public record GerenciaInfo(long id, String nome) {}
@@ -385,5 +432,6 @@ public class RelatorioFrequenciaService {
       long ausentes,
       long participantes,
       int visitantes,
+      int goe,
       BigDecimal percentualPresenca) {}
 }
