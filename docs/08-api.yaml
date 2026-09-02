@@ -170,7 +170,7 @@ paths:
     post:
       tags: [Adolescentes]
       summary: Cadastra adolescente, vínculo atual e ficha de família
-      description: ADMIN, GERENTE, DISCIPULADOR ou CO_LIDER no respectivo escopo (RN016, RN017 e RN050). Categoria obrigatória (RN041). Ficha 1:1 sempre criada (RN048); `familia` no body é obrigatória para ADMIN/GERENTE e ignorada para liderança, que recebe “Não consta” (RN051).
+      description: ADMIN, GERENTE, DISCIPULADOR ou CO_LIDER no respectivo escopo (RN016, RN017 e RN050). Categoria obrigatória (RN041). Ficha 1:1 sempre criada (RN048); `familia` no body é obrigatória para ADMIN/GERENTE e persistida para liderança quando informada; se omitida pela liderança, a ficha nasce como “Não consta” (RN051).
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AdolescenteRequest' } } } }
       responses: { '201': { description: Adolescente criado, content: { application/json: { schema: { $ref: '#/components/schemas/Adolescente' } } } } }
   /adolescentes/alertas-goe:
@@ -200,20 +200,20 @@ paths:
     get:
       tags: [Adolescentes]
       summary: Consulta a ficha de família do adolescente
-      description: Somente ADMIN (global) ou GERENTE (própria gerência) (RN051).
+      description: ADMIN (global), GERENTE (própria gerência) ou liderança do discipulado (RN051).
       parameters: [ { $ref: '#/components/parameters/AdolescenteId' } ]
       responses: { '200': { description: Ficha de família }, '403': { $ref: '#/components/responses/Proibido' } }
     put:
       tags: [Adolescentes]
       summary: Cria ou atualiza a ficha de família do adolescente
-      description: Somente ADMIN (global) ou GERENTE (própria gerência) (RN051).
+      description: ADMIN (global), GERENTE (própria gerência) ou liderança do discipulado (RN051).
       parameters: [ { $ref: '#/components/parameters/AdolescenteId' } ]
       responses: { '200': { description: Ficha salva }, '403': { $ref: '#/components/responses/Proibido' } }
   /familias:
     get:
       tags: [Adolescentes]
-      summary: Lista fichas de família (ADMIN todas; GERENTE da gerência)
-      description: Paginação obrigatória. Filtros opcionais por texto (nome do adolescente ou discipulado), situacaoIgreja e situacaoPais.
+      summary: Lista fichas de família no escopo do usuário
+      description: ADMIN vê todas; GERENTE a gerência; DISCIPULADOR/CO_LIDER o próprio discipulado (RN051). Paginação obrigatória. Filtros opcionais por texto (nome do adolescente ou discipulado), situacaoIgreja e situacaoPais.
       parameters:
         - { $ref: '#/components/parameters/Pagina' }
         - { $ref: '#/components/parameters/TamanhoPagina' }

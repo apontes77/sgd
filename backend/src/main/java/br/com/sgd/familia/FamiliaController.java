@@ -30,7 +30,7 @@ public class FamiliaController {
   }
 
   @GetMapping("/api/v1/familias")
-  @PreAuthorize("hasAnyRole('ADMIN','GERENTE')")
+  @PreAuthorize("hasAnyRole('ADMIN','GERENTE','DISCIPULADOR','CO_LIDER')")
   public PaginaResponse<FamiliaService.FamiliaResumo> listar(
       Authentication auth,
       @RequestParam(defaultValue = "0") @Min(0) int page,
@@ -44,14 +44,14 @@ public class FamiliaController {
   }
 
   @GetMapping("/api/v1/adolescentes/{adolescenteId}/familia")
-  @PreAuthorize("hasAnyRole('ADMIN','GERENTE')")
+  @PreAuthorize("hasAnyRole('ADMIN','GERENTE','DISCIPULADOR','CO_LIDER')")
   public FamiliaService.FamiliaResponse consultar(
       Authentication auth, @PathVariable long adolescenteId) {
     return service.consultarResponse(usuario(auth), adolescenteId);
   }
 
   @PutMapping("/api/v1/adolescentes/{adolescenteId}/familia")
-  @PreAuthorize("hasAnyRole('ADMIN','GERENTE')")
+  @PreAuthorize("hasAnyRole('ADMIN','GERENTE','DISCIPULADOR','CO_LIDER')")
   public FamiliaService.FamiliaResponse salvar(
       Authentication auth,
       @PathVariable long adolescenteId,

@@ -54,6 +54,7 @@ class FamiliaHttpTest {
   private User outroGerente;
   private User lider;
   private User liderBeta;
+  private User coLider;
   private Discipulado alpha;
   private Discipulado betaOutraGerencia;
 
@@ -65,6 +66,7 @@ class FamiliaHttpTest {
     outroGerente = usuario("Outro Gerente", "outro-gerente-fam-" + s, Role.GERENTE);
     lider = usuario("Líder", "lider-fam-" + s, Role.DISCIPULADOR);
     liderBeta = usuario("Líder Beta", "lider-beta-fam-" + s, Role.DISCIPULADOR);
+    coLider = usuario("Co-líder", "co-lider-fam-" + s, Role.CO_LIDER);
 
     Gerencia centro =
         gerencias.saveAndFlush(
@@ -75,6 +77,8 @@ class FamiliaHttpTest {
     alpha =
         discipulados.saveAndFlush(
             new Discipulado("Alpha Fam", Sexo.MASCULINO, FaixaEtaria.DE_15_MAIS, centro, lider));
+    alpha.replaceCoLideres(Set.of(coLider));
+    alpha = discipulados.saveAndFlush(alpha);
     betaOutraGerencia =
         discipulados.saveAndFlush(
             new Discipulado("Beta Fam", Sexo.FEMININO, FaixaEtaria.DE_15_MAIS, outra, liderBeta));
@@ -106,20 +110,40 @@ class FamiliaHttpTest {
   }
 
   @Test
-  void liderRecebeForbiddenEmGetEPutFamiliaDoProprioDiscipulado() throws Exception {
+  void liderConsultaEAtualizaFamiliaDoProprioDiscipulado() throws Exception {
     long adolescenteId = criarAdolescente(lider, alpha.getId(), "Ana Familia");
 
     mvc.perform(
             get("/api/v1/adolescentes/{id}/familia", adolescenteId)
                 .header(HttpHeaders.AUTHORIZATION, bearer(token(lider))))
-        .andExpect(status().isForbidden());
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.situacaoFicha").value("NAO_CONSTA"));
 
     mvc.perform(
             put("/api/v1/adolescentes/{id}/familia", adolescenteId)
                 .header(HttpHeaders.AUTHORIZATION, bearer(token(lider)))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(familiaPreenchidaJson("Maria Mãe")))
-        .andExpect(status().isForbidden());
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.responsavel1.nome").value("Maria Mãe"));
+  }
+
+  @Test
+  void coLiderConsultaEAtualizaFamiliaDoProprioDiscipulado() throws Exception {
+    long adolescenteId = criarAdolescente(coLider, alpha.getId(), "Ana CoLider");
+
+    mvc.perform(
+            get("/api/v1/adolescentes/{id}/familia", adolescenteId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(coLider))))
+        .andExpect(status().isOk());
+
+    mvc.perform(
+            put("/api/v1/adolescentes/{id}/familia", adolescenteId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(coLider)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(familiaPreenchidaJson("Pai CoLider")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.responsavel1.nome").value("Pai CoLider"));
   }
 
   @Test
@@ -153,18 +177,18 @@ class FamiliaHttpTest {
 
     mvc.perform(
             get("/api/v1/adolescentes/{id}/familia", adolescenteId)
-                .header(HttpHeaders.AUTHORIZATION, bearer(token(admin))))
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(lider))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.situacaoFicha").value("NAO_CONSTA"))
         .andExpect(jsonPath("$.responsavel1.nome").value("Não consta"));
   }
 
   @Test
-  void liderCriaAdolescenteComFamiliaNoBodyIgnoraEGeraNaoConsta() throws Exception {
+  void liderCriaAdolescenteComFamiliaNoBodyPersisteDados() throws Exception {
     String comFamilia =
         """
         {
-          "nome": "Lider Com Ficha Ignorada",
+          "nome": "Lider Com Ficha",
           "dataNascimento": "2010-01-15",
           "consentimentoEm": "2026-01-01",
           "categoria": "DISCIPULO",
@@ -175,7 +199,7 @@ class FamiliaHttpTest {
           "familia": %s
         }
         """
-            .formatted(alpha.getId(), familiaPreenchidaJson("Maria Ignorada"));
+            .formatted(alpha.getId(), familiaPreenchidaJson("Maria Informada"));
 
     String body =
         mvc.perform(
@@ -191,10 +215,10 @@ class FamiliaHttpTest {
 
     mvc.perform(
             get("/api/v1/adolescentes/{id}/familia", adolescenteId)
-                .header(HttpHeaders.AUTHORIZATION, bearer(token(admin))))
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(lider))))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.situacaoFicha").value("NAO_CONSTA"))
-        .andExpect(jsonPath("$.responsavel1.nome").value("Não consta"));
+        .andExpect(jsonPath("$.situacaoFicha").value("PREENCHIDA"))
+        .andExpect(jsonPath("$.responsavel1.nome").value("Maria Informada"));
   }
 
   @Test
@@ -257,7 +281,7 @@ class FamiliaHttpTest {
   }
 
   @Test
-  void listagemFamiliasSomenteAdminEGerenteNoEscopo() throws Exception {
+  void listagemFamiliasRespeitaEscopoPorPerfil() throws Exception {
     criarAdolescente(gerente, alpha.getId(), "Lista Alpha");
     criarAdolescente(admin, betaOutraGerencia.getId(), "Lista Beta");
 
@@ -289,8 +313,47 @@ class FamiliaHttpTest {
     assertThat(gerenteLista.get("content").toString()).contains("Lista Alpha");
     assertThat(gerenteLista.get("content").toString()).doesNotContain("Lista Beta");
 
-    mvc.perform(get("/api/v1/familias").header(HttpHeaders.AUTHORIZATION, bearer(token(lider))))
-        .andExpect(status().isForbidden());
+    JsonNode liderLista =
+        json.readTree(
+            mvc.perform(
+                    get("/api/v1/familias")
+                        .param("page", "0")
+                        .param("size", "50")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token(lider))))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString());
+    assertThat(liderLista.get("content").toString()).contains("Lista Alpha");
+    assertThat(liderLista.get("content").toString()).doesNotContain("Lista Beta");
+
+    JsonNode coLiderLista =
+        json.readTree(
+            mvc.perform(
+                    get("/api/v1/familias")
+                        .param("page", "0")
+                        .param("size", "50")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token(coLider))))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString());
+    assertThat(coLiderLista.get("content").toString()).contains("Lista Alpha");
+    assertThat(coLiderLista.get("content").toString()).doesNotContain("Lista Beta");
+
+    JsonNode liderBetaLista =
+        json.readTree(
+            mvc.perform(
+                    get("/api/v1/familias")
+                        .param("page", "0")
+                        .param("size", "50")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token(liderBeta))))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString());
+    assertThat(liderBetaLista.get("content").toString()).contains("Lista Beta");
+    assertThat(liderBetaLista.get("content").toString()).doesNotContain("Lista Alpha");
   }
 
   @Test

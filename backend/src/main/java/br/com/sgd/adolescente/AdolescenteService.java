@@ -81,19 +81,21 @@ public class AdolescenteService {
   }
 
   /**
-   * ADMIN/GERENTE devem informar a ficha; liderança recebe “Não consta” automaticamente (RN051).
+   * Qualquer perfil no escopo pode informar a ficha (RN051). Sem body, ADMIN/GERENTE recebem 400;
+   * discipulador e co-líder recebem “Não consta”.
    */
   private static FichaFamilia.DadosFicha fichaParaCadastro(
       User usuario, FichaFamilia.DadosFicha familia) {
+    if (familia != null) return familia;
     var perfis = usuario.getPerfis();
-    boolean podeFamilia =
-        perfis != null && (perfis.contains(Role.ADMIN) || perfis.contains(Role.GERENTE));
-    if (!podeFamilia) return FichaFamilia.dadosNaoConsta();
-    if (familia == null) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "A ficha de família é obrigatória no cadastro do adolescente.");
-    }
-    return familia;
+    boolean soLideranca =
+        perfis != null
+            && !perfis.contains(Role.ADMIN)
+            && !perfis.contains(Role.GERENTE)
+            && (perfis.contains(Role.DISCIPULADOR) || perfis.contains(Role.CO_LIDER));
+    if (soLideranca) return FichaFamilia.dadosNaoConsta();
+    throw new ResponseStatusException(
+        HttpStatus.BAD_REQUEST, "A ficha de família é obrigatória no cadastro do adolescente.");
   }
 
   public Adolescente atualizar(User usuario, long id, DadosAdolescente dados) {

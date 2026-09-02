@@ -282,6 +282,47 @@ describe('registro de frequência', () => {
     expect(JSON.parse(String(salvamento?.[1]?.body)).frequencias).toEqual([{ adolescenteId: 99, situacao: 'PRESENTE' }])
   }, 15000)
 
+  it('envia a ficha de família ao adicionar visitante quando o perfil pode cadastrar família', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input)
+      const method = init?.method ?? 'GET'
+      if (url.includes('/adolescentes?'))
+        return json({ content: [], page: 0, size: 100, totalElements: 0, totalPages: 0 })
+      if (url.endsWith('/adolescentes') && method === 'POST')
+        return json(
+          { id: 99, nome: 'João Visitante', dataNascimento: '2011-05-04', discipuladoId: 1, ativo: true },
+          201,
+        )
+      if (url.endsWith('/encontros') && method === 'POST') return json(encontro, 201)
+      if (url.includes('/encontros?')) return json([])
+      if (url.endsWith('/encontros/10') && method === 'PATCH') return json(encontro)
+      if (url.endsWith('/encontros/10/frequencias') && method === 'GET') return json([])
+      throw new Error(`Requisição inesperada: ${method} ${url}`)
+    })
+
+    const user = userEvent.setup({ delay: null })
+    render(<FrequencyManagement discipuladoId={1} podeFamilia />)
+    await user.click(await screen.findByRole('button', { name: /Houve discipulado/i }))
+    await user.click(await screen.findByRole('button', { name: 'Adicionar visitante' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Nome' }), { target: { value: 'João Visitante' } })
+    const dataNascimentoAdolescente = screen
+      .getAllByLabelText(/Data de nascimento/)
+      .find((el) => el.hasAttribute('required'))
+    fireEvent.change(dataNascimentoAdolescente!, { target: { value: '2011-05-04' } })
+    expect(screen.getByText('Ficha de família')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Adicionar' }))
+
+    expect(await screen.findByText('João Visitante')).toBeInTheDocument()
+    const criacaoVisitante = fetchMock.mock.calls.find(
+      ([url, init]) => String(url).endsWith('/adolescentes') && init?.method === 'POST',
+    )
+    expect(JSON.parse(String(criacaoVisitante?.[1]?.body)).familia).toMatchObject({
+      situacaoIgreja: 'NAO_CONSTA',
+      situacaoPais: 'NAO_CONSTA',
+      responsavel1: { nome: 'Não consta' },
+    })
+  }, 15000)
+
   it('alterna presença ao tocar na linha do adolescente', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const url = String(input)

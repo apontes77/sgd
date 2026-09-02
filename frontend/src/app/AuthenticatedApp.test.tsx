@@ -156,10 +156,12 @@ describe('navegação autenticada', () => {
   it('oferece Meu discipulado para discipulador e co-líder', async () => {
     const { rerender } = render(<AuthenticatedApp currentUser={user(['DISCIPULADOR'])} onLogout={() => undefined} />)
     expect(screen.getByRole('tab', { name: 'Meu discipulado' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Famílias' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Registrar frequência' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Relatórios' })).toBeInTheDocument()
     rerender(<AuthenticatedApp currentUser={user(['CO_LIDER'])} onLogout={() => undefined} />)
     expect(screen.getByRole('tab', { name: 'Meu discipulado' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Famílias' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Relatórios' })).toBeInTheDocument()
   })
 

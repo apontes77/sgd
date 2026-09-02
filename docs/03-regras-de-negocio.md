@@ -73,7 +73,7 @@ RN042 - A categoria `DISCIPULO_GOE` exige motivo do afastamento. Demais categori
 
 RN048 - Cada adolescente possui exatamente uma ficha de família obrigatória (1:1). Contatos familiares (responsáveis, telefones, endereço e demais dados pastorais da ficha) vivem na ficha; campos sem informação usam o texto “Não consta”. Na categoria `DISCIPULO_GOE`, o telefone do próprio adolescente continua obrigatório no cadastro do adolescente, salvo quando marcado explicitamente que não possui telefone (`naoPossuiTelefone`).
 
-RN051 - Leitura e escrita da ficha de família são exclusivas de ADMIN (qualquer registro) e GERENTE (somente na própria gerência). Discipulador e co-líder cadastram adolescentes sem informar a ficha; o sistema cria automaticamente a ficha com “Não consta”.
+RN051 - Leitura e escrita da ficha de família estão disponíveis para todos os perfis no respectivo escopo: ADMIN (qualquer registro), GERENTE (própria gerência), DISCIPULADOR e CO_LIDER (próprio discipulado). No cadastro do adolescente, `familia` no body é persistida quando informada; se omitida, ADMIN/GERENTE recebem erro e discipulador/co-líder recebem automaticamente a ficha com “Não consta”.
 
 RN049 - A chamada obrigatória de um encontro inclui os adolescentes ativos na categoria `DISCIPULO`. Adolescentes ativos `VISITANTE` e `DISCIPULO_GOE` do discipulado aparecem em seção separada e só geram registro de frequência quando marcados como `PRESENTE`. Omitir ou desmarcar apaga o registro; não se lança `AUSENTE` para GOE ou visitante. Discípulos inativos com frequência já lançada no encontro continuam visíveis/editáveis como registro anterior.
 

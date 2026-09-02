@@ -23,7 +23,7 @@ Fluxo:
 1. Acessar cadastro.
 2. Selecionar o discipulado (ADMIN/GERENTE usam busca tipável por nome do grupo ou do discipulador; líderes usam o próprio grupo).
 3. Conferir o contexto de liderança exibido (discipulador, co-líderes e, quando aplicável, faixa etária).
-4. Informar dados e categoria; contatos familiares ou telefone podem ser omitidos quando marcado que não possui (RN048).
+4. Informar dados, categoria e ficha de família (RN048, RN051); telefone pode ser omitido quando marcado que não possui.
 5. Salvar.
 
 Fluxo alternativo:

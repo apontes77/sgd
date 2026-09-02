@@ -101,6 +101,9 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
   const shouldRestoreFocus = useRef(false)
   const isAdmin = currentUser.perfis.includes('ADMIN')
   const isGerente = currentUser.perfis.includes('GERENTE')
+  const podeFamilia = currentUser.perfis.some(
+    (perfil) => perfil === 'ADMIN' || perfil === 'GERENTE' || perfil === 'DISCIPULADOR' || perfil === 'CO_LIDER',
+  )
   const sections = useMemo(() => {
     const values: NavItem[] = []
     if (isAdmin || isGerente)
@@ -140,21 +143,22 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
         { value: 'estrutura', label: 'Estrutura', group: 'Cadastros', icon: <AccountTreeRounded /> },
         { value: 'usuarios', label: 'Usuários', group: 'Cadastros', icon: <PeopleAltRounded /> },
       )
-    values.push({
-      value: 'adolescentes',
-      label: 'Adolescentes',
-      shortLabel: 'Adolescentes',
-      group: 'Cadastros',
-      icon: <GroupsRounded />,
-    })
-    if (isAdmin || isGerente)
-      values.push({
+    values.push(
+      {
+        value: 'adolescentes',
+        label: 'Adolescentes',
+        shortLabel: 'Adolescentes',
+        group: 'Cadastros',
+        icon: <GroupsRounded />,
+      },
+      {
         value: 'familias',
         label: 'Famílias',
         shortLabel: 'Famílias',
         group: 'Cadastros',
         icon: <FamilyRestroomRounded />,
-      })
+      },
+    )
     if (currentUser.perfis.some((role) => role === 'ADMIN' || role === 'DISCIPULADOR' || role === 'CO_LIDER'))
       values.push({
         value: 'frequencia',
@@ -339,11 +343,8 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
                   key={discipuladoFiltro ?? 'todos'}
                   discipuladoInicial={discipuladoFiltro}
                   podeAnonimizar={isAdmin}
-                  podeFamilia={isAdmin || isGerente}
-                  podeEditar={currentUser.perfis.some(
-                    (perfil) =>
-                      perfil === 'ADMIN' || perfil === 'GERENTE' || perfil === 'DISCIPULADOR' || perfil === 'CO_LIDER',
-                  )}
+                  podeFamilia={podeFamilia}
+                  podeEditar={podeFamilia}
                 />
               )}
               {section === 'familias' && <FamilyDirectory />}
@@ -718,7 +719,9 @@ function FrequencyPage({ currentUser }: { currentUser: Usuario }) {
       })
   }, [currentUser.perfis])
   const podeAdministrar = currentUser.perfis.includes('ADMIN')
-  const podeFamilia = currentUser.perfis.includes('ADMIN') || currentUser.perfis.includes('GERENTE')
+  const podeFamilia = currentUser.perfis.some(
+    (perfil) => perfil === 'ADMIN' || perfil === 'GERENTE' || perfil === 'DISCIPULADOR' || perfil === 'CO_LIDER',
+  )
   const podeRegistrarNaoRealizacao =
     podeAdministrar || currentUser.perfis.some((role) => role === 'DISCIPULADOR' || role === 'CO_LIDER')
   const mostrarSeletor = discipulados.length > 1

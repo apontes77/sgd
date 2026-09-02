@@ -18,12 +18,18 @@ public interface FichaFamiliaRepository extends JpaRepository<FichaFamilia, Long
   @Query(
       """
       select f from FichaFamilia f
-      where (:gerenteId is null
+      where (:admin = true
          or exists (
            select 1 from VinculoAdolescenteDiscipulado v
+           join v.discipulado d
+           left join d.coLideres c
            where v.adolescente = f.adolescente
              and v.ativo = true
-             and v.discipulado.gerencia.gerente.id = :gerenteId
+             and (
+               (:gerenteId is not null and d.gerencia.gerente.id = :gerenteId)
+               or (:discipuladorId is not null and d.discipulador.id = :discipuladorId)
+               or (:coLiderId is not null and c.id = :coLiderId)
+             )
          ))
         and (:busca is null
          or lower(f.adolescente.nome) like lower(concat('%', cast(:busca as string), '%'))
@@ -38,7 +44,10 @@ public interface FichaFamiliaRepository extends JpaRepository<FichaFamilia, Long
       order by f.adolescente.nome asc
       """)
   Page<FichaFamilia> listarNoEscopo(
+      @Param("admin") boolean admin,
       @Param("gerenteId") Long gerenteId,
+      @Param("discipuladorId") Long discipuladorId,
+      @Param("coLiderId") Long coLiderId,
       @Param("busca") String busca,
       @Param("situacaoIgreja") SituacaoIgrejaFamilia situacaoIgreja,
       @Param("situacaoPais") SituacaoPaisFamilia situacaoPais,
