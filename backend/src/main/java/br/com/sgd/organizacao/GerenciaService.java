@@ -71,6 +71,14 @@ public class GerenciaService {
     return gerencias.findById(id).orElseThrow(GerenciaNotFoundException::new);
   }
 
+  public void delete(long id) {
+    Gerencia gerencia = findById(id);
+    if (discipulados.existsByGerenciaId(id)) {
+      throw new GerenciaComDiscipuladosException();
+    }
+    gerencias.delete(gerencia);
+  }
+
   private User gerenteAtivo(long id) {
     User usuario = usuarios.findById(id).orElseThrow(UsuarioOrganizacionalNotFoundException::new);
     if (!usuario.isAtivo() || !usuario.getPerfis().contains(Role.GERENTE)) {
@@ -84,4 +92,6 @@ public class GerenciaService {
   public static class UsuarioOrganizacionalNotFoundException extends RuntimeException {}
 
   public static class GerenteInvalidoException extends RuntimeException {}
+
+  public static class GerenciaComDiscipuladosException extends RuntimeException {}
 }

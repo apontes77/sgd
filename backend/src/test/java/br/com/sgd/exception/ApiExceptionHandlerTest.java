@@ -14,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 import br.com.sgd.auth.AuthService;
 import br.com.sgd.auth.OAuthIdentityService;
 import br.com.sgd.frequencia.SituacaoEncontro;
+import br.com.sgd.organizacao.GerenciaService;
 import br.com.sgd.user.UserService;
 
 class ApiExceptionHandlerTest {
@@ -61,6 +62,10 @@ class ApiExceptionHandlerTest {
         handler.handleDataIntegrity(new DataIntegrityViolationException("constraint")),
         409,
         "integridade");
+    assertProblem(
+        handler.handleOrganizationalRule(new GerenciaService.GerenciaComDiscipuladosException()),
+        409,
+        "realocados ou desativados");
   }
 
   @Test

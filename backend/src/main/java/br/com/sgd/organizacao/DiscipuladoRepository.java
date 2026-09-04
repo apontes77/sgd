@@ -26,6 +26,8 @@ public interface DiscipuladoRepository
   @EntityGraph(attributePaths = {"gerencia", "discipulador", "coLideres", "coLideres.perfis"})
   Optional<Discipulado> findById(Long id);
 
+  boolean existsByGerenciaId(Long gerenciaId);
+
   List<Discipulado> findAllByGerenciaIdAndAtivoTrue(Long gerenciaId);
 
   List<Discipulado> findAllByGerenciaIdOrderByNomeAsc(Long gerenciaId);

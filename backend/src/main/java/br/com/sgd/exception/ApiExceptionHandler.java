@@ -174,6 +174,7 @@ public class ApiExceptionHandler {
 
   @ExceptionHandler({
     GerenciaService.GerenteInvalidoException.class,
+    GerenciaService.GerenciaComDiscipuladosException.class,
     DiscipuladoService.GerenciaInativaException.class,
     DiscipuladoService.DiscipuladorInvalidoException.class,
     DiscipuladoService.CoLiderInvalidoException.class,
@@ -184,6 +185,8 @@ public class ApiExceptionHandler {
         switch (exception) {
           case GerenciaService.GerenteInvalidoException ignored ->
               "O gerente deve estar ativo e possuir o perfil GERENTE.";
+          case GerenciaService.GerenciaComDiscipuladosException ignored ->
+              "Os discipulados associados a esta gerência precisam ser realocados ou desativados antes de excluir a gerência.";
           case DiscipuladoService.GerenciaInativaException ignored ->
               "A gerência informada está inativa.";
           case DiscipuladoService.DiscipuladorInvalidoException ignored ->

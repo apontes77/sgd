@@ -63,6 +63,13 @@ public class OrganizacaoController {
             gerenciaId, r.nome(), r.sexo(), r.faixasEtarias(), r.gerenteId(), r.ativo()));
   }
 
+  @DeleteMapping("/gerencias/{gerenciaId}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  @PreAuthorize("hasRole('ADMIN')")
+  public void excluirGerencia(@PathVariable long gerenciaId) {
+    gerencias.delete(gerenciaId);
+  }
+
   @GetMapping("/discipulados")
   public PaginaResponse<DiscipuladoResponse> listarDiscipulados(
       Authentication auth,
