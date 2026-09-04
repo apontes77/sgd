@@ -27,6 +27,7 @@ import org.springframework.web.server.ResponseStatusException;
 import br.com.sgd.frequencia.PrazoLancamentoFrequencia;
 import br.com.sgd.frequencia.SituacaoEncontro;
 import br.com.sgd.frequencia.SituacaoFrequencia;
+import br.com.sgd.organizacao.Discipulado;
 import br.com.sgd.organizacao.DiscipuladoRepository;
 import br.com.sgd.relatorio.RelatorioFrequenciaRepository.CoLiderRow;
 import br.com.sgd.relatorio.RelatorioFrequenciaRepository.EncontroCabecalho;
@@ -51,24 +52,32 @@ public class RelatorioFrequenciaService {
     this.clock = clock;
   }
 
-  public RelatorioDiarioResponse consultar(User usuario, LocalDate data, Long discipuladoId) {
+  public RelatorioDiarioResponse consultar(
+      User usuario, LocalDate data, Long discipuladoId, boolean emFormacao) {
     if (data == null)
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "A data do relatório é obrigatória.");
-    RelatorioPeriodoResponse periodo = consultarPeriodo(usuario, data, data, discipuladoId, true);
+    RelatorioPeriodoResponse periodo =
+        consultarPeriodo(usuario, data, data, discipuladoId, true, emFormacao);
     return new RelatorioDiarioResponse(data, periodo.emitidoEm(), periodo.relatorios());
   }
 
   public RelatorioPeriodoResponse consultarPeriodo(
-      User usuario, LocalDate inicio, LocalDate fim, Long discipuladoId) {
-    return consultarPeriodo(
-        usuario, inicio, fim, discipuladoId, inicio != null && inicio.equals(fim));
+      User usuario, LocalDate inicio, LocalDate fim, Long discipuladoId, boolean emFormacao) {
+    boolean listaNominal = emFormacao || (inicio != null && inicio.equals(fim));
+    return consultarPeriodo(usuario, inicio, fim, discipuladoId, listaNominal, emFormacao);
   }
 
   public void exportarExcel(
-      User usuario, LocalDate inicio, LocalDate fim, Long discipuladoId, OutputStream out)
+      User usuario,
+      LocalDate inicio,
+      LocalDate fim,
+      Long discipuladoId,
+      boolean emFormacao,
+      OutputStream out)
       throws IOException {
-    RelatorioPeriodoResponse periodo = consultarPeriodo(usuario, inicio, fim, discipuladoId, false);
+    RelatorioPeriodoResponse periodo =
+        consultarPeriodo(usuario, inicio, fim, discipuladoId, false, emFormacao);
     try (SXSSFWorkbook workbook = new SXSSFWorkbook(100)) {
       Sheet sheet = workbook.createSheet("Frequências");
       escreverCabecalhoExcel(sheet);
@@ -140,7 +149,8 @@ public class RelatorioFrequenciaService {
       LocalDate inicio,
       LocalDate fim,
       Long discipuladoId,
-      boolean incluirParticipantes) {
+      boolean incluirParticipantes,
+      boolean emFormacao) {
     if (inicio == null || fim == null)
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "As datas inicial e final s\u00e3o obrigat\u00f3rias.");
@@ -152,25 +162,33 @@ public class RelatorioFrequenciaService {
           HttpStatus.BAD_REQUEST,
           "O per\u00edodo do relat\u00f3rio deve ser de no m\u00e1ximo 12 meses.");
     boolean administrador = usuario.getPerfis().contains(Role.ADMIN);
-    Escopo escopo = administrador ? new Escopo(Set.of()) : escopoRestrito(usuario);
-    Set<Long> idsConsulta = resolverDiscipuladosConsulta(administrador, escopo, discipuladoId);
+    Escopo escopo = administrador ? new Escopo(Set.of()) : escopoRestrito(usuario, emFormacao);
+    Set<Long> idsConsulta =
+        resolverDiscipuladosConsulta(administrador, escopo, discipuladoId, emFormacao);
     List<EncontroCabecalho> encontrados =
         idsConsulta == null
-            ? relatorios.cabecalhosNoPeriodo(inicio, fim)
+            ? relatorios.cabecalhosNoPeriodo(inicio, fim, emFormacao)
             : idsConsulta.isEmpty()
                 ? List.of()
-                : relatorios.cabecalhosNoPeriodoDoEscopo(inicio, fim, idsConsulta);
+                : relatorios.cabecalhosNoPeriodoDoEscopo(inicio, fim, idsConsulta, emFormacao);
     return new RelatorioPeriodoResponse(
         inicio, fim, clock.instant(), montarRelatorios(encontrados, incluirParticipantes));
   }
 
   private Set<Long> resolverDiscipuladosConsulta(
-      boolean administrador, Escopo escopo, Long discipuladoId) {
+      boolean administrador, Escopo escopo, Long discipuladoId, boolean emFormacao) {
     if (discipuladoId == null) {
       return administrador ? null : escopo.discipuladoIds();
     }
     if (administrador) {
-      if (!discipulados.existsById(discipuladoId))
+      Discipulado discipulado =
+          discipulados
+              .findById(discipuladoId)
+              .orElseThrow(
+                  () ->
+                      new ResponseStatusException(
+                          HttpStatus.NOT_FOUND, "Discipulado não encontrado."));
+      if (discipulado.isEmFormacao() != emFormacao)
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Discipulado não encontrado.");
       return Set.of(discipuladoId);
     }
@@ -180,19 +198,19 @@ public class RelatorioFrequenciaService {
     return Set.of(discipuladoId);
   }
 
-  private Escopo escopoRestrito(User usuario) {
+  private Escopo escopoRestrito(User usuario, boolean emFormacao) {
     Set<Long> ids = new LinkedHashSet<>();
     boolean associado = false;
     if (usuario.getPerfis().contains(Role.GERENTE)) {
       List<Long> gerenciaIds = relatorios.idsPorGerente(usuario.getId());
       associado = !gerenciaIds.isEmpty();
-      ids.addAll(gerenciaIds);
+      if (!emFormacao) ids.addAll(gerenciaIds);
     }
     if (usuario.getPerfis().contains(Role.DISCIPULADOR)
         || usuario.getPerfis().contains(Role.CO_LIDER)) {
       List<Long> liderados = relatorios.idsPorLideranca(usuario.getId());
       associado = associado || !liderados.isEmpty();
-      ids.addAll(liderados);
+      ids.addAll(relatorios.idsPorLiderancaDoTipo(usuario.getId(), emFormacao));
     }
     if (!associado)
       throw new ResponseStatusException(

@@ -173,8 +173,8 @@ export default function AdolescentManagement({
     }
   }, [filtro])
 
-  const carregarAlertas = useCallback(async (discipuladoId: number) => {
-    if (!discipuladoId) {
+  const carregarAlertas = useCallback(async (discipuladoId: number, emFormacao?: boolean) => {
+    if (!discipuladoId || emFormacao) {
       setAlertasGoe([])
       setAlertaAtual(null)
       return
@@ -196,8 +196,15 @@ export default function AdolescentManagement({
   }, [carregar])
 
   useEffect(() => {
-    void carregarAlertas(filtro)
-  }, [filtro, carregarAlertas])
+    if (!filtro) {
+      setAlertasGoe([])
+      setAlertaAtual(null)
+      return
+    }
+    if (discipulados.length === 0) return
+    const emFormacao = discipulados.find((d) => d.id === filtro)?.emFormacao
+    void carregarAlertas(filtro, emFormacao)
+  }, [filtro, discipulados, carregarAlertas])
 
   useEffect(() => {
     const pendente = alertasGoe.find((a) => !ignoradosGoe.includes(a.adolescenteId))
@@ -211,6 +218,7 @@ export default function AdolescentManagement({
   const visitantes = useMemo(() => items.filter((a) => a.categoria === 'VISITANTE'), [items])
   const goe = useMemo(() => items.filter((a) => a.categoria === 'DISCIPULO_GOE'), [items])
   const discipuladoAtual = useMemo(() => discipulados.find((d) => d.id === filtro), [discipulados, filtro])
+  const listagemSimples = Boolean(discipuladoAtual?.emFormacao)
   const podeCadastrar = podeEditar && filtro > 0
 
   function novo() {
@@ -299,11 +307,15 @@ export default function AdolescentManagement({
 
   async function salvar(event: FormEvent) {
     event.preventDefault()
-    if (form.categoria === 'DISCIPULO_GOE' && !form.motivoAfastamento?.trim()) {
+    const paraSalvar: AdolescenteInput = {
+      ...form,
+      categoria: listagemSimples ? 'DISCIPULO' : form.categoria,
+    }
+    if (!listagemSimples && paraSalvar.categoria === 'DISCIPULO_GOE' && !paraSalvar.motivoAfastamento?.trim()) {
       setErro('Informe o motivo do afastamento para Discípulo GOE.')
       return
     }
-    const erroValidacao = validarFormularioAdolescente(form)
+    const erroValidacao = validarFormularioAdolescente(paraSalvar)
     if (erroValidacao) {
       setErro(erroValidacao)
       return
@@ -320,9 +332,9 @@ export default function AdolescentManagement({
     setSucesso('')
     try {
       const payload: AdolescenteInput = {
-        ...form,
-        telefone: form.naoPossuiTelefone ? '' : form.telefone,
-        naoPossuiTelefone: Boolean(form.naoPossuiTelefone),
+        ...paraSalvar,
+        telefone: paraSalvar.naoPossuiTelefone ? '' : paraSalvar.telefone,
+        naoPossuiTelefone: Boolean(paraSalvar.naoPossuiTelefone),
       }
       if (editando) await adolescentesApi.atualizar(editando.id, payload)
       else await adolescentesApi.criar(podeFamilia ? { ...payload, familia: toFamiliaPayload(familiaForm) } : payload)
@@ -332,7 +344,7 @@ export default function AdolescentManagement({
       setFamiliaForm(familiaNaoConsta())
       setDrawerOpen(false)
       await carregar()
-      await carregarAlertas(filtro)
+      await carregarAlertas(filtro, listagemSimples)
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não foi possível salvar.')
     } finally {
@@ -432,7 +444,7 @@ export default function AdolescentManagement({
       setTelefoneGoe('')
       setNaoPossuiTelefoneGoe(false)
       await carregar()
-      await carregarAlertas(filtro)
+      await carregarAlertas(filtro, listagemSimples)
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não foi possível atualizar o status.')
     } finally {
@@ -467,7 +479,11 @@ export default function AdolescentManagement({
     <Stack spacing={3}>
       <PageHeader
         title="Gestão de Discípulos"
-        description="Liste discípulos, visitantes e discípulos GOE do discipulado selecionado."
+        description={
+          listagemSimples
+            ? 'Liste os discípulos do grupo de formação selecionado.'
+            : 'Liste discípulos, visitantes e discípulos GOE do discipulado selecionado.'
+        }
         eyebrow="Gestão"
         action={
           podeEditar ? (
@@ -530,12 +546,16 @@ export default function AdolescentManagement({
                 discipuladorNome={discipuladoAtual.discipuladorNome}
                 coLideres={discipuladoAtual.coLideres}
                 faixaEtaria={discipuladoAtual.faixaEtaria}
-                showFaixaEtaria
+                showFaixaEtaria={!listagemSimples}
+                ocultarCoLideres={listagemSimples}
               />
             )}
           </Stack>
           <Typography variant="body2" color="text.secondary">
-            {totalAtivos} adolescente{totalAtivos === 1 ? '' : 's'}
+            {totalAtivos}{' '}
+            {listagemSimples
+              ? `discípulo${totalAtivos === 1 ? '' : 's'}`
+              : `adolescente${totalAtivos === 1 ? '' : 's'}`}
           </Typography>
         </Stack>
       </FilterToolbar>
@@ -547,38 +567,52 @@ export default function AdolescentManagement({
         />
       ) : (
         <>
-          <CategoriaSection
-            titulo="Discípulos ativos"
-            items={discipulos}
-            empty="Nenhum discípulo ativo neste discipulado."
-            acoes={acoesLinha}
-            onEditar={podeEditar ? editar : undefined}
-            onAbrirFamilia={podeFamilia ? (a) => void abrirFamilia(a) : undefined}
-          />
-          <CategoriaSection
-            titulo="Visitantes"
-            items={visitantes}
-            empty="Nenhum visitante cadastrado neste discipulado."
-            acoes={acoesLinha}
-            onEditar={podeEditar ? editar : undefined}
-            onAbrirFamilia={podeFamilia ? (a) => void abrirFamilia(a) : undefined}
-          />
-          <CategoriaSection
-            titulo="Discípulos GOE"
-            items={goe}
-            empty="Nenhum discípulo GOE neste discipulado."
-            acoes={acoesLinha}
-            mostrarMotivo
-            onEditar={podeEditar ? editar : undefined}
-            onAbrirFamilia={podeFamilia ? (a) => void abrirFamilia(a) : undefined}
-          />
+          {listagemSimples ? (
+            <CategoriaSection
+              titulo="Discípulos"
+              items={items}
+              empty="Nenhum discípulo neste discipulado de formação."
+              acoes={acoesLinha}
+              ocultarEstrutura
+              onEditar={podeEditar ? editar : undefined}
+              onAbrirFamilia={podeFamilia ? (a) => void abrirFamilia(a) : undefined}
+            />
+          ) : (
+            <>
+              <CategoriaSection
+                titulo="Discípulos ativos"
+                items={discipulos}
+                empty="Nenhum discípulo ativo neste discipulado."
+                acoes={acoesLinha}
+                onEditar={podeEditar ? editar : undefined}
+                onAbrirFamilia={podeFamilia ? (a) => void abrirFamilia(a) : undefined}
+              />
+              <CategoriaSection
+                titulo="Visitantes"
+                items={visitantes}
+                empty="Nenhum visitante cadastrado neste discipulado."
+                acoes={acoesLinha}
+                onEditar={podeEditar ? editar : undefined}
+                onAbrirFamilia={podeFamilia ? (a) => void abrirFamilia(a) : undefined}
+              />
+              <CategoriaSection
+                titulo="Discípulos GOE"
+                items={goe}
+                empty="Nenhum discípulo GOE neste discipulado."
+                acoes={acoesLinha}
+                mostrarMotivo
+                onEditar={podeEditar ? editar : undefined}
+                onAbrirFamilia={podeFamilia ? (a) => void abrirFamilia(a) : undefined}
+              />
+            </>
+          )}
         </>
       )}
 
       <FormSheet
         open={drawerOpen}
         onClose={fecharDrawer}
-        title={editando ? 'Editar adolescente' : 'Cadastrar discípulo'}
+        title={editando ? (listagemSimples ? 'Editar discípulo' : 'Editar adolescente') : 'Cadastrar discípulo'}
         width={560}
         component="form"
         onSubmit={salvar}
@@ -592,7 +626,12 @@ export default function AdolescentManagement({
         }
       >
         {erro && <Alert severity="error">{erro}</Alert>}
-        <AdolescenteFormFields value={form} onChange={(patch) => setForm({ ...form, ...patch })} disabled={salvando} />
+        <AdolescenteFormFields
+          value={form}
+          onChange={(patch) => setForm({ ...form, ...patch })}
+          disabled={salvando}
+          listagemSimples={listagemSimples}
+        />
         <FormControl required>
           <InputLabel>Discipulado</InputLabel>
           <Select
@@ -842,6 +881,7 @@ function CategoriaSection({
   empty,
   acoes,
   mostrarMotivo = false,
+  ocultarEstrutura = false,
   onEditar,
   onAbrirFamilia,
 }: {
@@ -850,6 +890,7 @@ function CategoriaSection({
   empty: string
   acoes: (a: Adolescente) => ReactNode
   mostrarMotivo?: boolean
+  ocultarEstrutura?: boolean
   onEditar?: (a: Adolescente) => void
   onAbrirFamilia?: (a: Adolescente) => void
 }) {
@@ -867,7 +908,7 @@ function CategoriaSection({
                 <TableCell>Idade</TableCell>
                 <TableCell>Aniv.</TableCell>
                 <TableCell>Tel.</TableCell>
-                <TableCell>Estrutura</TableCell>
+                {!ocultarEstrutura && <TableCell>Estrutura</TableCell>}
                 {mostrarMotivo && <TableCell>Motivo do afastamento</TableCell>}
                 <TableCell>Situação</TableCell>
                 {onAbrirFamilia && <TableCell>Famílias</TableCell>}
@@ -902,7 +943,7 @@ function CategoriaSection({
                   <TableCell>{idadeAnos(a.dataNascimento)}a</TableCell>
                   <TableCell>{aniversario(a.dataNascimento)}</TableCell>
                   <TableCell>{a.telefone || '—'}</TableCell>
-                  <TableCell>{a.estrutura || '—'}</TableCell>
+                  {!ocultarEstrutura && <TableCell>{a.estrutura || '—'}</TableCell>}
                   {mostrarMotivo && <TableCell>{a.motivoAfastamento || '—'}</TableCell>}
                   <TableCell>
                     <StatusChip active={a.ativo} />

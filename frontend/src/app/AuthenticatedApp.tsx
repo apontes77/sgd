@@ -713,13 +713,15 @@ function Navigation({
 function FrequencyPage({ currentUser, emFormacao = false }: { currentUser: Usuario; emFormacao?: boolean }) {
   const [discipulados, setDiscipulados] = useState<Discipulado[]>([])
   const [discipuladoId, setDiscipuladoId] = useState<number>(0)
+  const podeAdministrar = currentUser.perfis.includes('ADMIN')
   useEffect(() => {
-    const consulta = currentUser.perfis.includes('ADMIN')
-      ? organizationApi.listarDiscipulados(true).then((page) => page.content)
-      : organizationApi.listarDiscipuladosLiderados(true)
+    const consulta = podeAdministrar
+      ? organizationApi.listarDiscipulados(true, emFormacao).then((page) => page.content)
+      : organizationApi
+          .listarDiscipuladosLiderados(true)
+          .then((items) => items.filter((item) => Boolean(item.emFormacao) === emFormacao))
     consulta
-      .then((items) => {
-        const visiveis = items.filter((item) => Boolean(item.emFormacao) === emFormacao)
+      .then((visiveis) => {
         setDiscipulados(visiveis)
         setDiscipuladoId((current) => (visiveis.some((item) => item.id === current) ? current : (visiveis[0]?.id ?? 0)))
       })
@@ -727,14 +729,13 @@ function FrequencyPage({ currentUser, emFormacao = false }: { currentUser: Usuar
         setDiscipulados([])
         setDiscipuladoId(0)
       })
-  }, [currentUser.perfis, emFormacao])
-  const podeAdministrar = currentUser.perfis.includes('ADMIN')
+  }, [podeAdministrar, emFormacao])
   const podeFamilia = currentUser.perfis.some(
     (perfil) => perfil === 'ADMIN' || perfil === 'GERENTE' || perfil === 'DISCIPULADOR' || perfil === 'CO_LIDER',
   )
   const podeRegistrarNaoRealizacao =
     podeAdministrar || currentUser.perfis.some((role) => role === 'DISCIPULADOR' || role === 'CO_LIDER')
-  const mostrarSeletor = discipulados.length > 1
+  const mostrarSeletor = emFormacao && podeAdministrar ? discipulados.length > 0 : discipulados.length > 1
   return (
     <Stack spacing={3}>
       <PageHeader

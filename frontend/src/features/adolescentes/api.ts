@@ -60,6 +60,7 @@ export interface DiscipuladoResumo {
   faixaEtaria?: FaixaEtaria
   coLideres?: Array<{ id: number; nome: string }>
   ativo?: boolean
+  emFormacao?: boolean
 }
 
 export const CATEGORIA_LABEL: Record<CategoriaAdolescente, string> = {

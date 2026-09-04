@@ -38,6 +38,7 @@ de autorização.
 | EO-16 | RN028 | Associar como co-líder um usuário que já lidera ou co-lidera outro discipulado padrão. | `409`; a lista anterior permanece inalterada. |
 | EO-18 | RN054 | Criar discipulado com `emFormacao=true` sem `gerenciaId`. | `201`; `gerenciaId` nulo e `emFormacao` verdadeiro. |
 | EO-19 | RN054 | Definir co-líderes em discipulado de formação. | `409`. |
+| EO-20 | RN054 | Cadastrar membro de formação com categoria diferente de `DISCIPULO`. | `400`. |
 | EO-17 | RN015 | Usuário acumula `GERENTE + DISCIPULADOR` ou `ADMIN + DISCIPULADOR`. | Mantém os painéis do papel administrativo/gerencial e recebe também “Meu discipulado”. |
 
 ## Testes automatizados previstos

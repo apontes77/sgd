@@ -145,7 +145,7 @@ describe('relatório diário de frequência', () => {
     expect(screen.queryByText(/Encontro:/)).not.toBeInTheDocument()
     expect(screen.queryByText('#10')).not.toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/v1/relatorios/frequencia?dataInicio=2026-07-20&dataFim=2026-07-21',
+      '/api/v1/relatorios/frequencia?dataInicio=2026-07-20&dataFim=2026-07-21&emFormacao=false',
       expect.anything(),
     )
 
@@ -370,5 +370,145 @@ describe('relatório diário de frequência', () => {
 
     expect(await screen.findByText(/não lançou a frequência no prazo/i)).toBeInTheDocument()
     expect(screen.getByText('Ana')).toBeInTheDocument()
+  })
+
+  it('consulta o relatório de formação sem gerência, GOE nem visitantes', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/discipulados')) {
+        return new Response(
+          JSON.stringify({
+            content: [
+              {
+                id: 20,
+                nome: 'Formação Alpha',
+                sexo: 'MASCULINO',
+                faixaEtaria: 'DE_15_MAIS',
+                gerenciaId: null,
+                discipuladorId: 3,
+                discipuladorNome: 'Líder Formação',
+                coLideres: [],
+                emFormacao: true,
+              },
+            ],
+            page: 0,
+            size: 100,
+            totalElements: 1,
+            totalPages: 1,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        )
+      }
+      return new Response(
+        JSON.stringify({
+          dataInicio: '2026-07-21',
+          dataFim: '2026-07-21',
+          emitidoEm: '2026-07-21T22:00:00Z',
+          relatorios: [
+            {
+              ...relatorio.relatorios[0],
+              encontroId: 30,
+              gerencia: { id: 0, nome: 'Formação' },
+              discipulado: { id: 20, nome: 'Formação Alpha', sexo: 'MASCULINO' },
+              discipulador: { id: 9, nome: 'Líder Formação' },
+              coLideres: [],
+              visitantes: 0,
+              goe: 0,
+              resumo: { presentes: 1, ausentes: 1, participantes: 2, visitantes: 0, goe: 0, percentualPresenca: 50 },
+            },
+          ],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      )
+    })
+
+    render(<FrequencyReport currentUser={adminUser} emFormacao />)
+
+    expect(screen.getByRole('heading', { name: 'Relatórios de frequência em formação' })).toBeInTheDocument()
+    expect(await screen.findByLabelText(/^Discipulado/)).toBeInTheDocument()
+    const dataInicial = screen.getByLabelText(/^Data inicial/)
+    const dataFinal = screen.getByLabelText(/^Data final/)
+    await userEvent.clear(dataInicial)
+    await userEvent.type(dataInicial, '2026-07-21')
+    await userEvent.clear(dataFinal)
+    await userEvent.type(dataFinal, '2026-07-21')
+    await userEvent.click(screen.getByRole('button', { name: 'Consultar' }))
+
+    expect(await screen.findByRole('heading', { name: 'Relatório de frequência em formação' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Discípulo' })).toBeInTheDocument()
+    expect(screen.getByText('Ana')).toBeInTheDocument()
+    expect(screen.queryByText(/Gerência:/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Co-líderes:/)).not.toBeInTheDocument()
+    expect(screen.queryByText('GOE')).not.toBeInTheDocument()
+    expect(screen.queryByText('Visitantes')).not.toBeInTheDocument()
+    expect(screen.getByText('Presentes')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/relatorios/frequencia?dataInicio=2026-07-21&dataFim=2026-07-21&emFormacao=true',
+      expect.anything(),
+    )
+  })
+
+  it('mostra a lista nominal de formação mesmo quando o período tem mais de um dia', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/discipulados')) {
+        return new Response(JSON.stringify({ content: [], page: 0, size: 100, totalElements: 0, totalPages: 0 }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      return new Response(
+        JSON.stringify({
+          dataInicio: '2026-07-20',
+          dataFim: '2026-07-21',
+          emitidoEm: '2026-07-21T22:00:00Z',
+          relatorios: [
+            {
+              ...relatorio.relatorios[0],
+              encontroId: 30,
+              gerencia: { id: 0, nome: 'Formação' },
+              discipulado: { id: 20, nome: 'Formação Alpha', sexo: 'MASCULINO' },
+              discipulador: { id: 9, nome: 'Líder Formação' },
+              coLideres: [],
+              visitantes: 0,
+              goe: 0,
+              resumo: { presentes: 1, ausentes: 1, participantes: 2, visitantes: 0, goe: 0, percentualPresenca: 50 },
+            },
+          ],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      )
+    })
+
+    render(<FrequencyReport currentUser={adminUser} emFormacao />)
+
+    const dataInicial = await screen.findByLabelText(/^Data inicial/)
+    const dataFinal = screen.getByLabelText(/^Data final/)
+    await userEvent.clear(dataInicial)
+    await userEvent.type(dataInicial, '2026-07-20')
+    await userEvent.clear(dataFinal)
+    await userEvent.type(dataFinal, '2026-07-21')
+    await userEvent.click(screen.getByRole('button', { name: 'Consultar' }))
+
+    expect(await screen.findByRole('table', { name: 'Frequência do Formação Alpha em 21/07/2026' })).toBeInTheDocument()
+    expect(screen.getByText('Ana')).toBeInTheDocument()
+    expect(screen.getByText('Bia')).toBeInTheDocument()
+    expect(screen.getByText('Presente')).toBeInTheDocument()
+    expect(screen.getByText('Ausente')).toBeInTheDocument()
+    expect(screen.queryByText('Lista nominal disponível na consulta de um único dia.')).not.toBeInTheDocument()
+  })
+
+  it('não oferece filtro de discipulado ao gerente no relatório de formação', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      return new Response(JSON.stringify({ ...relatorio, relatorios: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    render(<FrequencyReport currentUser={gerenteUser} emFormacao />)
+
+    expect(screen.queryByLabelText(/^Discipulado/)).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('Pesquisar discipulado ou discipulador')).not.toBeInTheDocument()
   })
 })

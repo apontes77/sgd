@@ -20,6 +20,7 @@ interface Props {
   onChange: (patch: Partial<DadosPessoaisAdolescente>) => void
   disabled?: boolean
   autoFocus?: boolean
+  listagemSimples?: boolean
 }
 
 function erroTelefone(valor: string | undefined, rotulo: string) {
@@ -27,33 +28,35 @@ function erroTelefone(valor: string | undefined, rotulo: string) {
   return telefoneValido(valor) ? undefined : mensagemTelefoneInvalido(rotulo)
 }
 
-export function AdolescenteFormFields({ value, onChange, disabled, autoFocus = true }: Props) {
-  const goe = value.categoria === 'DISCIPULO_GOE'
+export function AdolescenteFormFields({ value, onChange, disabled, autoFocus = true, listagemSimples = false }: Props) {
+  const goe = !listagemSimples && value.categoria === 'DISCIPULO_GOE'
   const semTelefone = Boolean(value.naoPossuiTelefone)
 
   return (
     <>
-      <FormControl required fullWidth>
-        <InputLabel>Categoria</InputLabel>
-        <Select
-          label="Categoria"
-          value={value.categoria}
-          disabled={disabled}
-          onChange={(e) => {
-            const categoria = e.target.value as CategoriaAdolescente
-            onChange({
-              categoria,
-              motivoAfastamento: categoria === 'DISCIPULO_GOE' ? value.motivoAfastamento : '',
-            })
-          }}
-        >
-          {(Object.keys(CATEGORIA_LABEL) as CategoriaAdolescente[]).map((key) => (
-            <MenuItem key={key} value={key}>
-              {CATEGORIA_LABEL[key]}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      {!listagemSimples && (
+        <FormControl required fullWidth>
+          <InputLabel>Categoria</InputLabel>
+          <Select
+            label="Categoria"
+            value={value.categoria}
+            disabled={disabled}
+            onChange={(e) => {
+              const categoria = e.target.value as CategoriaAdolescente
+              onChange({
+                categoria,
+                motivoAfastamento: categoria === 'DISCIPULO_GOE' ? value.motivoAfastamento : '',
+              })
+            }}
+          >
+            {(Object.keys(CATEGORIA_LABEL) as CategoriaAdolescente[]).map((key) => (
+              <MenuItem key={key} value={key}>
+                {CATEGORIA_LABEL[key]}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      )}
       <TextField
         required
         autoFocus={autoFocus}
@@ -115,12 +118,14 @@ export function AdolescenteFormFields({ value, onChange, disabled, autoFocus = t
         disabled={disabled}
         onChange={(e) => onChange({ consentimentoEm: e.target.value })}
       />
-      <TextField
-        label="Estrutura"
-        value={value.estrutura ?? ''}
-        disabled={disabled}
-        onChange={(e) => onChange({ estrutura: e.target.value })}
-      />
+      {!listagemSimples && (
+        <TextField
+          label="Estrutura"
+          value={value.estrutura ?? ''}
+          disabled={disabled}
+          onChange={(e) => onChange({ estrutura: e.target.value })}
+        />
+      )}
       {goe && (
         <TextField
           required

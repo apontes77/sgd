@@ -226,6 +226,31 @@ class AdolescenteServiceTest {
   }
 
   @Test
+  void discipuladoDeFormacaoNaoListaAlertasGoe() {
+    when(origem.isEmFormacao()).thenReturn(true);
+    when(discipulados.findById(10L)).thenReturn(Optional.of(origem));
+
+    assertThat(service.listarAlertasGoe(usuario, 10L)).isEmpty();
+    verify(frequencias, never()).encontrarPotenciaisGoe(eq(10L), any(), any(), eq(4L));
+  }
+
+  @Test
+  void discipuladoDeFormacaoRecusaVisitanteOuGoe() {
+    configurarAtivo(origem);
+    when(origem.isEmFormacao()).thenReturn(true);
+    when(discipulados.findById(10L)).thenReturn(Optional.of(origem));
+
+    assertThatThrownBy(
+            () ->
+                service.criar(
+                    usuario,
+                    dadosBasicos(10L, CategoriaAdolescente.VISITANTE, null),
+                    FichaFamilia.dadosNaoConsta()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("não subdivide");
+  }
+
+  @Test
   void promoveVisitanteComTresPresencasNaJanelaDoPrimeiroVinculo() {
     Adolescente visitante = adolescenteNaCategoria(CategoriaAdolescente.VISITANTE);
     var primeiro = new VinculoAdolescenteDiscipulado(visitante, origem, LocalDate.of(2026, 6, 1));

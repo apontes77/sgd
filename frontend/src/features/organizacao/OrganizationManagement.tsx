@@ -181,12 +181,10 @@ export default function OrganizationManagement({
     () =>
       discipulados.filter((item) => {
         if (!item.emFormacao) return false
-        if (filtroDiscipuladoSexo && item.sexo !== filtroDiscipuladoSexo) return false
-        if (filtroDiscipuladoFaixa && item.faixaEtaria !== filtroDiscipuladoFaixa) return false
         const discipuladorNome = item.discipuladorNome ?? userName(users, item.discipuladorId)
         return nomeContem(item.nome, filtroDiscipuladoBusca) || nomeContem(discipuladorNome, filtroDiscipuladoBusca)
       }),
-    [discipulados, filtroDiscipuladoBusca, filtroDiscipuladoFaixa, filtroDiscipuladoSexo, users],
+    [discipulados, filtroDiscipuladoBusca, users],
   )
 
   useEffect(() => {
@@ -414,6 +412,7 @@ export default function OrganizationManagement({
               onFiltroSexo={setFiltroDiscipuladoSexo}
               onFiltroFaixa={setFiltroDiscipuladoFaixa}
               onFiltroBusca={setFiltroDiscipuladoBusca}
+              somenteBusca
             />
             <DiscipuladoList
               items={discipuladosFormacaoFiltrados}
@@ -513,6 +512,7 @@ function OrganizacaoFiltros({
   onFiltroSexo,
   onFiltroFaixa,
   onFiltroBusca,
+  somenteBusca = false,
 }: {
   idPrefix: string
   filtroSexo: SexoOrganizacional | ''
@@ -521,6 +521,7 @@ function OrganizacaoFiltros({
   onFiltroSexo: (value: SexoOrganizacional | '') => void
   onFiltroFaixa: (value: FaixaEtaria | '') => void
   onFiltroBusca: (value: string) => void
+  somenteBusca?: boolean
 }) {
   return (
     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ p: 2 }}>
@@ -532,35 +533,39 @@ function OrganizacaoFiltros({
         onChange={(event) => onFiltroBusca(event.target.value)}
         sx={{ minWidth: { xs: '100%', sm: 240 }, flex: { sm: 1 } }}
       />
-      <FormControl size="small" sx={{ minWidth: 160 }}>
-        <InputLabel id={`${idPrefix}-filtro-sexo-label`}>Sexo</InputLabel>
-        <Select
-          labelId={`${idPrefix}-filtro-sexo-label`}
-          label="Sexo"
-          value={filtroSexo}
-          onChange={(event) => onFiltroSexo(event.target.value as SexoOrganizacional | '')}
-        >
-          <MenuItem value="">Todos</MenuItem>
-          <MenuItem value="MASCULINO">Masculino</MenuItem>
-          <MenuItem value="FEMININO">Feminino</MenuItem>
-        </Select>
-      </FormControl>
-      <FormControl size="small" sx={{ minWidth: 180 }}>
-        <InputLabel id={`${idPrefix}-filtro-faixa-label`}>Faixa etária</InputLabel>
-        <Select
-          labelId={`${idPrefix}-filtro-faixa-label`}
-          label="Faixa etária"
-          value={filtroFaixa}
-          onChange={(event) => onFiltroFaixa(event.target.value as FaixaEtaria | '')}
-        >
-          <MenuItem value="">Todas</MenuItem>
-          {faixasEtarias.map((faixa) => (
-            <MenuItem key={faixa} value={faixa}>
-              {faixaEtariaLabel[faixa]}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      {!somenteBusca && (
+        <>
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <InputLabel id={`${idPrefix}-filtro-sexo-label`}>Sexo</InputLabel>
+            <Select
+              labelId={`${idPrefix}-filtro-sexo-label`}
+              label="Sexo"
+              value={filtroSexo}
+              onChange={(event) => onFiltroSexo(event.target.value as SexoOrganizacional | '')}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              <MenuItem value="MASCULINO">Masculino</MenuItem>
+              <MenuItem value="FEMININO">Feminino</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 180 }}>
+            <InputLabel id={`${idPrefix}-filtro-faixa-label`}>Faixa etária</InputLabel>
+            <Select
+              labelId={`${idPrefix}-filtro-faixa-label`}
+              label="Faixa etária"
+              value={filtroFaixa}
+              onChange={(event) => onFiltroFaixa(event.target.value as FaixaEtaria | '')}
+            >
+              <MenuItem value="">Todas</MenuItem>
+              {faixasEtarias.map((faixa) => (
+                <MenuItem key={faixa} value={faixa}>
+                  {faixaEtariaLabel[faixa]}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </>
+      )}
     </Stack>
   )
 }
@@ -682,17 +687,21 @@ function DiscipuladoList({
               primary={
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
                   <span>{item.nome}</span>
-                  <Chip
-                    size="small"
-                    label={item.sexo === 'MASCULINO' ? 'Masculino' : 'Feminino'}
-                    color={item.ativo === false ? 'default' : 'primary'}
-                  />
-                  <Chip
-                    size="small"
-                    variant="outlined"
-                    label={faixaEtariaLabel[item.faixaEtaria] ?? item.faixaEtaria}
-                    color={item.ativo === false ? 'default' : 'primary'}
-                  />
+                  {!formacao && (
+                    <>
+                      <Chip
+                        size="small"
+                        label={item.sexo === 'MASCULINO' ? 'Masculino' : 'Feminino'}
+                        color={item.ativo === false ? 'default' : 'primary'}
+                      />
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        label={faixaEtariaLabel[item.faixaEtaria] ?? item.faixaEtaria}
+                        color={item.ativo === false ? 'default' : 'primary'}
+                      />
+                    </>
+                  )}
                 </Stack>
               }
               secondary={
@@ -928,7 +937,7 @@ function DiscipuladoDialog({
       {
         nome,
         sexo,
-        faixaEtaria,
+        faixaEtaria: formacao ? 'DE_15_MAIS' : faixaEtaria,
         gerenciaId: formacao ? null : Number(gerenciaId),
         discipuladorId: Number(discipuladorId),
         ativo: item?.ativo ?? true,
@@ -978,21 +987,23 @@ function DiscipuladoDialog({
                 <MenuItem value="FEMININO">Feminino</MenuItem>
               </Select>
             </FormControl>
-            <FormControl required>
-              <InputLabel id="discipulado-faixa-label">Faixa etária</InputLabel>
-              <Select
-                labelId="discipulado-faixa-label"
-                label="Faixa etária"
-                value={faixaEtaria}
-                onChange={(event) => setFaixaEtaria(event.target.value as FaixaEtaria)}
-              >
-                {faixasEtarias.map((faixa) => (
-                  <MenuItem key={faixa} value={faixa}>
-                    {faixaEtariaLabel[faixa]}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            {!formacao && (
+              <FormControl required>
+                <InputLabel id="discipulado-faixa-label">Faixa etária</InputLabel>
+                <Select
+                  labelId="discipulado-faixa-label"
+                  label="Faixa etária"
+                  value={faixaEtaria}
+                  onChange={(event) => setFaixaEtaria(event.target.value as FaixaEtaria)}
+                >
+                  {faixasEtarias.map((faixa) => (
+                    <MenuItem key={faixa} value={faixa}>
+                      {faixaEtariaLabel[faixa]}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
             {!formacao && (
               <FormControl required>
                 <InputLabel id="gerencia-label">Gerência</InputLabel>

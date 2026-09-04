@@ -27,11 +27,14 @@ public interface RelatorioFrequenciaRepository extends Repository<Encontro, Long
             join usuarios lider on lider.id = d.discipulador_id
             left join usuarios gerente on gerente.id = g.gerente_id
            where e.data between :inicio and :fim
+             and d.em_formacao = :emFormacao
            order by e.data, coalesce(g.nome, 'Formação'), d.nome, e.id
           """,
       nativeQuery = true)
   List<EncontroCabecalho> cabecalhosNoPeriodo(
-      @Param("inicio") LocalDate inicio, @Param("fim") LocalDate fim);
+      @Param("inicio") LocalDate inicio,
+      @Param("fim") LocalDate fim,
+      @Param("emFormacao") boolean emFormacao);
 
   @Query(
       value =
@@ -50,13 +53,15 @@ public interface RelatorioFrequenciaRepository extends Repository<Encontro, Long
             left join usuarios gerente on gerente.id = g.gerente_id
            where e.data between :inicio and :fim
              and e.discipulado_id in (:discipuladoIds)
+             and d.em_formacao = :emFormacao
            order by e.data, coalesce(g.nome, 'Formação'), d.nome, e.id
           """,
       nativeQuery = true)
   List<EncontroCabecalho> cabecalhosNoPeriodoDoEscopo(
       @Param("inicio") LocalDate inicio,
       @Param("fim") LocalDate fim,
-      @Param("discipuladoIds") Collection<Long> discipuladoIds);
+      @Param("discipuladoIds") Collection<Long> discipuladoIds,
+      @Param("emFormacao") boolean emFormacao);
 
   @Query(
       value =
@@ -76,14 +81,15 @@ public interface RelatorioFrequenciaRepository extends Repository<Encontro, Long
           """
           select e.id as encontroId,
                  coalesce(sum(case when e.situacao = 'REALIZADO' and f.situacao = 'PRESENTE'
-                   and a.categoria = 'DISCIPULO' then 1 else 0 end), 0) as presentes,
+                   and (a.categoria = 'DISCIPULO' or d.em_formacao = true) then 1 else 0 end), 0) as presentes,
                  coalesce(sum(case when e.situacao = 'REALIZADO' and f.situacao = 'AUSENTE'
-                   and a.categoria = 'DISCIPULO' then 1 else 0 end), 0) as ausentes,
+                   and (a.categoria = 'DISCIPULO' or d.em_formacao = true) then 1 else 0 end), 0) as ausentes,
                  coalesce(sum(case when e.situacao = 'REALIZADO' and f.situacao = 'PRESENTE'
-                   and a.categoria = 'VISITANTE' then 1 else 0 end), 0) as visitantesNominais,
+                   and a.categoria = 'VISITANTE' and d.em_formacao = false then 1 else 0 end), 0) as visitantesNominais,
                  coalesce(sum(case when e.situacao = 'REALIZADO' and f.situacao = 'PRESENTE'
-                   and a.categoria = 'DISCIPULO_GOE' then 1 else 0 end), 0) as goe
+                   and a.categoria = 'DISCIPULO_GOE' and d.em_formacao = false then 1 else 0 end), 0) as goe
             from encontros e
+            join discipulados d on d.id = e.discipulado_id
             left join frequencias f on f.encontro_id = e.id
             left join adolescentes a on a.id = f.adolescente_id
            where e.id in (:encontroIds)
@@ -154,6 +160,19 @@ public interface RelatorioFrequenciaRepository extends Repository<Encontro, Long
           """,
       nativeQuery = true)
   List<Long> idsPorLideranca(@Param("usuarioId") long usuarioId);
+
+  @Query(
+      value =
+          """
+          select distinct d.id
+            from discipulados d
+            left join discipulado_co_lideres c on c.discipulado_id = d.id
+           where (d.discipulador_id = :usuarioId or c.usuario_id = :usuarioId)
+             and d.em_formacao = :emFormacao
+          """,
+      nativeQuery = true)
+  List<Long> idsPorLiderancaDoTipo(
+      @Param("usuarioId") long usuarioId, @Param("emFormacao") boolean emFormacao);
 
   interface EncontroCabecalho {
     Long getEncontroId();

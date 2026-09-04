@@ -88,8 +88,11 @@ class RelatorioFrequenciaHttpTest {
   private User liderAlpha;
   private User coLiderAlpha;
   private User perfilAcumulado;
+  private User liderFormacao;
   private Discipulado alpha;
+  private Discipulado formacao;
   private Encontro alphaPrincipal;
+  private Encontro formacaoPrincipal;
 
   @BeforeEach
   void prepararDados() {
@@ -103,6 +106,7 @@ class RelatorioFrequenciaHttpTest {
         usuario("Perfil acumulado", "acumulado-" + sufixo, Role.GERENTE, Role.CO_LIDER);
     User liderBeta = usuario("Líder Beta", "beta-" + sufixo, Role.DISCIPULADOR);
     User liderGamma = usuario("Líder Gamma", "gamma-" + sufixo, Role.DISCIPULADOR);
+    liderFormacao = usuario("Líder Formação", "formacao-" + sufixo, Role.DISCIPULADOR);
     Gerencia centro =
         gerencias.saveAndFlush(
             new Gerencia(
@@ -122,8 +126,18 @@ class RelatorioFrequenciaHttpTest {
     Discipulado gamma =
         discipulados.saveAndFlush(
             new Discipulado("Gamma", Sexo.MASCULINO, FaixaEtaria.DE_11_A_13, norte, liderGamma));
+    formacao =
+        discipulados.saveAndFlush(
+            new Discipulado(
+                "Formação Alpha",
+                Sexo.MASCULINO,
+                FaixaEtaria.DE_15_MAIS,
+                null,
+                liderFormacao,
+                true));
 
     alphaPrincipal = encontro(alpha, SituacaoEncontro.REALIZADO);
+    formacaoPrincipal = encontro(formacao, SituacaoEncontro.REALIZADO);
     encontro(alpha, DATA.minusDays(1), SituacaoEncontro.REALIZADO);
     encontro(alpha, DATA.minusDays(2), SituacaoEncontro.NAO_REALIZADO);
     encontro(beta, SituacaoEncontro.REALIZADO);
@@ -152,6 +166,28 @@ class RelatorioFrequenciaHttpTest {
     visitantes.saveAndFlush(new Visitante(alphaPrincipal, 3, AGORA));
     ana.atualizar("Ana", LocalDate.of(2010, 1, 1), "(11) 97777-1111", null, false);
     adolescentes.saveAndFlush(ana);
+    Adolescente carla =
+        adolescentes.saveAndFlush(
+            adolescente(
+                "Carla",
+                LocalDate.of(1988, 3, 1),
+                "(11) 96666-3333",
+                "Responsável Carla",
+                "(11) 90000-3333"));
+    Adolescente davi =
+        adolescentes.saveAndFlush(
+            adolescente(
+                "Davi",
+                LocalDate.of(1990, 4, 1),
+                "(11) 95555-4444",
+                "Responsável Davi",
+                "(11) 90000-4444"));
+    vinculos.saveAndFlush(new VinculoAdolescenteDiscipulado(carla, formacao, DATA));
+    vinculos.saveAndFlush(new VinculoAdolescenteDiscipulado(davi, formacao, DATA));
+    frequencias.saveAndFlush(
+        new Frequencia(formacaoPrincipal, carla, SituacaoFrequencia.PRESENTE, AGORA));
+    frequencias.saveAndFlush(
+        new Frequencia(formacaoPrincipal, davi, SituacaoFrequencia.AUSENTE, AGORA));
   }
 
   @Test
@@ -350,7 +386,10 @@ class RelatorioFrequenciaHttpTest {
                 header()
                     .string(
                         HttpHeaders.CONTENT_DISPOSITION,
-                        org.hamcrest.Matchers.containsString("frequencias-")))
+                        org.hamcrest.Matchers.allOf(
+                            org.hamcrest.Matchers.containsString("frequencias-"),
+                            org.hamcrest.Matchers.not(
+                                org.hamcrest.Matchers.containsString("frequencias-formacao-")))))
             .andReturn()
             .getResponse()
             .getContentAsByteArray();
@@ -511,6 +550,130 @@ class RelatorioFrequenciaHttpTest {
       assertThat(numero(linha, 7)).isEqualTo(5d);
       assertThat(texto(linha, 9)).isEqualTo("Líder chegou atrasado");
     }
+  }
+
+  @Test
+  void separaRelatorioPadraoDoRelatorioDeFormacao() throws Exception {
+    consultar(token(admin))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.relatorios.length()").value(3))
+        .andExpect(jsonPath("$.relatorios[?(@.discipulado.nome == 'Formação Alpha')]").isEmpty());
+    mvc.perform(
+            get("/api/v1/relatorios/frequencia")
+                .param("dataInicio", DATA.toString())
+                .param("dataFim", DATA.toString())
+                .param("emFormacao", "false")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(admin))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.relatorios.length()").value(3))
+        .andExpect(jsonPath("$.relatorios[?(@.discipulado.nome == 'Formação Alpha')]").isEmpty());
+    mvc.perform(
+            get("/api/v1/relatorios/frequencia")
+                .param("dataInicio", DATA.toString())
+                .param("dataFim", DATA.toString())
+                .param("emFormacao", "true")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(admin))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.relatorios.length()").value(1))
+        .andExpect(jsonPath("$.relatorios[0].discipulado.nome").value("Formação Alpha"))
+        .andExpect(jsonPath("$.relatorios[0].discipulador.nome").value("Líder Formação"))
+        .andExpect(jsonPath("$.relatorios[0].participantes.length()").value(2))
+        .andExpect(jsonPath("$.relatorios[0].participantes[0].nome").value("Carla"))
+        .andExpect(jsonPath("$.relatorios[0].participantes[0].situacao").value("PRESENTE"))
+        .andExpect(jsonPath("$.relatorios[0].participantes[1].nome").value("Davi"))
+        .andExpect(jsonPath("$.relatorios[0].participantes[1].situacao").value("AUSENTE"))
+        .andExpect(jsonPath("$.relatorios[0].resumo.presentes").value(1))
+        .andExpect(jsonPath("$.relatorios[0].resumo.ausentes").value(1))
+        .andExpect(jsonPath("$.relatorios[0].resumo.participantes").value(2));
+    mvc.perform(
+            get("/api/v1/relatorios/frequencia")
+                .param("dataInicio", DATA.toString())
+                .param("dataFim", DATA.toString())
+                .param("emFormacao", "true")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(liderAlpha))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.relatorios.length()").value(0));
+    mvc.perform(
+            get("/api/v1/relatorios/frequencia")
+                .param("dataInicio", DATA.toString())
+                .param("dataFim", DATA.toString())
+                .param("emFormacao", "true")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(liderFormacao))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.relatorios.length()").value(1))
+        .andExpect(jsonPath("$.relatorios[0].discipulado.nome").value("Formação Alpha"));
+    mvc.perform(
+            get("/api/v1/relatorios/frequencia")
+                .param("dataInicio", DATA.toString())
+                .param("dataFim", DATA.toString())
+                .param("emFormacao", "false")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(liderFormacao))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.relatorios.length()").value(0));
+    mvc.perform(
+            get("/api/v1/relatorios/frequencia")
+                .param("dataInicio", DATA.toString())
+                .param("dataFim", DATA.toString())
+                .param("emFormacao", "true")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(gerenteCentro))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.relatorios.length()").value(0));
+  }
+
+  @Test
+  void relatorioDeFormacaoIncluiListaNominalNoPeriodo() throws Exception {
+    encontro(formacao, DATA.minusDays(1), SituacaoEncontro.REALIZADO);
+    mvc.perform(
+            get("/api/v1/relatorios/frequencia")
+                .param("dataInicio", DATA.minusDays(1).toString())
+                .param("dataFim", DATA.toString())
+                .param("emFormacao", "true")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(admin))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.relatorios.length()").value(2))
+        .andExpect(jsonPath("$.relatorios[1].discipulado.nome").value("Formação Alpha"))
+        .andExpect(jsonPath("$.relatorios[1].participantes.length()").value(2))
+        .andExpect(jsonPath("$.relatorios[1].participantes[0].nome").value("Carla"))
+        .andExpect(jsonPath("$.relatorios[1].participantes[0].situacao").value("PRESENTE"))
+        .andExpect(jsonPath("$.relatorios[1].resumo.presentes").value(1))
+        .andExpect(jsonPath("$.relatorios[1].resumo.ausentes").value(1));
+  }
+
+  @Test
+  void recusaFiltroDeDiscipuladoForaDoTipoDoRelatorio() throws Exception {
+    mvc.perform(
+            get("/api/v1/relatorios/frequencia")
+                .param("dataInicio", DATA.toString())
+                .param("dataFim", DATA.toString())
+                .param("discipuladoId", String.valueOf(formacao.getId()))
+                .param("emFormacao", "false")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(admin))))
+        .andExpect(status().isNotFound());
+    mvc.perform(
+            get("/api/v1/relatorios/frequencia")
+                .param("dataInicio", DATA.toString())
+                .param("dataFim", DATA.toString())
+                .param("discipuladoId", String.valueOf(alpha.getId()))
+                .param("emFormacao", "true")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(admin))))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void exportaFrequenciasDeFormacaoComNomeDedicado() throws Exception {
+    String hoje = LocalDate.now(ZoneId.of("America/Sao_Paulo")).toString();
+    mvc.perform(
+            get("/api/v1/relatorios/frequencia/export")
+                .param("dataInicio", DATA.toString())
+                .param("dataFim", DATA.toString())
+                .param("emFormacao", "true")
+                .header(HttpHeaders.AUTHORIZATION, bearer(token(admin))))
+        .andExpect(status().isOk())
+        .andExpect(
+            header()
+                .string(
+                    HttpHeaders.CONTENT_DISPOSITION,
+                    "attachment; filename=\"frequencias-formacao-" + hoje + ".xlsx\""));
   }
 
   private org.springframework.test.web.servlet.ResultActions consultar(String token)

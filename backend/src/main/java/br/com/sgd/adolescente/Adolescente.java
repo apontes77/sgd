@@ -82,6 +82,11 @@ public class Adolescente {
   public void promoverDeVisitanteParaDiscipulo() {
     if (categoria != CategoriaAdolescente.VISITANTE)
       throw new IllegalStateException("Somente visitante pode ser promovido a discípulo.");
+    assegurarCategoriaDiscipulo();
+  }
+
+  /** Formação não subdivide por categoria: todos os membros são discípulos. */
+  public void assegurarCategoriaDiscipulo() {
     this.categoria = CategoriaAdolescente.DISCIPULO;
     this.motivoAfastamento = null;
     this.atualizadoEm = Instant.now();

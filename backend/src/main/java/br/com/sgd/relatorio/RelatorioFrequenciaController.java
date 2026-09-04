@@ -34,8 +34,9 @@ public class RelatorioFrequenciaController {
   public RelatorioFrequenciaService.RelatorioDiarioResponse consultar(
       @AuthenticationPrincipal User usuario,
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data,
-      @RequestParam(required = false) Long discipuladoId) {
-    return service.consultar(usuario, data, discipuladoId);
+      @RequestParam(required = false) Long discipuladoId,
+      @RequestParam(defaultValue = "false") boolean emFormacao) {
+    return service.consultar(usuario, data, discipuladoId, emFormacao);
   }
 
   @GetMapping("/frequencia")
@@ -43,8 +44,9 @@ public class RelatorioFrequenciaController {
       @AuthenticationPrincipal User usuario,
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,
-      @RequestParam(required = false) Long discipuladoId) {
-    return service.consultarPeriodo(usuario, dataInicio, dataFim, discipuladoId);
+      @RequestParam(required = false) Long discipuladoId,
+      @RequestParam(defaultValue = "false") boolean emFormacao) {
+    return service.consultarPeriodo(usuario, dataInicio, dataFim, discipuladoId, emFormacao);
   }
 
   @GetMapping(value = "/frequencia/export", produces = XLSX)
@@ -53,12 +55,15 @@ public class RelatorioFrequenciaController {
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim,
       @RequestParam(required = false) Long discipuladoId,
+      @RequestParam(defaultValue = "false") boolean emFormacao,
       HttpServletResponse response)
       throws IOException {
     LocalDate hoje = LocalDate.now(ZONA_NEGOCIO);
+    String prefixo = emFormacao ? "frequencias-formacao-" : "frequencias-";
     response.setContentType(XLSX);
     response.setHeader(
-        HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"frequencias-" + hoje + ".xlsx\"");
-    service.exportarExcel(usuario, dataInicio, dataFim, discipuladoId, response.getOutputStream());
+        HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + prefixo + hoje + ".xlsx\"");
+    service.exportarExcel(
+        usuario, dataInicio, dataFim, discipuladoId, emFormacao, response.getOutputStream());
   }
 }
