@@ -101,6 +101,7 @@ describe('navegação autenticada', () => {
     expect(screen.getByRole('tab', { name: 'Adolescentes' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Famílias' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Encontros e frequência' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Frequência em formação' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Chamada de liderança' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Relatórios' })).toBeInTheDocument()
   })
@@ -111,6 +112,8 @@ describe('navegação autenticada', () => {
     expect(await screen.findByRole('button', { name: 'Nova gerência' })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('tab', { name: 'Discipulados' }))
     expect(screen.getByRole('button', { name: 'Novo discipulado' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('tab', { name: 'Discipulados de formação' }))
+    expect(screen.getByRole('button', { name: 'Novo discipulado de formação' })).toBeInTheDocument()
   })
 
   it('oferece visão executiva e painel gerencial ao GERENTE', () => {
@@ -122,6 +125,7 @@ describe('navegação autenticada', () => {
     expect(screen.getByRole('tab', { name: 'Famílias' })).toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Usuários' })).not.toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Frequência' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Frequência em formação' })).not.toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Relatórios' })).toBeInTheDocument()
   })
 
@@ -158,10 +162,12 @@ describe('navegação autenticada', () => {
     expect(screen.getByRole('tab', { name: 'Meu discipulado' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tab', { name: 'Famílias' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Registrar frequência' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Frequência em formação' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Relatórios' })).toBeInTheDocument()
     rerender(<AuthenticatedApp currentUser={user(['CO_LIDER'])} onLogout={() => undefined} />)
     expect(screen.getByRole('tab', { name: 'Meu discipulado' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Famílias' })).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Frequência em formação' })).not.toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Relatórios' })).toBeInTheDocument()
   })
 

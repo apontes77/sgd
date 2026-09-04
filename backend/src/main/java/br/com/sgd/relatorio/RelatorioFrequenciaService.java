@@ -254,7 +254,7 @@ public class RelatorioFrequenciaService {
         null,
         encontro.getObservacao(),
         Boolean.TRUE.equals(encontro.getFechamentoAutomatico()),
-        new GerenciaInfo(encontro.getGerenciaId(), encontro.getGerenciaNome()),
+        gerenciaDoEncontro(encontro),
         new DiscipuladoInfo(
             encontro.getDiscipuladoId(), encontro.getDiscipuladoNome(), encontro.getSexo()),
         new LiderInfo(encontro.getDiscipuladorId(), encontro.getDiscipuladorNome()),
@@ -282,7 +282,7 @@ public class RelatorioFrequenciaService {
         encontro.getJustificativa(),
         encontro.getObservacao(),
         Boolean.TRUE.equals(encontro.getFechamentoAutomatico()),
-        new GerenciaInfo(encontro.getGerenciaId(), encontro.getGerenciaNome()),
+        gerenciaDoEncontro(encontro),
         new DiscipuladoInfo(
             encontro.getDiscipuladoId(), encontro.getDiscipuladoNome(), encontro.getSexo()),
         new LiderInfo(encontro.getDiscipuladorId(), encontro.getDiscipuladorNome()),
@@ -385,6 +385,11 @@ public class RelatorioFrequenciaService {
         : BigDecimal.valueOf(presentes)
             .multiply(BigDecimal.valueOf(100))
             .divide(BigDecimal.valueOf(total), 2, RoundingMode.HALF_UP);
+  }
+
+  private static GerenciaInfo gerenciaDoEncontro(EncontroCabecalho encontro) {
+    if (encontro.getGerenciaId() == null) return new GerenciaInfo(0L, "Formação");
+    return new GerenciaInfo(encontro.getGerenciaId(), encontro.getGerenciaNome());
   }
 
   private record Escopo(Set<Long> discipuladoIds) {}

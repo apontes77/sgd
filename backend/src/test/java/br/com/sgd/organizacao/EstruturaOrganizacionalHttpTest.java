@@ -275,6 +275,60 @@ class EstruturaOrganizacionalHttpTest {
         .andExpect(jsonPath("$.content[?(@.sexo == 'FEMININO')]").isEmpty());
   }
 
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  void cadastraDiscipuladoDeFormacaoSemGerenciaESemCoLider() throws Exception {
+    String sufixo = java.util.UUID.randomUUID().toString();
+    long discipuladorId =
+        criarUsuario("Discipulador Formacao", "formacao-" + sufixo + "@sgd.local", "DISCIPULADOR");
+    long discipuladoId =
+        idDaResposta(
+            post("/api/v1/discipulados"),
+            "{\"nome\":\"Formação Norte\",\"sexo\":\"FEMININO\",\"faixaEtaria\":\"DE_15_MAIS\",\"discipuladorId\":"
+                + discipuladorId
+                + ",\"emFormacao\":true}");
+
+    mvc.perform(get("/api/v1/discipulados").param("emFormacao", "true").param("size", "100"))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$.content[?(@.id == " + discipuladoId + " && @.emFormacao == true)]")
+                .isNotEmpty());
+
+    mvc.perform(
+            put("/api/v1/discipulados/{id}/co-lideres", discipuladoId)
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"usuarioIds\":[]}"))
+        .andExpect(status().isConflict());
+  }
+
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  void rejeitaDiscipuladoDeFormacaoComGerencia() throws Exception {
+    String sufixo = java.util.UUID.randomUUID().toString();
+    long gerenteId = criarUsuario("Gerente", "gerente-form-" + sufixo + "@sgd.local", "GERENTE");
+    long gerenciaId =
+        idDaResposta(
+            post("/api/v1/gerencias"),
+            "{\"nome\":\"Gerência Form\",\"sexo\":\"MASCULINO\",\"faixasEtarias\":[\"DE_15_MAIS\"],\"gerenteId\":"
+                + gerenteId
+                + "}");
+    long discipuladorId =
+        criarUsuario("Discipulador", "discipulador-form-" + sufixo + "@sgd.local", "DISCIPULADOR");
+
+    mvc.perform(
+            post("/api/v1/discipulados")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"nome\":\"Formação inválida\",\"sexo\":\"MASCULINO\",\"faixaEtaria\":\"DE_15_MAIS\",\"gerenciaId\":"
+                        + gerenciaId
+                        + ",\"discipuladorId\":"
+                        + discipuladorId
+                        + ",\"emFormacao\":true}"))
+        .andExpect(status().isConflict());
+  }
+
   private long criarUsuario(String nome, String email, String perfil) throws Exception {
     return idDaResposta(
         post("/api/v1/usuarios"),

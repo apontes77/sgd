@@ -23,11 +23,11 @@ public interface RelatorioFrequenciaRepository extends Repository<Encontro, Long
                  coalesce(gerente.nome, g.nome) as gerenteNome
             from encontros e
             join discipulados d on d.id = e.discipulado_id
-            join gerencias g on g.id = d.gerencia_id
+            left join gerencias g on g.id = d.gerencia_id
             join usuarios lider on lider.id = d.discipulador_id
             left join usuarios gerente on gerente.id = g.gerente_id
            where e.data between :inicio and :fim
-           order by e.data, g.nome, d.nome, e.id
+           order by e.data, coalesce(g.nome, 'Formação'), d.nome, e.id
           """,
       nativeQuery = true)
   List<EncontroCabecalho> cabecalhosNoPeriodo(
@@ -45,12 +45,12 @@ public interface RelatorioFrequenciaRepository extends Repository<Encontro, Long
                  coalesce(gerente.nome, g.nome) as gerenteNome
             from encontros e
             join discipulados d on d.id = e.discipulado_id
-            join gerencias g on g.id = d.gerencia_id
+            left join gerencias g on g.id = d.gerencia_id
             join usuarios lider on lider.id = d.discipulador_id
             left join usuarios gerente on gerente.id = g.gerente_id
            where e.data between :inicio and :fim
              and e.discipulado_id in (:discipuladoIds)
-           order by e.data, g.nome, d.nome, e.id
+           order by e.data, coalesce(g.nome, 'Formação'), d.nome, e.id
           """,
       nativeQuery = true)
   List<EncontroCabecalho> cabecalhosNoPeriodoDoEscopo(

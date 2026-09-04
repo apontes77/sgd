@@ -8,9 +8,9 @@ RN002 - O histórico permanece associado ao discipulado original.
 
 RN003 - Um discipulado possui exatamente um discipulador ativo.
 
-RN004 - Um discipulado pode possuir até dois co-líderes.
+RN004 - Um discipulado padrão pode possuir até dois co-líderes. Discipulado de formação não possui co-líder.
 
-RN005 - Um discipulado possui apenas um gerente.
+RN005 - Um discipulado padrão possui exatamente uma gerência (e, portanto, um gerente). Discipulado de formação não se atrela a gerência.
 
 ---
 
@@ -30,9 +30,11 @@ RN011 - Após três horas do primeiro salvamento da chamada, somente administrad
 
 RN012 - O sistema deve registrar auditoria das alterações.
 
-RN046 - Encontros com data de sexta-feira podem ser lançados (criação do encontro, primeiro salvamento da chamada ou marcação de não realizado) até o domingo subsequente às 23:59:59 no fuso `America/Sao_Paulo`. Após esse prazo, discipulador e co-líder não podem mais lançar aquela sexta; administradores podem.
+RN046 - Encontros com data de sexta-feira de discipulados padrão podem ser lançados (criação do encontro, primeiro salvamento da chamada ou marcação de não realizado) até o domingo subsequente às 23:59:59 no fuso `America/Sao_Paulo`. Após esse prazo, discipulador e co-líder não podem mais lançar aquela sexta; administradores podem. Discipulados de formação não têm esse prazo.
 
-RN047 - Se, após o domingo subsequente, um discipulado ativo não tiver chamada salva nem encontro não realizado para aquela sexta, o sistema registra automaticamente o encontro como `NAO_REALIZADO` com a justificativa `discipulador ou colider não registraram a frequência` e marca `fechamento_automatico`. Encontros `REALIZADO` sem chamada salva são convertidos para essa situação.
+RN047 - Se, após o domingo subsequente, um discipulado padrão ativo não tiver chamada salva nem encontro não realizado para aquela sexta, o sistema registra automaticamente o encontro como `NAO_REALIZADO` com a justificativa `discipulador ou colider não registraram a frequência` e marca `fechamento_automatico`. Encontros `REALIZADO` sem chamada salva são convertidos para essa situação. Discipulados de formação não entram no fechamento automático.
+
+RN054 - Discipulado de formação (`emFormacao`) não possui gerência nem co-líder. Somente `ADMIN` (qualquer grupo) e o discipulador titular lançam frequência desses grupos. O perfil `GERENTE` não ganha acesso extra.
 
 RN052 - Administradores podem reverter um encontro de fechamento automático (`fechamento_automatico`) de `NAO_REALIZADO` para `REALIZADO` e lançar ou alterar a chamada a qualquer momento. O flag permanece verdadeiro após a correção, para que o sistema continue informando que o discipulador/co-líder não lançou a frequência no prazo.
 
@@ -111,7 +113,7 @@ RN027 - O sistema deve suportar login Microsoft.
 
 ## Liderança e indicadores
 
-RN028 - Um usuário pode exercer a função de discipulador ou co-líder em apenas um discipulado no total, mesmo que acumule ambos os perfis.
+RN028 - Um usuário pode exercer liderança em no máximo um discipulado padrão (como discipulador ou co-líder) e em no máximo um discipulado de formação (somente como discipulador). O acúmulo de um grupo padrão e um de formação é permitido.
 
 RN029 - Administradores e gerentes (somente dentro da própria gerência) podem transferir adolescentes entre discipulados. Discipulador e co-líder não transferem.
 

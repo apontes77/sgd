@@ -64,7 +64,7 @@ public class EncontroService {
     var d = discipulado(discipuladoId);
     escopo.exigirRegistroFrequencia(ator, d);
     if (!d.isAtivo()) conflito("O discipulado está inativo.");
-    exigirPrazoLancamento(ator, data);
+    exigirPrazoLancamento(ator, d, data);
     if (encontros.existsByDiscipuladoIdAndData(discipuladoId, data))
       conflito("Já existe um encontro registrado para este discipulado nesta data.");
     if (situacao == SituacaoEncontro.NAO_REALIZADO) exigirRegistroNaoRealizado(ator);
@@ -97,8 +97,8 @@ public class EncontroService {
     var e = encontro(id);
     escopo.exigirRegistroFrequencia(ator, e.getDiscipulado());
     var novaData = data == null ? e.getData() : data;
-    exigirPrazoLancamento(ator, novaData);
-    if (!novaData.equals(e.getData())) exigirPrazoLancamento(ator, e.getData());
+    exigirPrazoLancamento(ator, e.getDiscipulado(), novaData);
+    if (!novaData.equals(e.getData())) exigirPrazoLancamento(ator, e.getDiscipulado(), e.getData());
     if (encontros.existsByDiscipuladoIdAndDataAndIdNot(e.getDiscipulado().getId(), novaData, id))
       conflito("Já existe um encontro registrado para este discipulado nesta data.");
     var novaSituacao = situacao == null ? e.getSituacao() : situacao;
@@ -217,8 +217,8 @@ public class EncontroService {
           "Somente administradores podem corrigir um encontro não realizado para realizado.");
   }
 
-  private void exigirPrazoLancamento(User ator, LocalDate data) {
-    if (ator.getPerfis().contains(Role.ADMIN)) return;
+  private void exigirPrazoLancamento(User ator, Discipulado discipulado, LocalDate data) {
+    if (ator.getPerfis().contains(Role.ADMIN) || discipulado.isEmFormacao()) return;
     if (!PrazoLancamentoFrequencia.estaDentroDoPrazo(data, clock.instant()))
       throw new ResponseStatusException(
           HttpStatus.FORBIDDEN,
@@ -248,6 +248,7 @@ public class EncontroService {
             HttpStatus.FORBIDDEN, "A janela de três horas para alteração terminou.");
       return;
     }
+    if (e.getDiscipulado().isEmFormacao()) return;
     if (!PrazoLancamentoFrequencia.estaDentroDoPrazo(e.getData(), agora))
       throw new ResponseStatusException(
           HttpStatus.FORBIDDEN,

@@ -32,9 +32,25 @@ public class DiscipuladoService {
 
   public Discipulado create(
       String nome, Sexo sexo, FaixaEtaria faixaEtaria, long gerenciaId, long discipuladorId) {
+    return create(nome, sexo, faixaEtaria, gerenciaId, discipuladorId, false);
+  }
+
+  public Discipulado create(
+      String nome,
+      Sexo sexo,
+      FaixaEtaria faixaEtaria,
+      Long gerenciaId,
+      long discipuladorId,
+      boolean emFormacao) {
+    User discipulador = discipuladorAtivo(discipuladorId);
+    exigirLiderancaLivre(discipulador, emFormacao, null);
+    if (emFormacao) {
+      if (gerenciaId != null) throw new FormacaoInvalidaException();
+      return discipulados.save(new Discipulado(nome, sexo, faixaEtaria, null, discipulador, true));
+    }
+    if (gerenciaId == null) throw new FormacaoInvalidaException();
     return discipulados.save(
-        new Discipulado(
-            nome, sexo, faixaEtaria, gerenciaAtiva(gerenciaId), discipuladorAtivo(discipuladorId)));
+        new Discipulado(nome, sexo, faixaEtaria, gerenciaAtiva(gerenciaId), discipulador, false));
   }
 
   public Discipulado update(
@@ -46,9 +62,16 @@ public class DiscipuladoService {
       Long discipuladorId,
       Boolean ativo) {
     Discipulado discipulado = findById(id);
-    Gerencia gerencia = gerenciaId == null ? null : gerenciaAtiva(gerenciaId);
+    if (discipulado.isEmFormacao() && gerenciaId != null) throw new FormacaoInvalidaException();
+    Gerencia gerencia =
+        discipulado.isEmFormacao() || gerenciaId == null ? null : gerenciaAtiva(gerenciaId);
     User discipulador = discipuladorId == null ? null : discipuladorAtivo(discipuladorId);
-    if (Boolean.TRUE.equals(ativo) && gerencia == null && !discipulado.getGerencia().isAtivo()) {
+    if (discipulador != null)
+      exigirLiderancaLivre(discipulador, discipulado.isEmFormacao(), discipulado.getId());
+    if (Boolean.TRUE.equals(ativo)
+        && !discipulado.isEmFormacao()
+        && gerencia == null
+        && !discipulado.getGerencia().isAtivo()) {
       throw new GerenciaInativaException();
     }
     discipulado.update(nome, sexo, faixaEtaria, gerencia, discipulador, ativo);
@@ -63,6 +86,7 @@ public class DiscipuladoService {
       throw new Discipulado.CoLiderLimitExceededException();
     }
     Discipulado discipulado = findById(discipuladoId);
+    if (discipulado.isEmFormacao()) throw new Discipulado.FormacaoNaoPermiteCoLiderException();
     Set<User> coLideres = new LinkedHashSet<>();
     for (Long usuarioId : usuarioIds) {
       if (usuarioId == null) throw new CoLiderInvalidoException();
@@ -72,6 +96,7 @@ public class DiscipuladoService {
         throw new CoLiderInvalidoException();
       if (coLider.getId().equals(discipulado.getDiscipulador().getId()))
         throw new CoLiderInvalidoException();
+      exigirLiderancaLivre(coLider, false, discipulado.getId());
       coLideres.add(coLider);
     }
     discipulado.replaceCoLideres(coLideres);
@@ -79,13 +104,16 @@ public class DiscipuladoService {
   }
 
   @Transactional(readOnly = true)
-  public Page<Discipulado> list(User usuario, Long gerenciaId, Boolean ativo, Pageable pageable) {
+  public Page<Discipulado> list(
+      User usuario, Long gerenciaId, Boolean ativo, Boolean emFormacao, Pageable pageable) {
     Specification<Discipulado> filtro =
         Specification.where(
             gerenciaId == null
                 ? null
                 : (root, query, cb) -> cb.equal(root.get("gerencia").get("id"), gerenciaId));
     if (ativo != null) filtro = filtro.and((root, query, cb) -> cb.equal(root.get("ativo"), ativo));
+    if (emFormacao != null)
+      filtro = filtro.and((root, query, cb) -> cb.equal(root.get("emFormacao"), emFormacao));
     filtro = filtro.and(noEscopo(usuario));
     Page<Discipulado> result = discipulados.findAll(filtro, pageable);
     result.forEach(discipulado -> discipulado.getCoLideres().forEach(User::getPerfis));
@@ -126,6 +154,18 @@ public class DiscipuladoService {
     return discipulados.findById(id).orElseThrow(DiscipuladoNotFoundException::new);
   }
 
+  private void exigirLiderancaLivre(User usuario, boolean emFormacao, Long ignorarDiscipuladoId) {
+    if (usuario.getId() == null) return;
+    boolean ocupado =
+        discipulados.findAllByLiderancaUsuarioId(usuario.getId()).stream()
+            .anyMatch(
+                atual ->
+                    atual.isEmFormacao() == emFormacao
+                        && (ignorarDiscipuladoId == null
+                            || !ignorarDiscipuladoId.equals(atual.getId())));
+    if (ocupado) throw new LiderancaDuplicadaException();
+  }
+
   private Gerencia gerenciaAtiva(long id) {
     Gerencia gerencia = gerencias.findById(id).orElseThrow(GerenciaNotFoundException::new);
     if (!gerencia.isAtivo()) throw new GerenciaInativaException();
@@ -151,4 +191,8 @@ public class DiscipuladoService {
   public static class DiscipuladorInvalidoException extends RuntimeException {}
 
   public static class CoLiderInvalidoException extends RuntimeException {}
+
+  public static class FormacaoInvalidaException extends RuntimeException {}
+
+  public static class LiderancaDuplicadaException extends RuntimeException {}
 }

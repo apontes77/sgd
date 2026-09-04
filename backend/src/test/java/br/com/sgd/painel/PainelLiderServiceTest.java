@@ -50,6 +50,28 @@ class PainelLiderServiceTest {
   }
 
   @Test
+  void aceitaPadraoMaisFormacaoUsandoOGrupoPadrao() {
+    Discipulado padrao = mock(Discipulado.class);
+    Discipulado formacao = mock(Discipulado.class);
+    when(padrao.getId()).thenReturn(11L);
+    when(padrao.getNome()).thenReturn("Esperança");
+    when(padrao.getSexo()).thenReturn(Sexo.FEMININO);
+    when(padrao.isAtivo()).thenReturn(true);
+    when(padrao.isEmFormacao()).thenReturn(false);
+    when(formacao.isEmFormacao()).thenReturn(true);
+    when(discipulados.findAllByLiderancaUsuarioId(7L)).thenReturn(List.of(padrao, formacao));
+    when(painel.frequenciasMensais(11L, inicio, fim)).thenReturn(List.of());
+    when(painel.visitantesMensais(11L, inicio, fim)).thenReturn(List.of());
+    when(painel.encontrosRealizados(11L, inicio, fim)).thenReturn(0L);
+    when(painel.discipulosNoPeriodo(11L, inicio, fim)).thenReturn(List.of());
+    when(painel.frequenciasIndividuaisMensais(11L, inicio, fim)).thenReturn(List.of());
+
+    var resposta = service.consultar(lider, inicio, fim);
+
+    assertThat(resposta.discipulado().id()).isEqualTo(11L);
+  }
+
+  @Test
   void agregaSomenteODiscipuladoLiderado() {
     Discipulado discipulado = mock(Discipulado.class);
     when(discipulado.getId()).thenReturn(11L);

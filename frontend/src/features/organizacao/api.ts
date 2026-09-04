@@ -59,9 +59,10 @@ export const organizationApi = {
     request<Gerencia>('/gerencias', { method: 'POST', body: JSON.stringify(body) }),
   atualizarGerencia: (id: number, body: GerenciaRequest) =>
     request<Gerencia>(`/gerencias/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
-  listarDiscipulados: (ativo?: boolean) => {
+  listarDiscipulados: (ativo?: boolean, emFormacao?: boolean) => {
     const params = new URLSearchParams({ page: '0', size: '100' })
     if (ativo !== undefined) params.set('ativo', String(ativo))
+    if (emFormacao !== undefined) params.set('emFormacao', String(emFormacao))
     return request<Pagina<Discipulado>>(`/discipulados?${params}`)
   },
   listarDiscipuladosLiderados: (ativo?: boolean) => {

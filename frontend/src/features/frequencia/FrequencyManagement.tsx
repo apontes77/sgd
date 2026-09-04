@@ -99,15 +99,18 @@ export default function FrequencyManagement({
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
   const requisicao = useRef(0)
 
-  const prazoAberto = useMemo(() => podeAdministrar || dentroDoPrazoLancamento(data), [podeAdministrar, data])
+  const prazoAberto = useMemo(
+    () => podeAdministrar || Boolean(discipulado?.emFormacao) || dentroDoPrazoLancamento(data),
+    [podeAdministrar, discipulado?.emFormacao, data],
+  )
   const editavel = useMemo(() => {
     if (!selecionado || selecionado.situacao !== 'REALIZADO') return false
     if (podeAdministrar) return true
     if (selecionado.chamadaSalvaEm) {
       return Date.now() <= new Date(selecionado.chamadaSalvaEm).getTime() + 3 * 60 * 60 * 1000
     }
-    return dentroDoPrazoLancamento(selecionado.data)
-  }, [selecionado, podeAdministrar])
+    return Boolean(discipulado?.emFormacao) || dentroDoPrazoLancamento(selecionado.data)
+  }, [selecionado, podeAdministrar, discipulado?.emFormacao])
   const podeEditarNaoRealizado = useMemo(
     () => Boolean(podeAdministrar || (podeRegistrarNaoRealizacao && prazoAberto)),
     [podeAdministrar, podeRegistrarNaoRealizacao, prazoAberto],

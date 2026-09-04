@@ -51,6 +51,7 @@ public class ChamadaLiderancaService {
 
     List<Discipulado> ativos =
         discipulados.findAllByAtivoTrue().stream()
+            .filter(d -> !d.isEmFormacao())
             .sorted(
                 Comparator.comparing(
                         (Discipulado d) -> d.getGerencia().getNome(), String.CASE_INSENSITIVE_ORDER)

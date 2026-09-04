@@ -32,13 +32,15 @@ public class PainelLiderService {
   public PainelLiderResponse consultar(User usuario, LocalDate inicio, LocalDate fim) {
     PainelGerenciaService.validarPeriodo(inicio, fim);
     List<Discipulado> encontrados = discipulados.findAllByLiderancaUsuarioId(usuario.getId());
-    if (encontrados.isEmpty())
-      throw new ResponseStatusException(
-          HttpStatus.NOT_FOUND, "O usuário não possui um discipulado associado à sua liderança.");
-    if (encontrados.size() > 1)
+    List<Discipulado> padrao = encontrados.stream().filter(item -> !item.isEmFormacao()).toList();
+    List<Discipulado> formacao = encontrados.stream().filter(Discipulado::isEmFormacao).toList();
+    if (padrao.size() > 1 || formacao.size() > 1)
       throw new ResponseStatusException(
           HttpStatus.CONFLICT, "O usuário possui mais de uma associação de liderança.");
-    Discipulado discipulado = encontrados.getFirst();
+    if (padrao.isEmpty() && formacao.isEmpty())
+      throw new ResponseStatusException(
+          HttpStatus.NOT_FOUND, "O usuário não possui um discipulado associado à sua liderança.");
+    Discipulado discipulado = padrao.isEmpty() ? formacao.getFirst() : padrao.getFirst();
     long discipuladoId = discipulado.getId();
 
     Map<String, EvolucaoMensal> meses = new LinkedHashMap<>();

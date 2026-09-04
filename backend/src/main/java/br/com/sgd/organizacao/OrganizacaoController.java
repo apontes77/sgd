@@ -68,11 +68,12 @@ public class OrganizacaoController {
       Authentication auth,
       @RequestParam(required = false) Long gerenciaId,
       @RequestParam(required = false) Boolean ativo,
+      @RequestParam(required = false) Boolean emFormacao,
       @RequestParam(defaultValue = "0") @Min(0) int page,
       @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
     return PaginaResponse.of(
         discipulados
-            .list(usuario(auth), gerenciaId, ativo, PageRequest.of(page, size))
+            .list(usuario(auth), gerenciaId, ativo, emFormacao, PageRequest.of(page, size))
             .map(DiscipuladoResponse::of));
   }
 
@@ -91,7 +92,12 @@ public class OrganizacaoController {
   public DiscipuladoResponse criarDiscipulado(@Valid @RequestBody DiscipuladoRequest r) {
     return DiscipuladoResponse.of(
         discipulados.create(
-            r.nome(), r.sexo(), r.faixaEtaria(), r.gerenciaId(), r.discipuladorId()));
+            r.nome(),
+            r.sexo(),
+            r.faixaEtaria(),
+            r.gerenciaId(),
+            r.discipuladorId(),
+            Boolean.TRUE.equals(r.emFormacao())));
   }
 
   @PatchMapping("/discipulados/{discipuladoId}")
@@ -140,8 +146,9 @@ public class OrganizacaoController {
       @NotBlank String nome,
       @NotNull Sexo sexo,
       @NotNull FaixaEtaria faixaEtaria,
-      @NotNull Long gerenciaId,
-      @NotNull Long discipuladorId) {}
+      Long gerenciaId,
+      @NotNull Long discipuladorId,
+      Boolean emFormacao) {}
 
   public record AtualizarDiscipuladoRequest(
       String nome,
@@ -177,6 +184,7 @@ public class OrganizacaoController {
       Sexo sexo,
       FaixaEtaria faixaEtaria,
       boolean ativo,
+      boolean emFormacao,
       Long gerenciaId,
       Long discipuladorId,
       String discipuladorNome,
@@ -188,7 +196,8 @@ public class OrganizacaoController {
           d.getSexo(),
           d.getFaixaEtaria(),
           d.isAtivo(),
-          d.getGerencia().getId(),
+          d.isEmFormacao(),
+          d.getGerencia() == null ? null : d.getGerencia().getId(),
           d.getDiscipulador().getId(),
           d.getDiscipulador().getNome(),
           d.getCoLideres().stream().map(AuthController.UserResponse::of).toList());

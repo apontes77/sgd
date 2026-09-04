@@ -284,7 +284,7 @@ public class AdolescenteService {
 
   private Discipulado discipuladoAtivo(long id) {
     Discipulado d = discipuladoAtivoOuInativo(id);
-    if (!d.isAtivo() || !d.getGerencia().isAtivo())
+    if (!d.isAtivo() || (d.getGerencia() != null && !d.getGerencia().isAtivo()))
       throw conflito("O discipulado informado está inativo.");
     return d;
   }

@@ -167,6 +167,14 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
         group: 'Operações',
         icon: <FactCheckRounded />,
       })
+    if (currentUser.perfis.some((role) => role === 'ADMIN' || role === 'DISCIPULADOR'))
+      values.push({
+        value: 'frequencia-formacao',
+        label: 'Frequência em formação',
+        shortLabel: 'Formação',
+        group: 'Operações',
+        icon: <FactCheckRounded />,
+      })
     if (isAdmin)
       values.push({
         value: 'chamada-lideranca',
@@ -349,6 +357,7 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
               )}
               {section === 'familias' && <FamilyDirectory />}
               {section === 'frequencia' && <FrequencyPage currentUser={currentUser} />}
+              {section === 'frequencia-formacao' && <FrequencyPage currentUser={currentUser} emFormacao />}
               {section === 'chamada-lideranca' && <LeadershipAttendance />}
               {section === 'relatorios' && <ReportsPage currentUser={currentUser} />}
             </motion.div>
@@ -701,7 +710,7 @@ function Navigation({
   )
 }
 
-function FrequencyPage({ currentUser }: { currentUser: Usuario }) {
+function FrequencyPage({ currentUser, emFormacao = false }: { currentUser: Usuario; emFormacao?: boolean }) {
   const [discipulados, setDiscipulados] = useState<Discipulado[]>([])
   const [discipuladoId, setDiscipuladoId] = useState<number>(0)
   useEffect(() => {
@@ -710,14 +719,15 @@ function FrequencyPage({ currentUser }: { currentUser: Usuario }) {
       : organizationApi.listarDiscipuladosLiderados(true)
     consulta
       .then((items) => {
-        setDiscipulados(items)
-        setDiscipuladoId((current) => (items.some((item) => item.id === current) ? current : (items[0]?.id ?? 0)))
+        const visiveis = items.filter((item) => Boolean(item.emFormacao) === emFormacao)
+        setDiscipulados(visiveis)
+        setDiscipuladoId((current) => (visiveis.some((item) => item.id === current) ? current : (visiveis[0]?.id ?? 0)))
       })
       .catch(() => {
         setDiscipulados([])
         setDiscipuladoId(0)
       })
-  }, [currentUser.perfis])
+  }, [currentUser.perfis, emFormacao])
   const podeAdministrar = currentUser.perfis.includes('ADMIN')
   const podeFamilia = currentUser.perfis.some(
     (perfil) => perfil === 'ADMIN' || perfil === 'GERENTE' || perfil === 'DISCIPULADOR' || perfil === 'CO_LIDER',
@@ -728,8 +738,12 @@ function FrequencyPage({ currentUser }: { currentUser: Usuario }) {
   return (
     <Stack spacing={3}>
       <PageHeader
-        title="Registrar frequência"
-        description="Escolha a data e informe se houve discipulado."
+        title={emFormacao ? 'Registrar frequência em formação' : 'Registrar frequência'}
+        description={
+          emFormacao
+            ? 'Escolha a data e informe se houve discipulado. Não há prazo de sexta-feira para grupos em formação.'
+            : 'Escolha a data e informe se houve discipulado.'
+        }
         action={
           mostrarSeletor ? (
             <Autocomplete

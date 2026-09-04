@@ -177,7 +177,10 @@ public class ApiExceptionHandler {
     DiscipuladoService.GerenciaInativaException.class,
     DiscipuladoService.DiscipuladorInvalidoException.class,
     DiscipuladoService.CoLiderInvalidoException.class,
-    Discipulado.CoLiderLimitExceededException.class
+    DiscipuladoService.FormacaoInvalidaException.class,
+    DiscipuladoService.LiderancaDuplicadaException.class,
+    Discipulado.CoLiderLimitExceededException.class,
+    Discipulado.FormacaoNaoPermiteCoLiderException.class
   })
   public ResponseEntity<Map<String, Object>> handleOrganizationalRule(RuntimeException exception) {
     String detail =
@@ -190,6 +193,12 @@ public class ApiExceptionHandler {
               "O discipulador deve estar ativo e possuir o perfil DISCIPULADOR.";
           case DiscipuladoService.CoLiderInvalidoException ignored ->
               "O co-líder deve estar ativo, possuir o perfil CO_LIDER e ser diferente do discipulador.";
+          case DiscipuladoService.FormacaoInvalidaException ignored ->
+              "Discipulado de formação não possui gerência; discipulado padrão exige gerência.";
+          case DiscipuladoService.LiderancaDuplicadaException ignored ->
+              "O usuário já exerce liderança em outro discipulado do mesmo tipo.";
+          case Discipulado.FormacaoNaoPermiteCoLiderException ignored ->
+              "Discipulado de formação não possui co-líder.";
           default -> "Um discipulado aceita no máximo dois co-líderes distintos.";
         };
     return response(HttpStatus.CONFLICT, detail);

@@ -147,7 +147,7 @@ public class RelatorioAdolescentesService {
       celula(ficha == null ? null : ficha.getIrmaoDokmos()),
       texto(d.getNome()),
       texto(d.getDiscipulador().getNome()),
-      texto(d.getGerencia().getNome())
+      texto(d.getGerencia() == null ? "Formação" : d.getGerencia().getNome())
     };
   }
 
