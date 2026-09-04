@@ -1,6 +1,7 @@
 package br.com.sgd.organizacao;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -327,6 +328,64 @@ class EstruturaOrganizacionalHttpTest {
                         + discipuladorId
                         + ",\"emFormacao\":true}"))
         .andExpect(status().isConflict());
+  }
+
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  void excluiGerenciaSemDiscipulados() throws Exception {
+    String sufixo = java.util.UUID.randomUUID().toString();
+    long gerenteId = criarUsuario("Gerente", "gerente-delete-" + sufixo + "@sgd.local", "GERENTE");
+    long gerenciaId =
+        idDaResposta(
+            post("/api/v1/gerencias"),
+            "{\"nome\":\"Gerencia vazia\",\"sexo\":\"MASCULINO\",\"faixasEtarias\":[\"DE_15_MAIS\"],\"gerenteId\":"
+                + gerenteId
+                + "}");
+
+    mvc.perform(delete("/api/v1/gerencias/{id}", gerenciaId).with(csrf()))
+        .andExpect(status().isNoContent());
+
+    mvc.perform(get("/api/v1/gerencias").param("page", "0").param("size", "100"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[?(@.id == " + gerenciaId + ")]").isEmpty());
+  }
+
+  @Test
+  @WithMockUser(roles = "ADMIN")
+  void rejeitaExclusaoDeGerenciaComDiscipulados() throws Exception {
+    String sufixo = java.util.UUID.randomUUID().toString();
+    long gerenteId =
+        criarUsuario("Gerente", "gerente-delete-disc-" + sufixo + "@sgd.local", "GERENTE");
+    long gerenciaId =
+        idDaResposta(
+            post("/api/v1/gerencias"),
+            "{\"nome\":\"Gerencia com discipulado\",\"sexo\":\"MASCULINO\",\"faixasEtarias\":[\"DE_15_MAIS\"],\"gerenteId\":"
+                + gerenteId
+                + "}");
+    long discipuladorId =
+        criarUsuario(
+            "Discipulador", "discipulador-delete-" + sufixo + "@sgd.local", "DISCIPULADOR");
+    idDaResposta(
+        post("/api/v1/discipulados"),
+        "{\"nome\":\"Discipulado vinculado\",\"sexo\":\"MASCULINO\",\"faixaEtaria\":\"DE_15_MAIS\",\"gerenciaId\":"
+            + gerenciaId
+            + ",\"discipuladorId\":"
+            + discipuladorId
+            + "}");
+
+    mvc.perform(delete("/api/v1/gerencias/{id}", gerenciaId).with(csrf()))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.status").value(409))
+        .andExpect(
+            jsonPath("$.detail")
+                .value(
+                    "Os discipulados associados a esta gerência precisam ser realocados ou desativados antes de excluir a gerência."));
+  }
+
+  @Test
+  @WithMockUser(roles = "DISCIPULADOR")
+  void exigeAdministradorParaExcluirGerencia() throws Exception {
+    mvc.perform(delete("/api/v1/gerencias/{id}", 1).with(csrf())).andExpect(status().isForbidden());
   }
 
   private long criarUsuario(String nome, String email, String perfil) throws Exception {

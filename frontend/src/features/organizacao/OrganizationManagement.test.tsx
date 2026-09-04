@@ -288,4 +288,70 @@ describe('estrutura organizacional — co-líderes', () => {
     expect(await screen.findByRole('heading', { name: 'Editar discipulado' })).toBeInTheDocument()
     expect(onAbrirAdolescentes).not.toHaveBeenCalled()
   })
+
+  it('avisa quando a gerência ainda possui discipulados associados', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/usuarios?')) return json(page([admin, discipulador, coLider, outroCoLider]))
+      if (url.includes('/gerencias?')) return json(page([gerencia]))
+      if (url.includes('/discipulados?')) return json(page([discipulado]))
+      throw new Error(`Requisição inesperada: ${url}`)
+    })
+
+    render(<OrganizationManagement />)
+    await user.click(await screen.findByRole('button', { name: 'Ações de Gerência Beatriz Ferreira' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Excluir' }))
+
+    expect(await screen.findByRole('heading', { name: 'Não é possível excluir a gerência' })).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Os discipulados associados a esta gerência precisam ser realocados ou desativados antes de excluir a gerência.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Excluir' })).not.toBeInTheDocument()
+  })
+
+  it('exclui gerência sem discipulados associados', async () => {
+    const user = userEvent.setup()
+    const gerenciaVazia: Gerencia = {
+      id: 11,
+      nome: 'Gerência Norte',
+      sexo: 'MASCULINO',
+      faixasEtarias: ['DE_15_MAIS'],
+      gerenteId: 1,
+      ativo: true,
+    }
+    let gerenciasAtuais = [gerencia, gerenciaVazia]
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input)
+      const method = init?.method ?? 'GET'
+      if (url.includes('/usuarios?')) return json(page([admin, discipulador, coLider, outroCoLider]))
+      if (url.includes('/gerencias/11') && method === 'DELETE') {
+        gerenciasAtuais = [gerencia]
+        return new Response(null, { status: 204 })
+      }
+      if (url.includes('/gerencias?')) return json(page(gerenciasAtuais))
+      if (url.includes('/discipulados?')) return json(page([discipulado]))
+      throw new Error(`Requisição inesperada: ${method} ${url}`)
+    })
+
+    render(<OrganizationManagement />)
+    expect(await screen.findByText('Gerência Norte')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Ações de Gerência Norte' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Excluir' }))
+
+    expect(await screen.findByRole('heading', { name: 'Excluir gerência?' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Excluir' }))
+
+    await waitFor(() => {
+      const exclusao = fetchMock.mock.calls.find(
+        ([requestUrl, requestInit]) => String(requestUrl).includes('/gerencias/11') && requestInit?.method === 'DELETE',
+      )
+      expect(exclusao).toBeTruthy()
+    })
+    await waitFor(() => {
+      expect(screen.queryByText('Gerência Norte')).not.toBeInTheDocument()
+    })
+  })
 })

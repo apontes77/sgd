@@ -49,6 +49,11 @@ import type {
 type Modal =
   { kind: 'gerencia'; item?: Gerencia } | { kind: 'discipulado'; item?: Discipulado; formacao?: boolean } | undefined
 
+type ExclusaoGerencia = { tipo: 'aviso' | 'confirmar'; item: Gerencia }
+
+const AVISO_EXCLUSAO_GERENCIA =
+  'Os discipulados associados a esta gerência precisam ser realocados ou desativados antes de excluir a gerência.'
+
 const roleLabel: Record<Perfil, string> = {
   ADMIN: 'Administrador',
   GERENTE: 'Gerente',
@@ -98,6 +103,7 @@ export default function OrganizationManagement({
   const [saving, setSaving] = useState(false)
   const [pendingDiscipuladoId, setPendingDiscipuladoId] = useState<number>()
   const [pendingDeactivate, setPendingDeactivate] = useState<Discipulado>()
+  const [exclusaoGerencia, setExclusaoGerencia] = useState<ExclusaoGerencia>()
   const [filtroGerenciaSexo, setFiltroGerenciaSexo] = useState<SexoOrganizacional | ''>('')
   const [filtroGerenciaFaixa, setFiltroGerenciaFaixa] = useState<FaixaEtaria | ''>('')
   const [filtroGerenciaBusca, setFiltroGerenciaBusca] = useState('')
@@ -249,6 +255,29 @@ export default function OrganizationManagement({
     }
   }
 
+  function solicitarExclusaoGerencia(item: Gerencia) {
+    const possuiDiscipulados = discipulados.some((discipulado) => discipulado.gerenciaId === item.id)
+    setExclusaoGerencia({ tipo: possuiDiscipulados ? 'aviso' : 'confirmar', item })
+  }
+
+  async function excluirGerencia() {
+    if (exclusaoGerencia?.tipo !== 'confirmar') return
+    const item = exclusaoGerencia.item
+    setSaving(true)
+    setError('')
+    try {
+      await organizationApi.excluirGerencia(item.id)
+      setExclusaoGerencia(undefined)
+      if (gerenciaSelecionadaId === item.id) setGerenciaSelecionadaId(undefined)
+      await load()
+    } catch (reason) {
+      setExclusaoGerencia(undefined)
+      setError(reason instanceof Error ? reason.message : 'Não foi possível excluir a gerência.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function deactivate() {
     if (!pendingDeactivate) return
     const item = pendingDeactivate
@@ -325,6 +354,7 @@ export default function OrganizationManagement({
               onFiltroBusca={setFiltroGerenciaBusca}
               onSelect={(item) => setGerenciaSelecionadaId((atual) => (atual === item.id ? undefined : item.id))}
               onEdit={(item) => setModal({ kind: 'gerencia', item })}
+              onDelete={solicitarExclusaoGerencia}
             />
             <Divider />
             <Box sx={{ minHeight: 220, bgcolor: 'action.hover' }}>
@@ -438,6 +468,39 @@ export default function OrganizationManagement({
           </Button>
         </DialogActions>
       </Dialog>
+      <Dialog
+        open={exclusaoGerencia?.tipo === 'aviso'}
+        onClose={() => setExclusaoGerencia(undefined)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Não é possível excluir a gerência</DialogTitle>
+        <DialogContent>
+          <Alert severity="warning">{AVISO_EXCLUSAO_GERENCIA}</Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setExclusaoGerencia(undefined)}>Entendi</Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={exclusaoGerencia?.tipo === 'confirmar'}
+        onClose={() => setExclusaoGerencia(undefined)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Excluir gerência?</DialogTitle>
+        <DialogContent>
+          <Typography color="text.secondary">
+            A gerência “{exclusaoGerencia?.item.nome}” será excluída. Esta ação não poderá ser desfeita.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setExclusaoGerencia(undefined)}>Cancelar</Button>
+          <Button color="error" variant="contained" disabled={saving} onClick={() => void excluirGerencia()}>
+            Excluir
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   )
 }
@@ -514,6 +577,7 @@ function GerenciaList({
   onFiltroBusca,
   onSelect,
   onEdit,
+  onDelete,
 }: {
   items: Gerencia[]
   users: Usuario[]
@@ -526,6 +590,7 @@ function GerenciaList({
   onFiltroBusca: (value: string) => void
   onSelect: (item: Gerencia) => void
   onEdit: (item: Gerencia) => void
+  onDelete: (item: Gerencia) => void
 }) {
   return (
     <Box>
@@ -554,6 +619,11 @@ function GerenciaList({
                     {
                       label: 'Editar',
                       onClick: () => onEdit(item),
+                    },
+                    {
+                      label: 'Excluir',
+                      onClick: () => onDelete(item),
+                      color: 'error',
                     },
                   ]}
                 />

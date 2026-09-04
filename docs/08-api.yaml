@@ -121,6 +121,16 @@ paths:
       parameters: [ { $ref: '#/components/parameters/GerenciaId' } ]
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AtualizarGerenciaRequest' } } } }
       responses: { '200': { description: Gerência atualizada, content: { application/json: { schema: { $ref: '#/components/schemas/Gerencia' } } } } }
+    delete:
+      tags: [Gerências]
+      summary: Exclui uma gerência sem discipulados associados
+      description: Requer ADMIN. Só exclui se a gerência não possuir discipulados associados. Caso contrário retorna 409 para que os discipulados sejam realocados ou desativados antes da exclusão.
+      parameters: [ { $ref: '#/components/parameters/GerenciaId' } ]
+      responses:
+        '204': { description: Gerência excluída }
+        '403': { $ref: '#/components/responses/Proibido' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+        '409': { $ref: '#/components/responses/Conflito' }
   /discipulados:
     get:
       tags: [Discipulados]

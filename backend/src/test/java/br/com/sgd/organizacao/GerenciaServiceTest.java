@@ -100,4 +100,39 @@ class GerenciaServiceTest {
     assertThat(atualizada.getSexo()).isEqualTo(Sexo.MASCULINO);
     assertThat(atualizada.getFaixasEtarias()).containsExactly(FaixaEtaria.DE_15_MAIS);
   }
+
+  @Test
+  void excluiGerenciaSemDiscipuladosAssociados() {
+    Gerencia existente =
+        new Gerencia("Gerência Central", Sexo.MASCULINO, Set.of(FaixaEtaria.DE_15_MAIS), gerente);
+    when(gerencias.findById(1L)).thenReturn(Optional.of(existente));
+    when(discipulados.existsByGerenciaId(1L)).thenReturn(false);
+
+    service.delete(1L);
+
+    verify(gerencias).delete(existente);
+  }
+
+  @Test
+  void rejeitaExclusaoQuandoAindaHaDiscipuladosAssociados() {
+    Gerencia existente =
+        new Gerencia("Gerência Central", Sexo.MASCULINO, Set.of(FaixaEtaria.DE_15_MAIS), gerente);
+    when(gerencias.findById(1L)).thenReturn(Optional.of(existente));
+    when(discipulados.existsByGerenciaId(1L)).thenReturn(true);
+
+    assertThatThrownBy(() -> service.delete(1L))
+        .isInstanceOf(GerenciaService.GerenciaComDiscipuladosException.class);
+
+    verify(gerencias, never()).delete(any(Gerencia.class));
+  }
+
+  @Test
+  void rejeitaExclusaoDeGerenciaInexistente() {
+    when(gerencias.findById(99L)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.delete(99L))
+        .isInstanceOf(GerenciaService.GerenciaNotFoundException.class);
+
+    verify(gerencias, never()).delete(any(Gerencia.class));
+  }
 }
