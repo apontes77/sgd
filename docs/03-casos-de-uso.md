@@ -145,3 +145,42 @@ Fluxo alternativo:
 
 - Discipulador ou co-líder tenta transferir: retornar `403`; a ação não é exibida na interface desses perfis.
 - Gerente tenta transferir para discipulado de outra gerência: retornar `403`.
+
+---
+
+## UC009 - Registrar chamada de liderança
+
+Ator:
+Administrador
+
+Fluxo:
+
+1. Acessar “Chamada de liderança”.
+2. Selecionar a data (tipicamente sexta-feira).
+3. Filtrar opcionalmente por sexo do discipulado ou buscar por nome do líder/grupo.
+4. Marcar presença/ausência do discipulador e dos co-líderes por discipulado; salvar um card por vez (parcial) ou continuar depois.
+5. Opcionalmente informar observação geral e observação por discipulado.
+
+Fluxo alternativo:
+
+- Se o líder já tiver chamada salva no mesmo dia (outro grupo ou situação diferente), a API responde `409` com `conflitos`; o administrador confirma a atualização (`confirmarAtualizacao`) e a presença anterior nos demais discipulados do dia é removida (RN056).
+- Discipulado inativo ou pessoa que não é líder atual do grupo: `400`.
+- Usuário sem perfil ADMIN: `403`.
+
+---
+
+## UC010 - Consultar relatório de chamada de liderança
+
+Ator:
+Administrador
+
+Fluxo:
+
+1. Acessar relatórios de chamada de liderança.
+2. Informar período (até 12 meses) e, opcionalmente, um discipulado.
+3. Consultar o JSON ou exportar a planilha Excel.
+
+Fluxo alternativo:
+
+- Período inválido ou superior a 12 meses: `400`.
+- `discipuladoId` inexistente: `404`.

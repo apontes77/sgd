@@ -74,8 +74,9 @@ O script lê `ADMIN_INITIAL_EMAIL` / `ADMIN_INITIAL_PASSWORD` (ou `SGD_ADMIN_EMA
 | --- | --- | --- |
 | `403` ao lançar frequência na segunda | Prazo sexta→domingo 23:59 (`America/Sao_Paulo`) | Use admin ou ajuste o relógio/data do encontro nos testes |
 | `403` após editar chamada | Janela de 3h a partir de `chamadaSalvaEm` | Somente `ADMIN` altera depois da janela |
-| GOE não aparece na chamada | `DISCIPULO_GOE` é excluído da lista atual | Esperado (RN049); histórico antigo continua editável |
+| GOE/visitante some da chamada ao desmarcar | Presença opt-in: omitir remove o registro | Esperado (RN049); não envie `AUSENTE` |
 | Cadastro rejeita sem telefone | Flag `naoPossuiTelefone` (GOE) ou ficha de família incompleta | Enviar a flag/ficha explicitamente (RN048) |
+| `409` ao salvar chamada de liderança | Pessoa já lançada no mesmo dia | Confirme com `confirmarAtualizacao: true` (RN056) |
 | Painel do gerente vazio / `404` | Gerência inativa ou mais de uma ativa | Ative exatamente uma gerência para o usuário |
 | Seed/carga remota recusada | Falta `--allow-remote` ou URL sem HTTPS | Siga `scripts/data/README.md` |
 

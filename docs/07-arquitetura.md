@@ -26,13 +26,14 @@
 ## Relatórios
 
 - HTML/CSS com impressão nativa do navegador (relatório de frequência por período)
-- JasperReports e Excel permanecem no roadmap
+- Exportação Excel (XLSX) para frequência e para chamada de liderança (`/relatorios/.../export`)
+- JasperReports permanece no roadmap
 
 ## Infraestrutura
 
 - Docker / Docker Compose (local: teto de memória no `backend` e no `postgres`; JVM com `MaxRAMPercentage=60` no Compose)
 - Render (ver `docs/deploy-render.md`)
-- Observabilidade OTLP (ver `docs/observability.md`)
+- Observabilidade: `traceId` em Problem Details e Actuator (ver `docs/observability.md`)
 
 ## CI/CD
 
@@ -49,8 +50,10 @@ Pacote-por-domínio em `br.com.sgd`:
 - `common` (contratos compartilhados, como `PaginaResponse`)
 - `config`
 - `exception`
+- `familia` (ficha 1:1 do adolescente)
 - `frequencia` (encontros, chamada, prazo de lançamento, job de fechamento)
 - `health`
+- `lideranca` (`/chamadas-lideranca` — presença de discipuladores/co-líderes)
 - `observability`
 - `organizacao` (gerências, discipulados, co-líderes)
 - `painel` (`/painel/lider`, `/painel/gerencia`, `/painel/admin`)
@@ -67,18 +70,24 @@ flowchart LR
   API --> Auth[auth]
   API --> Org[organizacao]
   API --> Adol[adolescente]
+  API --> Fam[familia]
   API --> Freq[frequencia]
+  API --> Lid[lideranca]
   API --> Painel[painel]
+  API --> Rel[relatorio]
   Freq --> Job[FechamentoFrequenciaJob]
   Job --> DB[(PostgreSQL)]
   Freq --> DB
+  Lid --> DB
   Painel --> DB
+  Rel --> DB
 ```
 
 - **Prazo de lançamento**: sexta-feira lançável até domingo 23:59:59 `America/Sao_Paulo` para líder/co-líder; admin ignora o prazo.
 - **Janela da chamada**: primeiro `PUT .../frequencias` grava `chamadaSalvaEm`; depois disso, líderes têm 3 horas; admin sempre pode.
 - **Fechamento automático**: após o prazo, `FechamentoFrequenciaJob` marca sexta sem chamada como `NAO_REALIZADO` com justificativa padrão e `fechamentoAutomatico=true`. ADMIN pode reverter e preencher a chamada sem limpar o flag; só ADMIN exclui o encontro (`DELETE /encontros/{id}`).
 - **Observação do encontro**: campo opcional atualizado via `PATCH /encontros/{id}` (não entra no `POST` de criação).
+- **Chamada de liderança**: ADMIN salva presença parcial por discipulado (`PUT /chamadas-lideranca`); conflito de pessoa já lançada no dia exige `confirmarAtualizacao` (RN054–RN056).
 
 ## Estrutura Frontend
 
@@ -91,7 +100,9 @@ Organização por feature em `frontend/src`:
   - `users`
   - `organizacao`
   - `adolescentes`
+  - `familia`
   - `frequencia`
+  - `lideranca` (`LeadershipAttendance`)
   - `dashboards` (visão executiva admin/gerência, líder, detalhe)
   - `relatorios`
 - `test/` — setup do Vitest

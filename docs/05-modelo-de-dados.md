@@ -89,6 +89,26 @@ erDiagram
         bigint encontro_id FK
         int quantidade
     }
+    CHAMADA_LIDERANCA {
+        bigint id PK
+        date data UK
+        string observacao_geral
+        datetime criado_em
+        datetime atualizado_em
+    }
+    CHAMADA_LIDERANCA_DISCIPULADO {
+        bigint id PK
+        bigint chamada_id FK
+        bigint discipulado_id FK
+        string observacao
+    }
+    PRESENCA_LIDERANCA {
+        bigint id PK
+        bigint item_id FK
+        bigint usuario_id FK
+        string papel
+        string situacao
+    }
     AUDITORIA {
         bigint id PK
         bigint usuario_id FK
@@ -113,6 +133,10 @@ erDiagram
     ENCONTRO ||--o{ FREQUENCIA : registra
     ADOLESCENTE ||--o{ FREQUENCIA : tem
     ENCONTRO ||--o{ VISITANTE : contabiliza
+    CHAMADA_LIDERANCA ||--o{ CHAMADA_LIDERANCA_DISCIPULADO : inclui
+    DISCIPULADO ||--o{ CHAMADA_LIDERANCA_DISCIPULADO : participa
+    CHAMADA_LIDERANCA_DISCIPULADO ||--o{ PRESENCA_LIDERANCA : registra
+    USUARIO ||--o{ PRESENCA_LIDERANCA : comparece
     USUARIO ||--o{ AUDITORIA : realiza
 ```
 
@@ -126,6 +150,7 @@ erDiagram
 - Cada `ADOLESCENTE` possui exatamente uma `FICHA_FAMILIA` (1:1), com dois responsáveis (ordens 1 e 2).
 - Deve haver, no máximo, um `ENCONTRO` para cada par (`discipulado_id`, `data`) e uma `FREQUENCIA` para cada par (`encontro_id`, `adolescente_id`). O status do encontro é `REALIZADO` ou `NAO_REALIZADO`; encontros não realizados exigem `justificativa` e encontros realizados mantêm esse campo nulo. `observacao` é texto livre opcional (até 500 caracteres), independente da situação. `chamada_salva_em` registra o instante do primeiro salvamento da chamada e ancora a janela de edição de três horas. `fechamento_automatico` indica que o encontro veio do job de prazo (RN047) e permanece após correção administrativa (RN052).
 - Alterações em frequência devem gerar `AUDITORIA`, com usuário responsável, data/hora e valores anterior e novo. A exclusão administrativa do encontro (RN053) também gera auditoria.
+- Há no máximo uma `CHAMADA_LIDERANCA` por `data`. Cada par (`chamada_id`, `discipulado_id`) é único. `PRESENCA_LIDERANCA.papel` é `DISCIPULADOR` ou `CO_LIDER`; `situacao` é `PRESENTE` ou `AUSENTE`. A regra de negócio exige no máximo um lançamento por usuário na mesma data (RN056), validada na aplicação.
 
 ## Entidades Principais
 
@@ -202,6 +227,15 @@ erDiagram
 - id
 - encontro_id
 - quantidade
+
+### Chamada de liderança
+
+- id
+- data (única)
+- observacao_geral (até 1000)
+- criado_em / atualizado_em
+- itens por discipulado (`chamadas_lideranca_discipulados`): observacao (até 500)
+- presenças (`presencas_lideranca`): usuario_id, papel, situacao
 
 ### Auditoria
 

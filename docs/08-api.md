@@ -40,7 +40,9 @@ O refresh token é rotacionado a cada renovação. Tokens de redefinição não 
 | Adolescentes — cadastro/edição/inativação | Total | Não, salvo se acumular papel de líder | Próprio | Próprio |
 | Adolescentes — transferência | Total | Não | Não | Não |
 | Encontros e chamada | Total | Da gerência, leitura | Próprio | Próprio |
+| Chamada de liderança | Total | Não | Não | Não |
 | Relatório diário de frequência | Todos | Gerências ativas próprias | Grupos liderados | Grupos liderados |
+| Relatório de chamada de liderança | Total | Não | Não | Não |
 | Painel do discipulado | Se também for líder | Se também for líder | Próprio | Próprio |
 | Auditoria | Total | Não | Não | Não |
 
@@ -62,6 +64,7 @@ Os acessos são cumulativos: `GERENTE + DISCIPULADOR` recebe “Minha gerência�
 - Discipulador e co-líder cadastram, atualizam e inativam adolescentes somente no próprio discipulado; gerente na própria gerência; ADMIN com superacesso. Transferências: ADMIN global ou GERENTE dentro da gerência.
 - Cada adolescente possui ficha de família 1:1 (RN048). Em `POST /adolescentes`, `familia` é obrigatória para ADMIN/GERENTE; DISCIPULADOR/CO_LIDER podem informar a ficha no body (persistida) ou omiti-la, caso em que nasce como “Não consta” (RN051). `GET`/`PUT /adolescentes/{id}/familia` e `GET /familias` estão disponíveis para todos os perfis no respectivo escopo. A listagem `GET /familias` é paginada e aceita filtros `busca` (nome do adolescente ou discipulado), `situacaoIgreja` e `situacaoPais`.
 - Um usuário exerce liderança em apenas um discipulado no total, seja como discipulador ou co-líder.
+- Chamada de liderança (ADMIN): `GET`/`PUT /chamadas-lideranca?data=` registra presença de discipuladores e co-líderes atuais. O `PUT` é parcial e mescla por discipulado (RN055). Uma pessoa só pode constar uma vez por data; conflito de atualização devolve `409` com `conflitos` até `confirmarAtualizacao: true` (RN056). Relatório e Excel: `/relatorios/chamadas-lideranca` (RN057).
 - Permissões e painéis são cumulativos. O painel “Meu discipulado” sempre usa a associação de liderança, mesmo quando o usuário também é `ADMIN` ou `GERENTE`.
 - O relatório por período reúne a união dos escopos dos perfis do usuário, aceita de um dia a 12 meses, inclui encontros realizados e não realizados (com justificativa) e devolve totais no `resumo`. `resumo.presentes` e `resumo.ausentes` consideram só a categoria `DISCIPULO`; `goe` conta `DISCIPULO_GOE` presentes; visitantes nominais e avulsos seguem em `visitantes`. A exportação Excel soma Presentes + Visitantes + GOE no total e preenche Observação estrutura com a observação do discipulado na chamada de liderança da mesma data. A lista nominal de participantes (`participantes`) é preenchida somente na consulta de um único dia (`dataInicio` igual a `dataFim`, ou `GET /relatorios/frequencia-diaria`); a impressão A4 e o salvamento em PDF usam o diálogo nativo do navegador.
 
@@ -73,10 +76,11 @@ Os acessos são cumulativos: `GERENTE + DISCIPULADOR` recebe “Minha gerência�
 | Estrutura | `/gerencias`, `/discipulados`, `/discipulados/liderados`, `/discipulados/{id}/co-lideres` |
 | Cadastro | `/adolescentes`, `/adolescentes/{id}/vinculos`, `/adolescentes/{id}/familia`, `/familias` |
 | Frequência | `/encontros`, `/encontros/{id}/frequencias`, `/encontros/{id}/visitantes` |
+| Liderança | `/chamadas-lideranca` |
 | Indicadores | `/painel/lider`, `/painel/gerencia`, `/painel/admin` |
-| Relatórios | `/relatorios/frequencia-diaria`, `/relatorios/frequencia` |
+| Relatórios | `/relatorios/frequencia-diaria`, `/relatorios/frequencia`, `/relatorios/chamadas-lideranca`, `/relatorios/chamadas-lideranca/export` |
 | Auditoria | `/auditoria` |
 
-A listagem de discipulados inclui `discipuladorNome` para busca tipável e contexto de liderança na UI. Os painéis administrativo e de gerência consideram somente gerências ativas; o de gerência também devolve `discipuladorNome` por discipulado e a lista de encontros não realizados do período.
+A listagem de discipulados inclui `discipuladorNome` para busca tipável e contexto de liderança na UI. Os painéis administrativo e de gerência consideram somente gerências ativas; o de gerência também devolve `discipuladorNome` por discipulado e a lista de encontros não realizados do período. A grade de `GET /chamadas-lideranca` devolve todos os discipulados ativos e, quando a pessoa já tem lançamento no dia, o campo `registroDoDia` (grupo e situação).
 
 Consulte o arquivo OpenAPI para payloads, enums, respostas e códigos de status completos.
