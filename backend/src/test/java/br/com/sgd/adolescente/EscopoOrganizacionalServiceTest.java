@@ -3,6 +3,7 @@ package br.com.sgd.adolescente;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
 import java.util.Set;
@@ -58,6 +59,14 @@ class EscopoOrganizacionalServiceTest {
     User outroGerente = usuario(7L, Role.GERENTE);
     assertThat(service.podeLer(outroGerente, discipulado)).isFalse();
     assertThat(service.podeAlterar(outroGerente, discipulado)).isFalse();
+  }
+
+  @Test
+  void gerenteNaoAcessaDiscipuladoDeFormacaoSemGerencia() {
+    when(discipulado.getGerencia()).thenReturn(null);
+    assertThat(service.podeLer(gerente, discipulado)).isFalse();
+    assertThat(service.podeAlterar(gerente, discipulado)).isFalse();
+    assertThat(service.podeRegistrarFrequencia(gerente, discipulado)).isFalse();
   }
 
   @Test

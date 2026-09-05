@@ -116,8 +116,11 @@ describe('exportação de adolescentes', () => {
 
     const { unmount } = render(<ReportsPage currentUser={adminUser} />)
     expect(screen.getByRole('tab', { name: 'Frequência' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Frequência em formação' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Adolescentes' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Liderança' })).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: 'Frequência em formação' }))
+    expect(await screen.findByRole('heading', { name: 'Relatórios de frequência em formação' })).toBeInTheDocument()
     await user.click(screen.getByRole('tab', { name: 'Adolescentes' }))
     expect(await screen.findByRole('heading', { name: 'Relatório de adolescentes' })).toBeInTheDocument()
     await user.click(screen.getByRole('tab', { name: 'Liderança' }))
@@ -125,8 +128,42 @@ describe('exportação de adolescentes', () => {
     unmount()
 
     render(<ReportsPage currentUser={gerenteUser} />)
+    expect(screen.queryByRole('tab', { name: 'Frequência' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Frequência em formação' })).not.toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Adolescentes' })).not.toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Liderança' })).not.toBeInTheDocument()
-    expect(await screen.findByRole('heading', { name: /Relatórios de frequência/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Relatórios de frequência' })).toBeInTheDocument()
+  })
+
+  it('oferece ao discipulador as abas de frequência padrão e em formação', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/discipulados')) {
+        return new Response(JSON.stringify({ content: [], page: 0, size: 100, totalElements: 0, totalPages: 0 }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      return new Response(JSON.stringify({ dataInicio: '', dataFim: '', emitidoEm: '', relatorios: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    const discipuladorUser: Usuario = {
+      id: 3,
+      nome: 'Líder',
+      email: 'lider@sgd.local',
+      ativo: true,
+      perfis: ['DISCIPULADOR'],
+    }
+    render(<ReportsPage currentUser={discipuladorUser} />)
+    expect(screen.getByRole('tab', { name: 'Frequência' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Frequência em formação' })).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Adolescentes' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Liderança' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: 'Frequência em formação' }))
+    expect(await screen.findByRole('heading', { name: 'Relatórios de frequência em formação' })).toBeInTheDocument()
   })
 })

@@ -99,25 +99,37 @@ export default function FrequencyManagement({
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
   const requisicao = useRef(0)
 
-  const prazoAberto = useMemo(() => podeAdministrar || dentroDoPrazoLancamento(data), [podeAdministrar, data])
+  const listagemSimples = Boolean(discipulado?.emFormacao)
+  const prazoAberto = useMemo(
+    () => podeAdministrar || listagemSimples || dentroDoPrazoLancamento(data),
+    [podeAdministrar, listagemSimples, data],
+  )
   const editavel = useMemo(() => {
     if (!selecionado || selecionado.situacao !== 'REALIZADO') return false
     if (podeAdministrar) return true
     if (selecionado.chamadaSalvaEm) {
       return Date.now() <= new Date(selecionado.chamadaSalvaEm).getTime() + 3 * 60 * 60 * 1000
     }
-    return dentroDoPrazoLancamento(selecionado.data)
-  }, [selecionado, podeAdministrar])
+    return listagemSimples || dentroDoPrazoLancamento(selecionado.data)
+  }, [selecionado, podeAdministrar, listagemSimples])
   const podeEditarNaoRealizado = useMemo(
     () => Boolean(podeAdministrar || (podeRegistrarNaoRealizacao && prazoAberto)),
     [podeAdministrar, podeRegistrarNaoRealizacao, prazoAberto],
   )
   const presentesOpcionais = useMemo(
-    () => participantes.filter((a) => presencaOpcional(a.categoria) && chamada[a.id] === 'PRESENTE').length,
-    [participantes, chamada],
+    () =>
+      participantes.filter((a) => presencaOpcional(a.categoria, listagemSimples) && chamada[a.id] === 'PRESENTE')
+        .length,
+    [participantes, chamada, listagemSimples],
   )
-  const discipulos = useMemo(() => participantes.filter((a) => !presencaOpcional(a.categoria)), [participantes])
-  const opcionais = useMemo(() => participantes.filter((a) => presencaOpcional(a.categoria)), [participantes])
+  const discipulos = useMemo(
+    () => participantes.filter((a) => !presencaOpcional(a.categoria, listagemSimples)),
+    [participantes, listagemSimples],
+  )
+  const opcionais = useMemo(
+    () => participantes.filter((a) => presencaOpcional(a.categoria, listagemSimples)),
+    [participantes, listagemSimples],
+  )
   const presentesDiscipulos = useMemo(
     () => discipulos.filter((a) => chamada[a.id] === 'PRESENTE').length,
     [discipulos, chamada],
@@ -125,37 +137,40 @@ export default function FrequencyManagement({
   const presentes = presentesDiscipulos + presentesOpcionais
   const ausentes = discipulos.length - presentesDiscipulos
 
-  const carregarChamada = useCallback(async (encontro: Encontro, atuais: AdolescenteResumo[]) => {
-    const atual = requisicao.current
-    const existentes = await frequenciaApi.listarChamada(encontro.id)
-    if (atual !== requisicao.current) return
-    const idsAtuais = new Set(atuais.map((a) => a.id))
-    const lista: ParticipanteChamada[] = [
-      ...atuais.map((a) => ({ ...a, registroAnterior: false })),
-      ...existentes
-        .filter((f) => !idsAtuais.has(f.adolescenteId))
-        .map((f) => ({
-          id: f.adolescenteId,
-          nome: f.adolescenteNome,
-          categoria: f.categoria,
-          registroAnterior: true,
-        })),
-    ]
-    const mapa: Record<number, SituacaoFrequencia> = {}
-    lista.forEach((a) => {
-      if (!presencaOpcional(a.categoria)) mapa[a.id] = 'AUSENTE'
-    })
-    existentes.forEach((f) => {
-      if (presencaOpcional(f.categoria)) {
-        if (f.situacao === 'PRESENTE') mapa[f.adolescenteId] = 'PRESENTE'
-        return
-      }
-      mapa[f.adolescenteId] = f.situacao
-    })
-    setParticipantes(lista)
-    setChamada(mapa)
-    setAlterado(false)
-  }, [])
+  const carregarChamada = useCallback(
+    async (encontro: Encontro, atuais: AdolescenteResumo[]) => {
+      const atual = requisicao.current
+      const existentes = await frequenciaApi.listarChamada(encontro.id)
+      if (atual !== requisicao.current) return
+      const idsAtuais = new Set(atuais.map((a) => a.id))
+      const lista: ParticipanteChamada[] = [
+        ...atuais.map((a) => ({ ...a, registroAnterior: false })),
+        ...existentes
+          .filter((f) => !idsAtuais.has(f.adolescenteId))
+          .map((f) => ({
+            id: f.adolescenteId,
+            nome: f.adolescenteNome,
+            categoria: f.categoria,
+            registroAnterior: true,
+          })),
+      ]
+      const mapa: Record<number, SituacaoFrequencia> = {}
+      lista.forEach((a) => {
+        if (!presencaOpcional(a.categoria, listagemSimples)) mapa[a.id] = 'AUSENTE'
+      })
+      existentes.forEach((f) => {
+        if (presencaOpcional(f.categoria, listagemSimples)) {
+          if (f.situacao === 'PRESENTE') mapa[f.adolescenteId] = 'PRESENTE'
+          return
+        }
+        mapa[f.adolescenteId] = f.situacao
+      })
+      setParticipantes(lista)
+      setChamada(mapa)
+      setAlterado(false)
+    },
+    [listagemSimples],
+  )
 
   const carregarData = useCallback(
     async (dataSelecionada: string) => {
@@ -465,7 +480,7 @@ export default function FrequencyManagement({
             >
               Houve discipulado
               <Typography variant="caption" sx={{ opacity: 0.85 }}>
-                Registrar a presença dos adolescentes
+                {listagemSimples ? 'Registrar a presença dos discípulos' : 'Registrar a presença dos adolescentes'}
               </Typography>
             </Button>
             {podeRegistrarNaoRealizacao && (
@@ -613,6 +628,7 @@ export default function FrequencyManagement({
               <DiscipuladoLiderancaInfo
                 discipuladorNome={discipulado.discipuladorNome}
                 coLideres={discipulado.coLideres}
+                ocultarCoLideres={listagemSimples}
               />
             )}
             {!editavel && (
@@ -693,6 +709,7 @@ export default function FrequencyManagement({
                   gridTemplateColumns: { xs: '1fr', md: 'repeat(2,minmax(0,1fr))' },
                   gap: 1,
                   overflowX: 'hidden',
+                  pb: { xs: listagemSimples && editavel ? 14 : 0, sm: 0 },
                 }}
               >
                 {discipulos.map((a) => (
@@ -702,6 +719,7 @@ export default function FrequencyManagement({
                     presente={chamada[a.id] === 'PRESENTE'}
                     editavel={editavel}
                     opcional={false}
+                    ocultarCategoria={listagemSimples}
                     onToggle={() => definirSituacao(a.id, chamada[a.id] === 'PRESENTE' ? 'AUSENTE' : 'PRESENTE')}
                   />
                 ))}
@@ -709,60 +727,66 @@ export default function FrequencyManagement({
             ) : (
               <EmptyState
                 title="Nenhum discípulo vinculado"
-                description="Marque GOE ou visitantes abaixo, ou adicione um visitante para registrar a primeira presença."
+                description={
+                  listagemSimples
+                    ? 'Cadastre os discípulos deste grupo de formação para registrar a presença.'
+                    : 'Marque GOE ou visitantes abaixo, ou adicione um visitante para registrar a primeira presença.'
+                }
               />
             )}
 
-            <Stack spacing={1.25} sx={{ pb: { xs: editavel ? 14 : 0, sm: 0 } }}>
-              <Stack direction="row" alignItems="center" gap={1}>
-                <GroupsRounded color="action" />
-                <Typography variant="subtitle2" fontWeight={700}>
-                  GOE e visitantes
-                </Typography>
-              </Stack>
-              <Typography variant="body2" color="text.secondary">
-                Marque a presença somente quando esses adolescentes comparecerem. Quem não vier não entra como falta.
-              </Typography>
-              {editavel && (
-                <Button
-                  variant="text"
-                  startIcon={<PersonAddAltRounded />}
-                  onClick={() => {
-                    setVisitante({ ...visitanteVazio, consentimentoEm: hoje() })
-                    setFamiliaVisitante(familiaNaoConsta())
-                    setErro('')
-                  }}
-                  sx={{ alignSelf: 'flex-start' }}
-                >
-                  Adicionar visitante
-                </Button>
-              )}
-              {opcionais.length ? (
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: { xs: '1fr', md: 'repeat(2,minmax(0,1fr))' },
-                    gap: 1,
-                    overflowX: 'hidden',
-                  }}
-                >
-                  {opcionais.map((a) => (
-                    <CartaoFrequencia
-                      key={a.id}
-                      adolescente={a}
-                      presente={chamada[a.id] === 'PRESENTE'}
-                      editavel={editavel}
-                      opcional
-                      onToggle={() => definirSituacao(a.id, chamada[a.id] === 'PRESENTE' ? null : 'PRESENTE')}
-                    />
-                  ))}
-                </Box>
-              ) : (
+            {!listagemSimples && (
+              <Stack spacing={1.25} sx={{ pb: { xs: editavel ? 14 : 0, sm: 0 } }}>
+                <Stack direction="row" alignItems="center" gap={1}>
+                  <GroupsRounded color="action" />
+                  <Typography variant="subtitle2" fontWeight={700}>
+                    GOE e visitantes
+                  </Typography>
+                </Stack>
                 <Typography variant="body2" color="text.secondary">
-                  Nenhum GOE ou visitante cadastrado neste discipulado.
+                  Marque a presença somente quando esses adolescentes comparecerem. Quem não vier não entra como falta.
                 </Typography>
-              )}
-            </Stack>
+                {editavel && (
+                  <Button
+                    variant="text"
+                    startIcon={<PersonAddAltRounded />}
+                    onClick={() => {
+                      setVisitante({ ...visitanteVazio, consentimentoEm: hoje() })
+                      setFamiliaVisitante(familiaNaoConsta())
+                      setErro('')
+                    }}
+                    sx={{ alignSelf: 'flex-start' }}
+                  >
+                    Adicionar visitante
+                  </Button>
+                )}
+                {opcionais.length ? (
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: { xs: '1fr', md: 'repeat(2,minmax(0,1fr))' },
+                      gap: 1,
+                      overflowX: 'hidden',
+                    }}
+                  >
+                    {opcionais.map((a) => (
+                      <CartaoFrequencia
+                        key={a.id}
+                        adolescente={a}
+                        presente={chamada[a.id] === 'PRESENTE'}
+                        editavel={editavel}
+                        opcional
+                        onToggle={() => definirSituacao(a.id, chamada[a.id] === 'PRESENTE' ? null : 'PRESENTE')}
+                      />
+                    ))}
+                  </Box>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    Nenhum GOE ou visitante cadastrado neste discipulado.
+                  </Typography>
+                )}
+              </Stack>
+            )}
 
             {editavel && (
               <Paper
@@ -890,15 +914,17 @@ function CartaoFrequencia({
   presente,
   editavel,
   opcional,
+  ocultarCategoria = false,
   onToggle,
 }: {
   adolescente: ParticipanteChamada
   presente: boolean
   editavel: boolean
   opcional: boolean
+  ocultarCategoria?: boolean
   onToggle: () => void
 }) {
-  const rotulo = rotuloCategoria(adolescente.categoria)
+  const rotulo = ocultarCategoria ? undefined : rotuloCategoria(adolescente.categoria)
   const estado = presente ? 'presente' : opcional ? 'não marcado' : 'ausente'
   const alternar = () => {
     if (editavel) onToggle()
@@ -969,7 +995,8 @@ function CartaoFrequencia({
   )
 }
 
-function presencaOpcional(categoria?: CategoriaAdolescente) {
+function presencaOpcional(categoria?: CategoriaAdolescente, listagemSimples = false) {
+  if (listagemSimples) return false
   return categoria === 'VISITANTE' || categoria === 'DISCIPULO_GOE'
 }
 

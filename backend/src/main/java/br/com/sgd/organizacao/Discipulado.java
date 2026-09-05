@@ -39,8 +39,8 @@ public class Discipulado {
   @Column(name = "faixa_etaria", nullable = false, length = 20)
   private FaixaEtaria faixaEtaria;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "gerencia_id", nullable = false)
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "gerencia_id")
   private Gerencia gerencia;
 
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -57,6 +57,9 @@ public class Discipulado {
   @Column(nullable = false)
   private boolean ativo = true;
 
+  @Column(name = "em_formacao", nullable = false)
+  private boolean emFormacao = false;
+
   @Column(name = "criado_em", nullable = false)
   private Instant criadoEm = Instant.now();
 
@@ -67,17 +70,32 @@ public class Discipulado {
 
   public Discipulado(
       String nome, Sexo sexo, FaixaEtaria faixaEtaria, Gerencia gerencia, User discipulador) {
+    this(nome, sexo, faixaEtaria, gerencia, discipulador, false);
+  }
+
+  public Discipulado(
+      String nome,
+      Sexo sexo,
+      FaixaEtaria faixaEtaria,
+      Gerencia gerencia,
+      User discipulador,
+      boolean emFormacao) {
     this.nome = normalizarNome(nome);
     if (sexo == null) throw new IllegalArgumentException("O sexo do discipulado é obrigatório.");
     if (faixaEtaria == null)
       throw new IllegalArgumentException("A faixa etária do discipulado é obrigatória.");
-    if (gerencia == null)
-      throw new IllegalArgumentException("A gerência do discipulado é obrigatória.");
     if (discipulador == null) throw new IllegalArgumentException("O discipulador é obrigatório.");
+    if (emFormacao) {
+      if (gerencia != null)
+        throw new IllegalArgumentException("Discipulado de formação não possui gerência.");
+    } else if (gerencia == null) {
+      throw new IllegalArgumentException("A gerência do discipulado é obrigatória.");
+    }
     this.sexo = sexo;
     this.faixaEtaria = faixaEtaria;
     this.gerencia = gerencia;
     this.discipulador = discipulador;
+    this.emFormacao = emFormacao;
   }
 
   public Long getId() {
@@ -112,6 +130,10 @@ public class Discipulado {
     return ativo;
   }
 
+  public boolean isEmFormacao() {
+    return emFormacao;
+  }
+
   public Instant getCriadoEm() {
     return criadoEm;
   }
@@ -130,13 +152,19 @@ public class Discipulado {
     if (nome != null) this.nome = normalizarNome(nome);
     if (sexo != null) this.sexo = sexo;
     if (faixaEtaria != null) this.faixaEtaria = faixaEtaria;
-    if (gerencia != null) this.gerencia = gerencia;
+    if (emFormacao) {
+      if (gerencia != null)
+        throw new IllegalArgumentException("Discipulado de formação não possui gerência.");
+    } else if (gerencia != null) {
+      this.gerencia = gerencia;
+    }
     if (discipulador != null) this.discipulador = discipulador;
     if (ativo != null) this.ativo = ativo;
     this.atualizadoEm = Instant.now();
   }
 
   public void replaceCoLideres(Set<User> novosCoLideres) {
+    if (emFormacao) throw new FormacaoNaoPermiteCoLiderException();
     if (novosCoLideres == null)
       throw new IllegalArgumentException("A lista de co-líderes é obrigatória.");
     if (novosCoLideres.size() > MAX_CO_LIDERES) throw new CoLiderLimitExceededException();
@@ -152,4 +180,6 @@ public class Discipulado {
   }
 
   public static class CoLiderLimitExceededException extends RuntimeException {}
+
+  public static class FormacaoNaoPermiteCoLiderException extends RuntimeException {}
 }

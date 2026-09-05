@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import br.com.sgd.organizacao.Discipulado;
+import br.com.sgd.organizacao.Gerencia;
 import br.com.sgd.user.Role;
 import br.com.sgd.user.User;
 
@@ -12,15 +13,13 @@ import br.com.sgd.user.User;
 public class EscopoOrganizacionalService {
   public boolean podeLer(User usuario, Discipulado discipulado) {
     if (usuario.getPerfis().contains(Role.ADMIN)) return true;
-    if (usuario.getPerfis().contains(Role.GERENTE)
-        && discipulado.getGerencia().getGerente().getId().equals(usuario.getId())) return true;
+    if (gerenteDoDiscipulado(usuario, discipulado)) return true;
     return liderDoDiscipulado(usuario, discipulado);
   }
 
   public boolean podeAlterar(User usuario, Discipulado discipulado) {
     if (usuario.getPerfis().contains(Role.ADMIN)) return true;
-    if (usuario.getPerfis().contains(Role.GERENTE)
-        && discipulado.getGerencia().getGerente().getId().equals(usuario.getId())) return true;
+    if (gerenteDoDiscipulado(usuario, discipulado)) return true;
     return liderDoDiscipulado(usuario, discipulado);
   }
 
@@ -45,6 +44,13 @@ public class EscopoOrganizacionalService {
     if (!podeRegistrarFrequencia(usuario, discipulado))
       throw new ResponseStatusException(
           HttpStatus.FORBIDDEN, "O usuário não pode registrar frequência neste discipulado.");
+  }
+
+  private boolean gerenteDoDiscipulado(User usuario, Discipulado discipulado) {
+    Gerencia gerencia = discipulado.getGerencia();
+    return usuario.getPerfis().contains(Role.GERENTE)
+        && gerencia != null
+        && gerencia.getGerente().getId().equals(usuario.getId());
   }
 
   private boolean liderDoDiscipulado(User usuario, Discipulado discipulado) {

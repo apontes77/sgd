@@ -3,6 +3,7 @@ package br.com.sgd.organizacao;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -38,6 +39,7 @@ class DiscipuladoServiceTest {
   @BeforeEach
   void setUp() {
     service = new DiscipuladoService(discipulados, gerencias, usuarios);
+    lenient().when(discipulados.findAllByLiderancaUsuarioId(any())).thenReturn(List.of());
   }
 
   @Test
@@ -61,9 +63,83 @@ class DiscipuladoServiceTest {
   }
 
   @Test
+  void criaDiscipuladoDeFormacaoSemGerencia() {
+    when(discipulador.isAtivo()).thenReturn(true);
+    when(discipulador.getPerfis()).thenReturn(Set.of(Role.DISCIPULADOR));
+    when(usuarios.findById(2L)).thenReturn(Optional.of(discipulador));
+    when(discipulados.save(any(Discipulado.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    Discipulado criado =
+        service.create("Formação Norte", Sexo.FEMININO, FaixaEtaria.DE_15_MAIS, null, 2L, true);
+
+    assertThat(criado.isEmFormacao()).isTrue();
+    assertThat(criado.getGerencia()).isNull();
+    verify(gerencias, never()).findById(any());
+  }
+
+  @Test
+  void rejeitaFormacaoComGerenciaEPadraoSemGerencia() {
+    when(discipulador.isAtivo()).thenReturn(true);
+    when(discipulador.getPerfis()).thenReturn(Set.of(Role.DISCIPULADOR));
+    when(usuarios.findById(2L)).thenReturn(Optional.of(discipulador));
+
+    assertThatThrownBy(
+            () -> service.create("Formação", Sexo.MASCULINO, FaixaEtaria.DE_15_MAIS, 1L, 2L, true))
+        .isInstanceOf(DiscipuladoService.FormacaoInvalidaException.class);
+    assertThatThrownBy(
+            () -> service.create("Padrão", Sexo.MASCULINO, FaixaEtaria.DE_15_MAIS, null, 2L, false))
+        .isInstanceOf(DiscipuladoService.FormacaoInvalidaException.class);
+  }
+
+  @Test
+  void permiteAcumularDiscipuladoPadraoEDeFormacao() {
+    when(discipulador.isAtivo()).thenReturn(true);
+    when(discipulador.getId()).thenReturn(2L);
+    when(discipulador.getPerfis()).thenReturn(Set.of(Role.DISCIPULADOR));
+    when(usuarios.findById(2L)).thenReturn(Optional.of(discipulador));
+    Discipulado padrao = discipuladoExistente();
+    when(discipulados.findAllByLiderancaUsuarioId(2L)).thenReturn(List.of(padrao));
+    when(discipulados.save(any(Discipulado.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    Discipulado formacao =
+        service.create("Formação", Sexo.FEMININO, FaixaEtaria.DE_15_MAIS, null, 2L, true);
+
+    assertThat(formacao.isEmFormacao()).isTrue();
+  }
+
+  @Test
+  void rejeitaDoisDiscipuladosDoMesmoTipo() {
+    when(discipulador.isAtivo()).thenReturn(true);
+    when(discipulador.getId()).thenReturn(2L);
+    when(discipulador.getPerfis()).thenReturn(Set.of(Role.DISCIPULADOR));
+    when(usuarios.findById(2L)).thenReturn(Optional.of(discipulador));
+    Discipulado existente =
+        new Discipulado(
+            "Formação A", Sexo.FEMININO, FaixaEtaria.DE_15_MAIS, null, discipulador, true);
+    when(discipulados.findAllByLiderancaUsuarioId(2L)).thenReturn(List.of(existente));
+
+    assertThatThrownBy(
+            () ->
+                service.create("Formação B", Sexo.FEMININO, FaixaEtaria.DE_15_MAIS, null, 2L, true))
+        .isInstanceOf(DiscipuladoService.LiderancaDuplicadaException.class);
+    verify(discipulados, never()).save(any());
+  }
+
+  @Test
+  void rejeitaCoLiderEmDiscipuladoDeFormacao() {
+    Discipulado formacao =
+        new Discipulado(
+            "Formação", Sexo.FEMININO, FaixaEtaria.DE_15_MAIS, null, discipulador, true);
+    when(discipulados.findById(7L)).thenReturn(Optional.of(formacao));
+
+    assertThatThrownBy(() -> service.replaceCoLideres(7L, List.of(3L)))
+        .isInstanceOf(Discipulado.FormacaoNaoPermiteCoLiderException.class);
+  }
+
+  @Test
   void rejeitaDiscipuladorInativoOuSemPerfilDeDiscipulador() {
-    when(gerencia.isAtivo()).thenReturn(true);
-    when(gerencias.findById(1L)).thenReturn(Optional.of(gerencia));
     when(discipulador.isAtivo()).thenReturn(true);
     when(discipulador.getPerfis()).thenReturn(Set.of(Role.CO_LIDER));
     when(usuarios.findById(2L)).thenReturn(Optional.of(discipulador));

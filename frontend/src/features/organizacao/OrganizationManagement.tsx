@@ -46,7 +46,8 @@ import type {
   Usuario,
 } from './api'
 
-type Modal = { kind: 'gerencia'; item?: Gerencia } | { kind: 'discipulado'; item?: Discipulado } | undefined
+type Modal =
+  { kind: 'gerencia'; item?: Gerencia } | { kind: 'discipulado'; item?: Discipulado; formacao?: boolean } | undefined
 
 type ExclusaoGerencia = { tipo: 'aviso' | 'confirmar'; item: Gerencia }
 
@@ -152,13 +153,17 @@ export default function OrganizationManagement({
   )
 
   const discipuladosDaGerencia = useMemo(
-    () => (gerenciaSelecionada ? discipulados.filter((item) => item.gerenciaId === gerenciaSelecionada.id) : []),
+    () =>
+      gerenciaSelecionada
+        ? discipulados.filter((item) => item.gerenciaId === gerenciaSelecionada.id && !item.emFormacao)
+        : [],
     [discipulados, gerenciaSelecionada],
   )
 
   const discipuladosFiltrados = useMemo(
     () =>
       discipulados.filter((item) => {
+        if (item.emFormacao) return false
         if (filtroDiscipuladoSexo && item.sexo !== filtroDiscipuladoSexo) return false
         if (filtroDiscipuladoFaixa && item.faixaEtaria !== filtroDiscipuladoFaixa) return false
         const gerenciaNome = gerencias.find((gerencia) => gerencia.id === item.gerenciaId)?.nome
@@ -170,6 +175,16 @@ export default function OrganizationManagement({
         )
       }),
     [discipulados, filtroDiscipuladoBusca, filtroDiscipuladoFaixa, filtroDiscipuladoSexo, gerencias, users],
+  )
+
+  const discipuladosFormacaoFiltrados = useMemo(
+    () =>
+      discipulados.filter((item) => {
+        if (!item.emFormacao) return false
+        const discipuladorNome = item.discipuladorNome ?? userName(users, item.discipuladorId)
+        return nomeContem(item.nome, filtroDiscipuladoBusca) || nomeContem(discipuladorNome, filtroDiscipuladoBusca)
+      }),
+    [discipulados, filtroDiscipuladoBusca, users],
   )
 
   useEffect(() => {
@@ -222,12 +237,12 @@ export default function OrganizationManagement({
     setSaving(true)
     setError('')
     try {
-      const existingId = modal?.item?.id ?? pendingDiscipuladoId
+      const existingId = modal?.kind === 'discipulado' ? (modal.item?.id ?? pendingDiscipuladoId) : pendingDiscipuladoId
       const saved = existingId
         ? await organizationApi.atualizarDiscipulado(existingId, body)
         : await organizationApi.criarDiscipulado(body)
       setPendingDiscipuladoId(saved.id)
-      await organizationApi.definirCoLideres(saved.id, coLiderIds)
+      if (!body.emFormacao) await organizationApi.definirCoLideres(saved.id, coLiderIds)
       setPendingDiscipuladoId(undefined)
       setModal(undefined)
       await load()
@@ -271,9 +286,10 @@ export default function OrganizationManagement({
         nome: item.nome,
         sexo: item.sexo,
         faixaEtaria: item.faixaEtaria,
-        gerenciaId: item.gerenciaId,
+        gerenciaId: item.emFormacao ? null : item.gerenciaId,
         discipuladorId: item.discipuladorId,
         ativo: false,
+        emFormacao: item.emFormacao,
       })
       setPendingDeactivate(undefined)
       await load()
@@ -296,10 +312,10 @@ export default function OrganizationManagement({
             startIcon={<AddRounded />}
             onClick={() => {
               setPendingDiscipuladoId(undefined)
-              setModal(tab === 0 ? { kind: 'gerencia' } : { kind: 'discipulado' })
+              setModal(tab === 0 ? { kind: 'gerencia' } : { kind: 'discipulado', formacao: tab === 2 })
             }}
           >
-            {tab === 0 ? 'Nova gerência' : 'Novo discipulado'}
+            {tab === 0 ? 'Nova gerência' : tab === 2 ? 'Novo discipulado de formação' : 'Novo discipulado'}
           </Button>
         }
       />
@@ -316,6 +332,7 @@ export default function OrganizationManagement({
         >
           <Tab label="Gerências" />
           <Tab label="Discipulados" />
+          <Tab label="Discipulados de formação" />
         </Tabs>
         {loading ? (
           <Box sx={{ p: 3 }}>
@@ -364,7 +381,7 @@ export default function OrganizationManagement({
               )}
             </Box>
           </Stack>
-        ) : (
+        ) : tab === 1 ? (
           <Box>
             <OrganizacaoFiltros
               idPrefix="discipulado"
@@ -385,6 +402,29 @@ export default function OrganizationManagement({
               onDeactivate={setPendingDeactivate}
             />
           </Box>
+        ) : (
+          <Box>
+            <OrganizacaoFiltros
+              idPrefix="formacao"
+              filtroSexo={filtroDiscipuladoSexo}
+              filtroFaixa={filtroDiscipuladoFaixa}
+              filtroBusca={filtroDiscipuladoBusca}
+              onFiltroSexo={setFiltroDiscipuladoSexo}
+              onFiltroFaixa={setFiltroDiscipuladoFaixa}
+              onFiltroBusca={setFiltroDiscipuladoBusca}
+              somenteBusca
+            />
+            <DiscipuladoList
+              items={discipuladosFormacaoFiltrados}
+              users={users}
+              gerencias={gerencias}
+              formacao
+              emptyLabel="Nenhum discipulado de formação encontrado."
+              onAbrirAdolescentes={onAbrirAdolescentes}
+              onEdit={(item) => setModal({ kind: 'discipulado', item, formacao: true })}
+              onDeactivate={setPendingDeactivate}
+            />
+          </Box>
         )}
       </Paper>
       {modal?.kind === 'gerencia' && (
@@ -400,6 +440,7 @@ export default function OrganizationManagement({
       {modal?.kind === 'discipulado' && (
         <DiscipuladoDialog
           item={modal.item}
+          formacao={Boolean(modal.formacao || modal.item?.emFormacao)}
           gerencias={gerencias.filter((item) => item.ativo !== false)}
           discipuladores={discipuladores}
           coLideres={coLideres}
@@ -471,6 +512,7 @@ function OrganizacaoFiltros({
   onFiltroSexo,
   onFiltroFaixa,
   onFiltroBusca,
+  somenteBusca = false,
 }: {
   idPrefix: string
   filtroSexo: SexoOrganizacional | ''
@@ -479,6 +521,7 @@ function OrganizacaoFiltros({
   onFiltroSexo: (value: SexoOrganizacional | '') => void
   onFiltroFaixa: (value: FaixaEtaria | '') => void
   onFiltroBusca: (value: string) => void
+  somenteBusca?: boolean
 }) {
   return (
     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ p: 2 }}>
@@ -490,35 +533,39 @@ function OrganizacaoFiltros({
         onChange={(event) => onFiltroBusca(event.target.value)}
         sx={{ minWidth: { xs: '100%', sm: 240 }, flex: { sm: 1 } }}
       />
-      <FormControl size="small" sx={{ minWidth: 160 }}>
-        <InputLabel id={`${idPrefix}-filtro-sexo-label`}>Sexo</InputLabel>
-        <Select
-          labelId={`${idPrefix}-filtro-sexo-label`}
-          label="Sexo"
-          value={filtroSexo}
-          onChange={(event) => onFiltroSexo(event.target.value as SexoOrganizacional | '')}
-        >
-          <MenuItem value="">Todos</MenuItem>
-          <MenuItem value="MASCULINO">Masculino</MenuItem>
-          <MenuItem value="FEMININO">Feminino</MenuItem>
-        </Select>
-      </FormControl>
-      <FormControl size="small" sx={{ minWidth: 180 }}>
-        <InputLabel id={`${idPrefix}-filtro-faixa-label`}>Faixa etária</InputLabel>
-        <Select
-          labelId={`${idPrefix}-filtro-faixa-label`}
-          label="Faixa etária"
-          value={filtroFaixa}
-          onChange={(event) => onFiltroFaixa(event.target.value as FaixaEtaria | '')}
-        >
-          <MenuItem value="">Todas</MenuItem>
-          {faixasEtarias.map((faixa) => (
-            <MenuItem key={faixa} value={faixa}>
-              {faixaEtariaLabel[faixa]}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      {!somenteBusca && (
+        <>
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <InputLabel id={`${idPrefix}-filtro-sexo-label`}>Sexo</InputLabel>
+            <Select
+              labelId={`${idPrefix}-filtro-sexo-label`}
+              label="Sexo"
+              value={filtroSexo}
+              onChange={(event) => onFiltroSexo(event.target.value as SexoOrganizacional | '')}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              <MenuItem value="MASCULINO">Masculino</MenuItem>
+              <MenuItem value="FEMININO">Feminino</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 180 }}>
+            <InputLabel id={`${idPrefix}-filtro-faixa-label`}>Faixa etária</InputLabel>
+            <Select
+              labelId={`${idPrefix}-filtro-faixa-label`}
+              label="Faixa etária"
+              value={filtroFaixa}
+              onChange={(event) => onFiltroFaixa(event.target.value as FaixaEtaria | '')}
+            >
+              <MenuItem value="">Todas</MenuItem>
+              {faixasEtarias.map((faixa) => (
+                <MenuItem key={faixa} value={faixa}>
+                  {faixaEtariaLabel[faixa]}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </>
+      )}
     </Stack>
   )
 }
@@ -613,6 +660,7 @@ function DiscipuladoList({
   items,
   users,
   gerencias,
+  formacao = false,
   emptyLabel = 'Nenhum discipulado cadastrado.',
   onAbrirAdolescentes,
   onEdit,
@@ -621,6 +669,7 @@ function DiscipuladoList({
   items: Discipulado[]
   users: Usuario[]
   gerencias: Gerencia[]
+  formacao?: boolean
   emptyLabel?: string
   onAbrirAdolescentes?: (discipuladoId: number) => void
   onEdit: (item: Discipulado) => void
@@ -638,31 +687,44 @@ function DiscipuladoList({
               primary={
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
                   <span>{item.nome}</span>
-                  <Chip
-                    size="small"
-                    label={item.sexo === 'MASCULINO' ? 'Masculino' : 'Feminino'}
-                    color={item.ativo === false ? 'default' : 'primary'}
-                  />
-                  <Chip
-                    size="small"
-                    variant="outlined"
-                    label={faixaEtariaLabel[item.faixaEtaria] ?? item.faixaEtaria}
-                    color={item.ativo === false ? 'default' : 'primary'}
-                  />
+                  {!formacao && (
+                    <>
+                      <Chip
+                        size="small"
+                        label={item.sexo === 'MASCULINO' ? 'Masculino' : 'Feminino'}
+                        color={item.ativo === false ? 'default' : 'primary'}
+                      />
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        label={faixaEtariaLabel[item.faixaEtaria] ?? item.faixaEtaria}
+                        color={item.ativo === false ? 'default' : 'primary'}
+                      />
+                    </>
+                  )}
                 </Stack>
               }
               secondary={
                 <>
-                  <span>
-                    Gerência:{' '}
-                    {gerencias.find((gerencia) => gerencia.id === item.gerenciaId)?.nome ?? `#${item.gerenciaId}`}
-                  </span>
-                  <br />
+                  {!formacao && (
+                    <>
+                      <span>
+                        Gerência:{' '}
+                        {gerencias.find((gerencia) => gerencia.id === item.gerenciaId)?.nome ?? `#${item.gerenciaId}`}
+                      </span>
+                      <br />
+                    </>
+                  )}
                   <span>Discipulador: {userName(users, item.discipuladorId)}</span>
-                  <br />
-                  <span>
-                    Co-líderes: {item.coLideres.length ? item.coLideres.map((user) => user.nome).join(', ') : 'Nenhum'}
-                  </span>
+                  {!formacao && (
+                    <>
+                      <br />
+                      <span>
+                        Co-líderes:{' '}
+                        {item.coLideres.length ? item.coLideres.map((user) => user.nome).join(', ') : 'Nenhum'}
+                      </span>
+                    </>
+                  )}
                 </>
               }
               primaryTypographyProps={{ component: 'div', sx: { minWidth: 0 } }}
@@ -825,6 +887,7 @@ function GerenciaDialog({
 
 function DiscipuladoDialog({
   item,
+  formacao = false,
   gerencias,
   discipuladores,
   coLideres,
@@ -834,6 +897,7 @@ function DiscipuladoDialog({
   onSave,
 }: {
   item?: Discipulado
+  formacao?: boolean
   gerencias: Gerencia[]
   discipuladores: Usuario[]
   coLideres: Usuario[]
@@ -873,12 +937,13 @@ function DiscipuladoDialog({
       {
         nome,
         sexo,
-        faixaEtaria,
-        gerenciaId: Number(gerenciaId),
+        faixaEtaria: formacao ? 'DE_15_MAIS' : faixaEtaria,
+        gerenciaId: formacao ? null : Number(gerenciaId),
         discipuladorId: Number(discipuladorId),
         ativo: item?.ativo ?? true,
+        emFormacao: formacao,
       },
-      idsCoLideres(),
+      formacao ? [] : idsCoLideres(),
     )
   }
   function preencherProximoSlotCoLider(userId: number) {
@@ -891,7 +956,15 @@ function DiscipuladoDialog({
   return (
     <>
       <Dialog open onClose={onClose} fullWidth maxWidth="sm" PaperProps={{ component: 'form', onSubmit: submit }}>
-        <DialogTitle>{item ? 'Editar discipulado' : 'Novo discipulado'}</DialogTitle>
+        <DialogTitle>
+          {item
+            ? formacao
+              ? 'Editar discipulado de formação'
+              : 'Editar discipulado'
+            : formacao
+              ? 'Novo discipulado de formação'
+              : 'Novo discipulado'}
+        </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
             <TextField
@@ -914,36 +987,40 @@ function DiscipuladoDialog({
                 <MenuItem value="FEMININO">Feminino</MenuItem>
               </Select>
             </FormControl>
-            <FormControl required>
-              <InputLabel id="discipulado-faixa-label">Faixa etária</InputLabel>
-              <Select
-                labelId="discipulado-faixa-label"
-                label="Faixa etária"
-                value={faixaEtaria}
-                onChange={(event) => setFaixaEtaria(event.target.value as FaixaEtaria)}
-              >
-                {faixasEtarias.map((faixa) => (
-                  <MenuItem key={faixa} value={faixa}>
-                    {faixaEtariaLabel[faixa]}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControl required>
-              <InputLabel id="gerencia-label">Gerência</InputLabel>
-              <Select
-                labelId="gerencia-label"
-                label="Gerência"
-                value={gerenciaId}
-                onChange={(event) => setGerenciaId(event.target.value)}
-              >
-                {gerencias.map((gerencia) => (
-                  <MenuItem key={gerencia.id} value={String(gerencia.id)}>
-                    {gerencia.nome}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            {!formacao && (
+              <FormControl required>
+                <InputLabel id="discipulado-faixa-label">Faixa etária</InputLabel>
+                <Select
+                  labelId="discipulado-faixa-label"
+                  label="Faixa etária"
+                  value={faixaEtaria}
+                  onChange={(event) => setFaixaEtaria(event.target.value as FaixaEtaria)}
+                >
+                  {faixasEtarias.map((faixa) => (
+                    <MenuItem key={faixa} value={faixa}>
+                      {faixaEtariaLabel[faixa]}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+            {!formacao && (
+              <FormControl required>
+                <InputLabel id="gerencia-label">Gerência</InputLabel>
+                <Select
+                  labelId="gerencia-label"
+                  label="Gerência"
+                  value={gerenciaId}
+                  onChange={(event) => setGerenciaId(event.target.value)}
+                >
+                  {gerencias.map((gerencia) => (
+                    <MenuItem key={gerencia.id} value={String(gerencia.id)}>
+                      {gerencia.nome}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
             <UserSelect
               required
               label="Discipulador"
@@ -954,45 +1031,47 @@ function DiscipuladoDialog({
             <Button type="button" onClick={() => setCreatingRole('DISCIPULADOR')}>
               Cadastrar novo discipulador
             </Button>
-            <Box>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                Co-líderes (até 2)
-              </Typography>
-              {candidatosCoLider.length === 0 ? (
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  Não há usuários com o perfil de co-líder.
+            {!formacao && (
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  Co-líderes (até 2)
                 </Typography>
-              ) : (
-                <Stack spacing={2}>
-                  <UserSelect
-                    label="Co-líder"
-                    value={coLiderId}
-                    users={opcoesCoLider}
-                    fullWidth
-                    onChange={(value) => {
-                      setCoLiderId(value)
-                      if (!value) setCoLiderTreinamentoId('')
-                    }}
-                  />
-                  <UserSelect
-                    label="Co-líder em treinamento"
-                    value={coLiderTreinamentoId}
-                    users={opcoesTreinamento}
-                    disabled={!coLiderId}
-                    fullWidth
-                    onChange={setCoLiderTreinamentoId}
-                  />
-                </Stack>
-              )}
-              <Button
-                type="button"
-                disabled={idsCoLideres().length >= 2}
-                onClick={() => setCreatingRole('CO_LIDER')}
-                sx={{ mt: 1 }}
-              >
-                Cadastrar novo co-líder
-              </Button>
-            </Box>
+                {candidatosCoLider.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    Não há usuários com o perfil de co-líder.
+                  </Typography>
+                ) : (
+                  <Stack spacing={2}>
+                    <UserSelect
+                      label="Co-líder"
+                      value={coLiderId}
+                      users={opcoesCoLider}
+                      fullWidth
+                      onChange={(value) => {
+                        setCoLiderId(value)
+                        if (!value) setCoLiderTreinamentoId('')
+                      }}
+                    />
+                    <UserSelect
+                      label="Co-líder em treinamento"
+                      value={coLiderTreinamentoId}
+                      users={opcoesTreinamento}
+                      disabled={!coLiderId}
+                      fullWidth
+                      onChange={setCoLiderTreinamentoId}
+                    />
+                  </Stack>
+                )}
+                <Button
+                  type="button"
+                  disabled={idsCoLideres().length >= 2}
+                  onClick={() => setCreatingRole('CO_LIDER')}
+                  sx={{ mt: 1 }}
+                >
+                  Cadastrar novo co-líder
+                </Button>
+              </Box>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>

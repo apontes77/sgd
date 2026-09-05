@@ -211,6 +211,98 @@ describe('estrutura organizacional — co-líderes', () => {
     expect(onAbrirAdolescentes).toHaveBeenCalledWith(20)
   })
 
+  it('na aba de formação, cria discipulado sem gerência nem co-líder', async () => {
+    const user = userEvent.setup({ delay: null })
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input)
+      const method = init?.method ?? 'GET'
+      if (url.includes('/usuarios?')) return json(page([admin, discipulador, coLider, outroCoLider]))
+      if (url.includes('/gerencias?')) return json(page([gerencia]))
+      if (url.includes('/discipulados?') && method === 'GET') return json(page([]))
+      if (url.includes('/discipulados') && method === 'POST') {
+        return json(
+          {
+            id: 30,
+            nome: 'Formação Norte',
+            sexo: 'MASCULINO',
+            faixaEtaria: 'DE_15_MAIS',
+            gerenciaId: null,
+            discipuladorId: 2,
+            discipuladorNome: 'Andressa Eliza',
+            ativo: true,
+            emFormacao: true,
+            coLideres: [],
+          },
+          201,
+        )
+      }
+      throw new Error(`Requisição inesperada: ${method} ${url}`)
+    })
+
+    render(<OrganizationManagement />)
+    await user.click(await screen.findByRole('tab', { name: 'Discipulados de formação' }))
+    await user.click(screen.getByRole('button', { name: 'Novo discipulado de formação' }))
+    expect(await screen.findByRole('heading', { name: 'Novo discipulado de formação' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Gerência')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Faixa etária')).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: /^Co-líder$/ })).not.toBeInTheDocument()
+    await user.type(screen.getByRole('textbox', { name: /Nome/ }), 'Formação Norte')
+    await user.click(screen.getByRole('combobox', { name: /Discipulador/ }))
+    await user.click(await screen.findByRole('option', { name: /Andressa Eliza/ }))
+    await user.click(screen.getByRole('button', { name: 'Salvar' }))
+
+    await waitFor(() => {
+      const post = fetchMock.mock.calls.find(
+        ([requestUrl, requestInit]) => String(requestUrl).includes('/discipulados') && requestInit?.method === 'POST',
+      )
+      expect(post).toBeTruthy()
+      expect(JSON.parse(String(post?.[1]?.body))).toMatchObject({
+        nome: 'Formação Norte',
+        emFormacao: true,
+        gerenciaId: null,
+        discipuladorId: 2,
+      })
+    })
+    expect(
+      fetchMock.mock.calls.some(
+        ([requestUrl, requestInit]) => String(requestUrl).includes('/co-lideres') && requestInit?.method === 'PUT',
+      ),
+    ).toBe(false)
+  })
+
+  it('na aba de formação, lista grupos sem subdividir por sexo ou faixa etária', async () => {
+    const user = userEvent.setup()
+    const formacao: Discipulado = {
+      id: 30,
+      nome: 'Formação Norte',
+      sexo: 'FEMININO',
+      faixaEtaria: 'DE_15_MAIS',
+      gerenciaId: null,
+      discipuladorId: 2,
+      discipuladorNome: 'Andressa Eliza',
+      ativo: true,
+      emFormacao: true,
+      coLideres: [],
+    }
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/usuarios?')) return json(page([admin, discipulador, coLider, outroCoLider]))
+      if (url.includes('/gerencias?')) return json(page([gerencia]))
+      if (url.includes('/discipulados?')) return json(page([formacao]))
+      throw new Error(`Requisição inesperada: ${url}`)
+    })
+
+    render(<OrganizationManagement />)
+    await user.click(await screen.findByRole('tab', { name: 'Discipulados de formação' }))
+
+    expect(await screen.findByText('Formação Norte')).toBeInTheDocument()
+    expect(screen.getByLabelText('Busca')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Sexo')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Faixa etária')).not.toBeInTheDocument()
+    expect(screen.queryByText('Feminino')).not.toBeInTheDocument()
+    expect(screen.queryByText('15+')).not.toBeInTheDocument()
+  })
+
   it('ações de editar não abrem a listagem de adolescentes', async () => {
     const user = userEvent.setup()
     const onAbrirAdolescentes = vi.fn()

@@ -101,6 +101,7 @@ describe('navegação autenticada', () => {
     expect(screen.getByRole('tab', { name: 'Adolescentes' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Famílias' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Encontros e frequência' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Frequência em formação' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Chamada de liderança' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Relatórios' })).toBeInTheDocument()
   })
@@ -111,6 +112,8 @@ describe('navegação autenticada', () => {
     expect(await screen.findByRole('button', { name: 'Nova gerência' })).toBeInTheDocument()
     await userEvent.click(screen.getByRole('tab', { name: 'Discipulados' }))
     expect(screen.getByRole('button', { name: 'Novo discipulado' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('tab', { name: 'Discipulados de formação' }))
+    expect(screen.getByRole('button', { name: 'Novo discipulado de formação' })).toBeInTheDocument()
   })
 
   it('oferece visão executiva e painel gerencial ao GERENTE', () => {
@@ -122,6 +125,7 @@ describe('navegação autenticada', () => {
     expect(screen.getByRole('tab', { name: 'Famílias' })).toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Usuários' })).not.toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Frequência' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Frequência em formação' })).not.toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Relatórios' })).toBeInTheDocument()
   })
 
@@ -158,10 +162,12 @@ describe('navegação autenticada', () => {
     expect(screen.getByRole('tab', { name: 'Meu discipulado' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tab', { name: 'Famílias' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Registrar frequência' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Frequência em formação' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Relatórios' })).toBeInTheDocument()
     rerender(<AuthenticatedApp currentUser={user(['CO_LIDER'])} onLogout={() => undefined} />)
     expect(screen.getByRole('tab', { name: 'Meu discipulado' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Famílias' })).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Frequência em formação' })).not.toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Relatórios' })).toBeInTheDocument()
   })
 
@@ -283,6 +289,113 @@ describe('navegação autenticada', () => {
 
     expect(await screen.findByRole('button', { name: /^Houve discipulado/ })).toBeInTheDocument()
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/encontros?discipuladoId=2'))).toBe(true)
+  })
+
+  it('na frequência em formação, o ADMIN escolhe entre os discipulados de formação', async () => {
+    const operador = userEvent.setup({ delay: null })
+    const fetchMock = vi.mocked(globalThis.fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      const body = url.includes('/painel/admin')
+        ? emptyDashboard
+        : url.includes('/discipulados?') && url.includes('emFormacao=true')
+          ? {
+              ...emptyPage,
+              content: [
+                {
+                  id: 30,
+                  nome: 'Formação Norte',
+                  sexo: 'MASCULINO',
+                  gerenciaId: null,
+                  discipuladorId: 10,
+                  discipuladorNome: 'Maria Silva',
+                  ativo: true,
+                  emFormacao: true,
+                  coLideres: [],
+                },
+                {
+                  id: 31,
+                  nome: 'Formação Sul',
+                  sexo: 'FEMININO',
+                  gerenciaId: null,
+                  discipuladorId: 11,
+                  discipuladorNome: 'João Costa',
+                  ativo: true,
+                  emFormacao: true,
+                  coLideres: [],
+                },
+              ],
+              totalElements: 2,
+              totalPages: 1,
+            }
+          : url.includes('/encontros?discipuladoId=31')
+            ? []
+            : url.includes('/adolescentes?discipuladoId=31')
+              ? emptyPage
+              : url.includes('/encontros?discipuladoId=30')
+                ? []
+                : url.includes('/adolescentes?discipuladoId=30')
+                  ? emptyPage
+                  : emptyPage
+      return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    })
+
+    render(<AuthenticatedApp currentUser={user(['ADMIN'])} onLogout={() => undefined} />)
+    await operador.click(screen.getByRole('tab', { name: 'Frequência em formação' }))
+
+    const campo = await screen.findByPlaceholderText('Pesquisar discipulado ou discipulador')
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('emFormacao=true'))).toBe(true)
+    await operador.clear(campo)
+    await operador.type(campo, 'João')
+    await operador.click(await screen.findByRole('option', { name: /João Costa/ }))
+
+    expect(await screen.findByRole('button', { name: /^Houve discipulado/ })).toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/encontros?discipuladoId=31'))).toBe(true)
+  })
+
+  it('na frequência em formação, o discipulador vê só o próprio grupo', async () => {
+    const fetchMock = vi.mocked(globalThis.fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      const body = url.includes('/painel/lider')
+        ? emptyLeaderDashboard
+        : url.endsWith('/discipulados/liderados?ativo=true')
+          ? [
+              {
+                id: 7,
+                nome: 'Meu grupo',
+                sexo: 'MASCULINO',
+                gerenciaId: 1,
+                discipuladorId: 1,
+                ativo: true,
+                emFormacao: false,
+                coLideres: [],
+              },
+              {
+                id: 8,
+                nome: 'Minha formação',
+                sexo: 'FEMININO',
+                gerenciaId: null,
+                discipuladorId: 1,
+                ativo: true,
+                emFormacao: true,
+                coLideres: [],
+              },
+            ]
+          : url.includes('/encontros?discipuladoId=8')
+            ? []
+            : url.includes('/adolescentes?discipuladoId=8')
+              ? emptyPage
+              : emptyPage
+      return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    })
+    render(<AuthenticatedApp currentUser={user(['DISCIPULADOR'])} onLogout={() => undefined} />)
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Frequência em formação' }))
+
+    expect(await screen.findByRole('button', { name: /^Houve discipulado/ })).toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('Pesquisar discipulado ou discipulador')).not.toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/encontros?discipuladoId=8'))).toBe(true)
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/encontros?discipuladoId=7'))).toBe(false)
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/discipulados?'))).toBe(false)
   })
 
   it('co-líder também pode registrar que não houve discipulado', async () => {

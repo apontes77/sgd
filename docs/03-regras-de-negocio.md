@@ -8,9 +8,9 @@ RN002 - O histórico permanece associado ao discipulado original.
 
 RN003 - Um discipulado possui exatamente um discipulador ativo.
 
-RN004 - Um discipulado pode possuir até dois co-líderes.
+RN004 - Um discipulado padrão pode possuir até dois co-líderes. Discipulado de formação não possui co-líder.
 
-RN005 - Um discipulado possui apenas um gerente.
+RN005 - Um discipulado padrão possui exatamente uma gerência (e, portanto, um gerente). Discipulado de formação não se atrela a gerência.
 
 ---
 
@@ -30,9 +30,11 @@ RN011 - Após três horas do primeiro salvamento da chamada, somente administrad
 
 RN012 - O sistema deve registrar auditoria das alterações.
 
-RN046 - Encontros com data de sexta-feira podem ser lançados (criação do encontro, primeiro salvamento da chamada ou marcação de não realizado) até o domingo subsequente às 23:59:59 no fuso `America/Sao_Paulo`. Após esse prazo, discipulador e co-líder não podem mais lançar aquela sexta; administradores podem.
+RN046 - Encontros com data de sexta-feira de discipulados padrão podem ser lançados (criação do encontro, primeiro salvamento da chamada ou marcação de não realizado) até o domingo subsequente às 23:59:59 no fuso `America/Sao_Paulo`. Após esse prazo, discipulador e co-líder não podem mais lançar aquela sexta; administradores podem. Discipulados de formação não têm esse prazo.
 
-RN047 - Se, após o domingo subsequente, um discipulado ativo não tiver chamada salva nem encontro não realizado para aquela sexta, o sistema registra automaticamente o encontro como `NAO_REALIZADO` com a justificativa `discipulador ou colider não registraram a frequência` e marca `fechamento_automatico`. Encontros `REALIZADO` sem chamada salva são convertidos para essa situação.
+RN047 - Se, após o domingo subsequente, um discipulado padrão ativo não tiver chamada salva nem encontro não realizado para aquela sexta, o sistema registra automaticamente o encontro como `NAO_REALIZADO` com a justificativa `discipulador ou colider não registraram a frequência` e marca `fechamento_automatico`. Encontros `REALIZADO` sem chamada salva são convertidos para essa situação. Discipulados de formação não entram no fechamento automático.
+
+RN054 - Discipulado de formação (`emFormacao`) não possui gerência nem co-líder. Os membros não são subdivididos por categoria (`DISCIPULO`, `VISITANTE`, `DISCIPULO_GOE`) nem por faixa etária: cadastro, listagem e chamada são uma lista simples de discípulos. Somente `ADMIN` (qualquer grupo) e o discipulador titular lançam frequência desses grupos. O perfil `GERENTE` não ganha acesso extra.
 
 RN052 - Administradores podem reverter um encontro de fechamento automático (`fechamento_automatico`) de `NAO_REALIZADO` para `REALIZADO` e lançar ou alterar a chamada a qualquer momento. O flag permanece verdadeiro após a correção, para que o sistema continue informando que o discipulador/co-líder não lançou a frequência no prazo.
 
@@ -67,7 +69,7 @@ RN018 - O histórico de adolescentes inativados deve ser preservado.
 
 RN019 - Um adolescente torna-se inativado após três meses sem participação.
 
-RN041 - No cadastro, o adolescente recebe obrigatoriamente uma categoria: `DISCIPULO`, `VISITANTE` ou `DISCIPULO_GOE`. A categoria é independente da flag de ativo/inativo.
+RN041 - No cadastro, o adolescente recebe obrigatoriamente uma categoria: `DISCIPULO`, `VISITANTE` ou `DISCIPULO_GOE`. A categoria é independente da flag de ativo/inativo. Discipulado de formação aceita somente `DISCIPULO` (RN054).
 
 RN042 - A categoria `DISCIPULO_GOE` exige motivo do afastamento. Demais categorias não persistem motivo.
 
@@ -75,11 +77,11 @@ RN048 - Cada adolescente possui exatamente uma ficha de família obrigatória (1
 
 RN051 - Leitura e escrita da ficha de família estão disponíveis para todos os perfis no respectivo escopo: ADMIN (qualquer registro), GERENTE (própria gerência), DISCIPULADOR e CO_LIDER (próprio discipulado). No cadastro do adolescente, `familia` no body é persistida quando informada; se omitida, ADMIN/GERENTE recebem erro e discipulador/co-líder recebem automaticamente a ficha com “Não consta”.
 
-RN049 - A chamada obrigatória de um encontro inclui os adolescentes ativos na categoria `DISCIPULO`. Adolescentes ativos `VISITANTE` e `DISCIPULO_GOE` do discipulado aparecem em seção separada e só geram registro de frequência quando marcados como `PRESENTE`. Omitir ou desmarcar apaga o registro; não se lança `AUSENTE` para GOE ou visitante. Discípulos inativos com frequência já lançada no encontro continuam visíveis/editáveis como registro anterior.
+RN049 - A chamada obrigatória de um encontro inclui os adolescentes ativos na categoria `DISCIPULO`. Adolescentes ativos `VISITANTE` e `DISCIPULO_GOE` do discipulado aparecem em seção separada e só geram registro de frequência quando marcados como `PRESENTE`. Omitir ou desmarcar apaga o registro; não se lança `AUSENTE` para GOE ou visitante. Discípulos inativos com frequência já lançada no encontro continuam visíveis/editáveis como registro anterior. Em discipulado de formação a chamada é uma lista simples: todos os membros ativos entram como presença obrigatória (presente/ausente), sem seção de GOE ou visitantes (RN054).
 
-RN043 - Quando um adolescente ativo na categoria `DISCIPULO` acumula ao menos quatro faltas (`AUSENTE`) em encontros `REALIZADO` cuja data está nas últimas seis semanas (42 dias corridos, timezone America/Sao_Paulo), o sistema apresenta alerta de potencial Discípulo GOE. A mudança de categoria só ocorre mediante confirmação do usuário autorizado, com motivo informado.
+RN043 - Quando um adolescente ativo na categoria `DISCIPULO` acumula ao menos quatro faltas (`AUSENTE`) em encontros `REALIZADO` cuja data está nas últimas seis semanas (42 dias corridos, timezone America/Sao_Paulo), o sistema apresenta alerta de potencial Discípulo GOE. A mudança de categoria só ocorre mediante confirmação do usuário autorizado, com motivo informado. Discipulados de formação não geram esse alerta (RN054).
 
-RN044 - A listagem de adolescentes exibe três grupos (Discípulos, Visitantes e Discípulos GOE) por discipulado. Gerente e Administrador selecionam o discipulado; Discipulador e Co-líder visualizam o próprio grupo.
+RN044 - A listagem de adolescentes exibe três grupos (Discípulos, Visitantes e Discípulos GOE) por discipulado padrão. Gerente e Administrador selecionam o discipulado; Discipulador e Co-líder visualizam o próprio grupo. Discipulado de formação exibe uma listagem simples, sem essas subdivisões (RN054).
 
 RN045 - Quando um adolescente ativo na categoria `VISITANTE` acumula ao menos três presenças (`PRESENTE`) em encontros `REALIZADO` cuja data está na janela de cinco semanas (35 dias corridos inclusivos) a partir do `dataInicio` do primeiro vínculo com discipulado, o sistema promove automaticamente a categoria para `DISCIPULO` e registra auditoria. A promoção ocorre ao salvar a chamada, sem confirmação do usuário, e é unidirecional (não rebaixa se a presença for editada depois). Ignora inativos, anonimizados e categorias `DISCIPULO`/`DISCIPULO_GOE`.
 
@@ -111,7 +113,7 @@ RN027 - O sistema deve suportar login Microsoft.
 
 ## Liderança e indicadores
 
-RN028 - Um usuário pode exercer a função de discipulador ou co-líder em apenas um discipulado no total, mesmo que acumule ambos os perfis.
+RN028 - Um usuário pode exercer liderança em no máximo um discipulado padrão (como discipulador ou co-líder) e em no máximo um discipulado de formação (somente como discipulador). O acúmulo de um grupo padrão e um de formação é permitido.
 
 RN029 - Administradores e gerentes (somente dentro da própria gerência) podem transferir adolescentes entre discipulados. Discipulador e co-líder não transferem.
 
@@ -123,7 +125,7 @@ RN031 - O painel do discipulado considera somente o grupo no qual o usuário exe
 
 ## Relatório de frequência por período
 
-RN032 - Administradores consultam todos os discipulados; gerentes consultam os discipulados das suas gerências ativas; discipuladores e co-líderes consultam somente os grupos em que exercem liderança.
+RN032 - O relatório de frequência padrão (`emFormacao=false`) considera somente discipulados regulares: administradores consultam todos; gerentes consultam os das suas gerências ativas; discipuladores e co-líderes consultam os grupos em que exercem liderança. O relatório de frequência em formação (`emFormacao=true`) considera somente grupos de formação: administradores consultam todos; o discipulador titular consulta o próprio grupo. Gerentes e co-líderes não ganham escopo extra sobre formação (RN054).
 
 RN033 - Usuários com perfis acumulados recebem a união dos escopos de relatório, e o perfil de administrador equivale ao acesso total.
 

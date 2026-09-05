@@ -71,7 +71,7 @@ Fluxo alternativo:
 
 - Após o fechamento automático do prazo, somente o administrador modifica a frequência (reverte para realizado e preenche a chamada), mantendo o aviso de não lançamento pelo líder (RN052).
 - Somente o administrador pode excluir a frequência de uma data lançada por engano (RN053).
-- GOE e visitantes não entram como falta quando não marcados (RN049).
+- GOE e visitantes não entram como falta quando não marcados (RN049). Em discipulado de formação a chamada é uma lista simples, sem essa subdivisão (RN054).
 
 ---
 
@@ -99,10 +99,11 @@ Administrador, Gerente, Discipulador ou Co-líder
 Fluxo:
 
 1. Acessar “Relatórios”.
-2. Selecionar uma data inicial e uma data final, iguais para um único dia ou separadas por no máximo 12 meses.
-3. Consultar os encontros realizados dentro do escopo dos perfis acumulados do usuário.
-4. Visualizar uma página por registro, com frequência dos adolescentes quando houve discipulado, ou a justificativa quando não houve.
-5. Acionar “Imprimir / salvar como PDF” e usar o diálogo nativo do navegador.
+2. Escolher a aba “Frequência” (discipulados regulares) ou “Frequência em formação” (grupos de formação). Administradores e discipuladores veem as duas abas; gerentes e co-líderes consultam somente o relatório regular.
+3. Selecionar uma data inicial e uma data final, iguais para um único dia ou separadas por no máximo 12 meses.
+4. Consultar os encontros realizados dentro do escopo dos perfis acumulados do usuário e do tipo escolhido.
+5. Visualizar uma página por registro, com frequência dos adolescentes (ou discípulos, na formação) quando houve discipulado, ou a justificativa quando não houve.
+6. Acionar “Imprimir / salvar como PDF” e usar o diálogo nativo do navegador.
 
 Fluxos alternativos:
 

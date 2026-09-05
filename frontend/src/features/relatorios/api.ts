@@ -96,25 +96,25 @@ export interface RelatorioChamadaLiderancaPeriodoResponse {
 export type FiltroAtivoExport = 'ativos' | 'inativos' | 'todos'
 
 export const relatorioApi = {
-  consultarFrequenciaDiaria: (data: string, discipuladoId?: number) => {
-    const params = new URLSearchParams({ data })
+  consultarFrequenciaDiaria: (data: string, discipuladoId?: number, emFormacao = false) => {
+    const params = new URLSearchParams({ data, emFormacao: String(emFormacao) })
     if (discipuladoId != null) params.set('discipuladoId', String(discipuladoId))
     return request<RelatorioDiarioResponse>(`/relatorios/frequencia-diaria?${params}`)
   },
-  consultarFrequencia: (dataInicio: string, dataFim: string, discipuladoId?: number) => {
-    const params = new URLSearchParams({ dataInicio, dataFim })
+  consultarFrequencia: (dataInicio: string, dataFim: string, discipuladoId?: number, emFormacao = false) => {
+    const params = new URLSearchParams({ dataInicio, dataFim, emFormacao: String(emFormacao) })
     if (discipuladoId != null) params.set('discipuladoId', String(discipuladoId))
     return request<RelatorioPeriodoResponse>(`/relatorios/frequencia?${params}`)
   },
-  exportarFrequencia: async (dataInicio: string, dataFim: string, discipuladoId?: number) => {
-    const params = new URLSearchParams({ dataInicio, dataFim })
+  exportarFrequencia: async (dataInicio: string, dataFim: string, discipuladoId?: number, emFormacao = false) => {
+    const params = new URLSearchParams({ dataInicio, dataFim, emFormacao: String(emFormacao) })
     if (discipuladoId != null) params.set('discipuladoId', String(discipuladoId))
     const { blob, filename } = await requestBlob(`/relatorios/frequencia/export?${params}`)
     const url = URL.createObjectURL(blob)
     try {
       const link = document.createElement('a')
       link.href = url
-      link.download = filename ?? 'frequencias.xlsx'
+      link.download = filename ?? (emFormacao ? 'frequencias-formacao.xlsx' : 'frequencias.xlsx')
       document.body.appendChild(link)
       link.click()
       link.remove()

@@ -60,9 +60,10 @@ export const organizationApi = {
   atualizarGerencia: (id: number, body: GerenciaRequest) =>
     request<Gerencia>(`/gerencias/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   excluirGerencia: (id: number) => request<void>(`/gerencias/${id}`, { method: 'DELETE' }),
-  listarDiscipulados: (ativo?: boolean) => {
+  listarDiscipulados: (ativo?: boolean, emFormacao?: boolean) => {
     const params = new URLSearchParams({ page: '0', size: '100' })
     if (ativo !== undefined) params.set('ativo', String(ativo))
+    if (emFormacao !== undefined) params.set('emFormacao', String(emFormacao))
     return request<Pagina<Discipulado>>(`/discipulados?${params}`)
   },
   listarDiscipuladosLiderados: (ativo?: boolean) => {

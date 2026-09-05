@@ -34,8 +34,11 @@ de autorização.
 | EO-12 | Autorização | Usuário não autenticado tenta mutação organizacional. | `401`. |
 | EO-13 | Autorização | Usuário autenticado sem `ADMIN` tenta criar, alterar ou trocar co-líderes. | `403`. |
 | EO-14 | Inativação | `PATCH /discipulados/{id}` com `ativo=false`. | `200`; o recurso continua consultável quando solicitado com `ativo=false`, sem exclusão física. |
-| EO-15 | RN028 | Associar como discipulador um usuário que já lidera ou co-lidera outro discipulado. | `409`; nenhuma associação é modificada. |
-| EO-16 | RN028 | Associar como co-líder um usuário que já lidera ou co-lidera outro discipulado. | `409`; a lista anterior permanece inalterada. |
+| EO-15 | RN028 | Associar como discipulador um usuário que já lidera outro discipulado do mesmo tipo. | `409`; nenhuma associação é modificada. Acúmulo padrão + formação é permitido. |
+| EO-16 | RN028 | Associar como co-líder um usuário que já lidera ou co-lidera outro discipulado padrão. | `409`; a lista anterior permanece inalterada. |
+| EO-18 | RN054 | Criar discipulado com `emFormacao=true` sem `gerenciaId`. | `201`; `gerenciaId` nulo e `emFormacao` verdadeiro. |
+| EO-19 | RN054 | Definir co-líderes em discipulado de formação. | `409`. |
+| EO-20 | RN054 | Cadastrar membro de formação com categoria diferente de `DISCIPULO`. | `400`. |
 | EO-17 | RN015 | Usuário acumula `GERENTE + DISCIPULADOR` ou `ADMIN + DISCIPULADOR`. | Mantém os painéis do papel administrativo/gerencial e recebe também “Meu discipulado”. |
 
 ## Testes automatizados previstos

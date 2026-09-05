@@ -29,6 +29,7 @@ erDiagram
         string sexo
         bigint gerencia_id FK
         bigint discipulador_id FK
+        boolean em_formacao
     }
     DISCIPULADO_CO_LIDER {
         bigint discipulado_id PK, FK
@@ -101,7 +102,7 @@ erDiagram
     USUARIO ||--o{ USUARIO_PERFIL : possui
     PERFIL ||--o{ USUARIO_PERFIL : classifica
     USUARIO ||--o{ GERENCIA : gerencia
-    GERENCIA ||--o{ DISCIPULADO : agrupa
+    GERENCIA |o--o{ DISCIPULADO : agrupa
     USUARIO ||--o{ DISCIPULADO : discipula
     DISCIPULADO ||--o{ DISCIPULADO_CO_LIDER : possui
     USUARIO o|--o{ DISCIPULADO_CO_LIDER : atua_como
@@ -119,9 +120,9 @@ erDiagram
 ## Restrições do modelo
 
 - `PERFIL.codigo` aceita `ADMIN`, `GERENTE`, `DISCIPULADOR` e `CO_LIDER`. A tabela `USUARIO_PERFIL` permite que um usuário acumule papéis.
-- Cada `GERENCIA` possui um gerente e cada `DISCIPULADO` pertence a uma única gerência.
-- Cada `DISCIPULADO` possui exatamente um `discipulador_id` ativo. `DISCIPULADO_CO_LIDER` admite, no máximo, dois co-líderes por discipulado.
-- Um mesmo `USUARIO` pode aparecer como discipulador ou co-líder em somente um `DISCIPULADO` no total. A implementação deve validar as duas relações em conjunto, na mesma transação, e proteger o invariante contra associações concorrentes.
+- Cada `GERENCIA` possui um gerente. `DISCIPULADO` padrão pertence a uma única gerência; `DISCIPULADO` de formação (`em_formacao`) não possui `gerencia_id`.
+- Cada `DISCIPULADO` possui exatamente um `discipulador_id` ativo. `DISCIPULADO_CO_LIDER` admite, no máximo, dois co-líderes por discipulado padrão e nenhum em discipulado de formação.
+- Um mesmo `USUARIO` pode aparecer como discipulador ou co-líder em no máximo um `DISCIPULADO` padrão, e como discipulador em no máximo um `DISCIPULADO` de formação. O acúmulo de um grupo de cada tipo é permitido.
 - `VINCULO_ADOLESCENTE_DISCIPULADO` preserva o histórico. Deve existir somente um vínculo ativo por adolescente; o vínculo do período do encontro mantém o histórico associado ao discipulado correto.
 - Cada `ADOLESCENTE` possui exatamente uma `FICHA_FAMILIA` (1:1), com dois responsáveis (ordens 1 e 2).
 - Deve haver, no máximo, um `ENCONTRO` para cada par (`discipulado_id`, `data`) e uma `FREQUENCIA` para cada par (`encontro_id`, `adolescente_id`). O status do encontro é `REALIZADO` ou `NAO_REALIZADO`; encontros não realizados exigem `justificativa` e encontros realizados mantêm esse campo nulo. `observacao` é texto livre opcional (até 500 caracteres), independente da situação. `chamada_salva_em` registra o instante do primeiro salvamento da chamada e ancora a janela de edição de três horas. `fechamento_automatico` indica que o encontro veio do job de prazo (RN047) e permanece após correção administrativa (RN052).

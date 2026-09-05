@@ -70,6 +70,7 @@ public class AdolescenteService {
     FichaFamilia.DadosFicha ficha = fichaParaCadastro(usuario, familia);
     CategoriaAdolescente categoria =
         dados.categoria() == null ? CategoriaAdolescente.DISCIPULO : dados.categoria();
+    categoria = categoriaParaDiscipulado(discipulado, categoria);
     Adolescente adolescente =
         adolescentes.save(
             new Adolescente(cadastro(dados, categoria), dados.ativo() == null || dados.ativo()));
@@ -107,8 +108,18 @@ public class AdolescenteService {
     }
     CategoriaAdolescente categoria =
         dados.categoria() == null ? adolescente.getCategoria() : dados.categoria();
+    categoria = categoriaParaDiscipulado(atual.getDiscipulado(), categoria);
     adolescente.atualizar(cadastro(dados, categoria), dados.ativo());
     return adolescente;
+  }
+
+  private static CategoriaAdolescente categoriaParaDiscipulado(
+      Discipulado discipulado, CategoriaAdolescente categoria) {
+    if (!discipulado.isEmFormacao()) return categoria;
+    if (categoria != null && categoria != CategoriaAdolescente.DISCIPULO)
+      throw new IllegalArgumentException(
+          "Discipulado de formação não subdivide discípulos por categoria.");
+    return CategoriaAdolescente.DISCIPULO;
   }
 
   private static DadosCadastroAdolescente cadastro(
@@ -149,6 +160,7 @@ public class AdolescenteService {
       throw conflito("O adolescente já pertence ao discipulado informado.");
     if (dataInicio == null || !dataInicio.isAfter(atual.getDataInicio()))
       throw conflito("A transferência deve ocorrer após o início do vínculo atual.");
+    if (destino.isEmFormacao()) adolescente.assegurarCategoriaDiscipulo();
     atual.encerrar(dataInicio.minusDays(1));
     return vinculos.save(new VinculoAdolescenteDiscipulado(adolescente, destino, dataInicio));
   }
@@ -176,6 +188,7 @@ public class AdolescenteService {
   public List<AlertaGoe> listarAlertasGoe(User usuario, long discipuladoId) {
     Discipulado discipulado = discipuladoAtivoOuInativo(discipuladoId);
     escopo.exigirLeitura(usuario, discipulado);
+    if (discipulado.isEmFormacao()) return List.of();
     LocalDate fim = LocalDate.now(clock.withZone(ZONA_NEGOCIO));
     LocalDate inicio = fim.minusDays(JANELA_GOE_DIAS - 1L);
     return frequencias
@@ -284,7 +297,7 @@ public class AdolescenteService {
 
   private Discipulado discipuladoAtivo(long id) {
     Discipulado d = discipuladoAtivoOuInativo(id);
-    if (!d.isAtivo() || !d.getGerencia().isAtivo())
+    if (!d.isAtivo() || (d.getGerencia() != null && !d.getGerencia().isAtivo()))
       throw conflito("O discipulado informado está inativo.");
     return d;
   }

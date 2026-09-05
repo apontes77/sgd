@@ -29,8 +29,16 @@ type OpcaoDiscipulado = Discipulado | { id: 0; nome: string }
 
 const OPCAO_TODOS: OpcaoDiscipulado = { id: 0, nome: 'Todos' }
 
-export default function FrequencyReport({ currentUser }: { currentUser: Usuario }) {
-  const podeFiltrarDiscipulado = currentUser.perfis.includes('GERENTE') || currentUser.perfis.includes('ADMIN')
+export default function FrequencyReport({
+  currentUser,
+  emFormacao = false,
+}: {
+  currentUser: Usuario
+  emFormacao?: boolean
+}) {
+  const podeFiltrarDiscipulado =
+    currentUser.perfis.includes('ADMIN') || (!emFormacao && currentUser.perfis.includes('GERENTE'))
+  const impressaoId = emFormacao ? 'relatorio-frequencia-formacao-impressao' : 'relatorio-frequencia-impressao'
   const hoje = dataAtual()
   const [dataInicio, setDataInicio] = useState(hoje)
   const [dataFim, setDataFim] = useState(hoje)
@@ -51,7 +59,7 @@ export default function FrequencyReport({ currentUser }: { currentUser: Usuario 
     if (!podeFiltrarDiscipulado) return
     let ativo = true
     void organizationApi
-      .listarDiscipulados()
+      .listarDiscipulados(undefined, emFormacao)
       .then((pagina) => {
         if (ativo) setDiscipulados(pagina.content)
       })
@@ -61,7 +69,7 @@ export default function FrequencyReport({ currentUser }: { currentUser: Usuario 
     return () => {
       ativo = false
     }
-  }, [podeFiltrarDiscipulado])
+  }, [podeFiltrarDiscipulado, emFormacao])
 
   async function consultar(event: FormEvent) {
     event.preventDefault()
@@ -79,7 +87,7 @@ export default function FrequencyReport({ currentUser }: { currentUser: Usuario 
     setCarregando(true)
     try {
       const filtroDiscipulado = discipuladoId || undefined
-      setDados(await relatorioApi.consultarFrequencia(dataInicio, dataFim, filtroDiscipulado))
+      setDados(await relatorioApi.consultarFrequencia(dataInicio, dataFim, filtroDiscipulado, emFormacao))
     } catch (e) {
       setDados(undefined)
       setErro(e instanceof Error ? e.message : 'Não foi possível consultar o relatório.')
@@ -100,7 +108,7 @@ export default function FrequencyReport({ currentUser }: { currentUser: Usuario 
     }
     setExportando(true)
     try {
-      await relatorioApi.exportarFrequencia(dataInicio, dataFim, discipuladoId || undefined)
+      await relatorioApi.exportarFrequencia(dataInicio, dataFim, discipuladoId || undefined, emFormacao)
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não foi possível exportar o relatório.')
     } finally {
@@ -114,8 +122,8 @@ export default function FrequencyReport({ currentUser }: { currentUser: Usuario 
           '@page': { size: 'A4 portrait', margin: '12mm' },
           '@media print': {
             'body *': { visibility: 'hidden' },
-            '#relatorio-frequencia-impressao, #relatorio-frequencia-impressao *': { visibility: 'visible' },
-            '#relatorio-frequencia-impressao': { position: 'absolute', inset: 0, width: '100%' },
+            [`#${impressaoId}, #${impressaoId} *`]: { visibility: 'visible' },
+            [`#${impressaoId}`]: { position: 'absolute', inset: 0, width: '100%' },
             '.relatorio-frequencia-pagina': {
               boxShadow: 'none !important',
               margin: 0,
@@ -131,8 +139,12 @@ export default function FrequencyReport({ currentUser }: { currentUser: Usuario 
         }}
       />
       <PageHeader
-        title="Relatórios de frequência"
-        description="Consulte o histórico de encontros realizados e de dias em que o discipulado não ocorreu."
+        title={emFormacao ? 'Relatórios de frequência em formação' : 'Relatórios de frequência'}
+        description={
+          emFormacao
+            ? 'Consulte o histórico de encontros dos discipulados de formação.'
+            : 'Consulte o histórico de encontros realizados e de dias em que o discipulado não ocorreu.'
+        }
         eyebrow="Análises"
       />
       <FilterToolbar component="form" onSubmit={consultar}>
@@ -217,14 +229,15 @@ export default function FrequencyReport({ currentUser }: { currentUser: Usuario 
         </Alert>
       )}
       {dados?.relatorios.length ? (
-        <Box id="relatorio-frequencia-impressao">
+        <Box id={impressaoId}>
           <Stack spacing={3}>
             {dados.relatorios.map((item) => (
               <PaginaRelatorio
                 key={item.encontroId}
                 item={item}
                 emitidoEm={dados.emitidoEm}
-                listaNominal={dados.dataInicio === dados.dataFim}
+                listaNominal={emFormacao || dados.dataInicio === dados.dataFim}
+                emFormacao={emFormacao}
               />
             ))}
           </Stack>
@@ -238,13 +251,18 @@ function PaginaRelatorio({
   item,
   emitidoEm,
   listaNominal,
+  emFormacao,
 }: {
   item: RelatorioEncontro
   emitidoEm: string
   listaNominal: boolean
+  emFormacao: boolean
 }) {
   const coLideres = item.coLideres.map((l) => l.nome).join(', ') || 'Nenhum'
   const naoRealizado = item.situacao === 'NAO_REALIZADO'
+  let titulo = 'Relatório de frequência'
+  if (naoRealizado) titulo = 'Registro de ausência do discipulado'
+  else if (emFormacao) titulo = 'Relatório de frequência em formação'
   return (
     <Paper
       className="relatorio-frequencia-pagina"
@@ -261,30 +279,34 @@ function PaginaRelatorio({
         <Box textAlign="center">
           <Typography variant="overline">SGD — Sistema de Gerenciamento de Discipulados</Typography>
           <Typography component="h2" variant="h4">
-            {naoRealizado ? 'Registro de ausência do discipulado' : 'Relatório de frequência'}
+            {titulo}
           </Typography>
         </Box>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1 }}>
           <Typography>
             <strong>Data:</strong> {formatarData(item.data)}
           </Typography>
-          <Typography>
-            <strong>Gerência:</strong> {item.gerencia.nome}
-          </Typography>
+          {!emFormacao && (
+            <Typography>
+              <strong>Gerência:</strong> {item.gerencia.nome}
+            </Typography>
+          )}
           <Typography>
             <strong>Discipulado:</strong> {item.discipulado.nome}
           </Typography>
           <Typography>
             <strong>Discipulador:</strong> {item.discipulador.nome}
           </Typography>
-          <Typography>
-            <strong>Co-líderes:</strong> {coLideres}
-          </Typography>
+          {!emFormacao && (
+            <Typography>
+              <strong>Co-líderes:</strong> {coLideres}
+            </Typography>
+          )}
           <Typography>
             <strong>Situação:</strong> {naoRealizado ? 'Não houve discipulado' : 'Houve discipulado'}
           </Typography>
         </Box>
-        {item.fechamentoAutomatico && <Alert severity="warning">{AVISO_LANCAMENTO_PENDENTE}</Alert>}
+        {!emFormacao && item.fechamentoAutomatico && <Alert severity="warning">{AVISO_LANCAMENTO_PENDENTE}</Alert>}
         {naoRealizado ? (
           <Alert severity="warning">
             <strong>Justificativa:</strong> {item.justificativa || 'Não informada'}
@@ -294,7 +316,7 @@ function PaginaRelatorio({
             <Table size="small" aria-label={`Frequência do ${item.discipulado.nome} em ${formatarData(item.data)}`}>
               <TableHead>
                 <TableRow>
-                  <TableCell>Adolescente</TableCell>
+                  <TableCell>{emFormacao ? 'Discípulo' : 'Adolescente'}</TableCell>
                   <TableCell>Telefone</TableCell>
                   <TableCell>Data do encontro</TableCell>
                   <TableCell align="right">Frequência</TableCell>
@@ -338,7 +360,11 @@ function PaginaRelatorio({
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(3,1fr)', md: 'repeat(6,1fr)' },
+              gridTemplateColumns: {
+                xs: '1fr 1fr',
+                sm: 'repeat(3,1fr)',
+                md: emFormacao ? 'repeat(4,1fr)' : 'repeat(6,1fr)',
+              },
               gap: 1,
               p: 2,
               border: '1px solid',
@@ -349,8 +375,8 @@ function PaginaRelatorio({
             <Resumo label="Presentes" valor={item.resumo.presentes} />
             <Resumo label="Ausentes" valor={item.resumo.ausentes} />
             <Resumo label="Participantes" valor={item.resumo.participantes} />
-            <Resumo label="Visitantes" valor={item.visitantes} />
-            <Resumo label="GOE" valor={item.goe} />
+            {!emFormacao && <Resumo label="Visitantes" valor={item.visitantes} />}
+            {!emFormacao && <Resumo label="GOE" valor={item.goe} />}
             <Resumo label="Presença" valor={percentual(item.resumo.percentualPresenca)} />
           </Box>
         )}

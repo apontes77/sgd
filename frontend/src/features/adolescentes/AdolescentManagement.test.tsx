@@ -153,4 +153,63 @@ describe('gestão de discípulos', () => {
     expect(String(listagem?.[0])).toContain('discipuladoId=1')
     expect(String(listagem?.[0])).toContain('ativo=true')
   })
+
+  it('em discipulado de formação, lista discípulos sem subdividir por categoria', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/discipulados')) {
+        return new Response(
+          JSON.stringify({
+            ...emptyPage,
+            content: [
+              {
+                id: 1,
+                nome: 'Formação Norte',
+                discipuladorNome: 'Maria',
+                emFormacao: true,
+                ativo: true,
+                coLideres: [],
+              },
+            ],
+            totalElements: 1,
+            totalPages: 1,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        )
+      }
+      if (url.includes('/adolescentes?')) {
+        return new Response(
+          JSON.stringify({
+            content: [
+              {
+                id: 10,
+                nome: 'Carla',
+                dataNascimento: '1990-01-01',
+                categoria: 'DISCIPULO',
+                anonimizado: false,
+                discipuladoId: 1,
+                ativo: true,
+              },
+            ],
+            page: 0,
+            size: 100,
+            totalElements: 1,
+            totalPages: 1,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        )
+      }
+      throw new Error(`Requisição inesperada: ${url}`)
+    })
+
+    render(<AdolescentManagement discipuladoInicial={1} />)
+
+    expect(await screen.findByText('Carla')).toBeInTheDocument()
+    expect(screen.getByText('1 discípulo')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Discípulos' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Visitantes' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Discípulos GOE' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Idade do discipulado')).not.toBeInTheDocument()
+    expect(screen.queryByText('Co-líder:')).not.toBeInTheDocument()
+  })
 })

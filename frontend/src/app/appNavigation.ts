@@ -8,6 +8,7 @@ export const APP_SECTIONS = [
   'adolescentes',
   'familias',
   'frequencia',
+  'frequencia-formacao',
   'chamada-lideranca',
   'relatorios',
 ] as const

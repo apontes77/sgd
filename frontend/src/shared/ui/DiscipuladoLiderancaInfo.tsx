@@ -19,6 +19,7 @@ export interface DiscipuladoLiderancaInfoProps {
   coLideres?: LiderancaPessoa[] | null
   faixaEtaria?: FaixaEtaria | null
   showFaixaEtaria?: boolean
+  ocultarCoLideres?: boolean
 }
 
 function textoOuTraco(valor?: string | null) {
@@ -32,6 +33,7 @@ export function DiscipuladoLiderancaInfo({
   coLideres = [],
   faixaEtaria,
   showFaixaEtaria = false,
+  ocultarCoLideres = false,
 }: DiscipuladoLiderancaInfoProps) {
   const lista = coLideres ?? []
   const coLider = lista[0]?.nome
@@ -47,8 +49,12 @@ export function DiscipuladoLiderancaInfo({
       }}
     >
       <Linha label="Discipulador" valor={textoOuTraco(discipuladorNome)} />
-      <Linha label="Co-líder" valor={textoOuTraco(coLider)} />
-      <Linha label="Co-líder em treinamento" valor={textoOuTraco(coLiderTreinamento)} />
+      {!ocultarCoLideres && (
+        <>
+          <Linha label="Co-líder" valor={textoOuTraco(coLider)} />
+          <Linha label="Co-líder em treinamento" valor={textoOuTraco(coLiderTreinamento)} />
+        </>
+      )}
       {showFaixaEtaria && <Linha label="Idade do discipulado" valor={textoOuTraco(faixa)} />}
     </Stack>
   )

@@ -190,6 +190,83 @@ describe('registro de frequência', () => {
     expect(screen.queryByRole('button', { name: /Houve discipulado/i })).not.toBeInTheDocument()
   })
 
+  it('em discipulado de formação, permite lançar após o prazo da sexta', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/adolescentes?'))
+        return json({ content: [], page: 0, size: 100, totalElements: 0, totalPages: 0 })
+      if (url.includes('/encontros?')) return json([])
+      throw new Error(`Requisição inesperada: ${url}`)
+    })
+
+    render(
+      <FrequencyManagement
+        discipuladoId={1}
+        discipulado={{
+          id: 1,
+          nome: 'Formação',
+          sexo: 'FEMININO',
+          faixaEtaria: 'DE_15_MAIS',
+          gerenciaId: null,
+          discipuladorId: 2,
+          emFormacao: true,
+          coLideres: [],
+        }}
+      />,
+    )
+    const campo = await screen.findByLabelText('Data')
+    fireEvent.change(campo, { target: { value: '2026-07-17' } })
+
+    expect(await screen.findByRole('button', { name: /^Houve discipulado/ })).toBeInTheDocument()
+    expect(screen.queryByText(/prazo para lançar a frequência desta sexta encerrou/i)).not.toBeInTheDocument()
+  })
+
+  it('em discipulado de formação, lista todos na chamada sem seção de GOE e visitantes', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input)
+      const method = init?.method ?? 'GET'
+      if (url.includes('/adolescentes?'))
+        return json({
+          content: [
+            { id: 1, nome: 'Carla', categoria: 'DISCIPULO' },
+            { id: 2, nome: 'Goe', categoria: 'DISCIPULO_GOE' },
+          ],
+          page: 0,
+          size: 100,
+          totalElements: 2,
+          totalPages: 1,
+        })
+      if (url.endsWith('/encontros') && method === 'POST') return json(encontro, 201)
+      if (url.includes('/encontros?')) return json([])
+      if (url.endsWith('/encontros/10/frequencias') && method === 'GET') return json([])
+      throw new Error(`Requisição inesperada: ${method} ${url}`)
+    })
+
+    const user = userEvent.setup({ delay: null })
+    render(
+      <FrequencyManagement
+        discipuladoId={1}
+        discipulado={{
+          id: 1,
+          nome: 'Formação',
+          sexo: 'FEMININO',
+          faixaEtaria: 'DE_15_MAIS',
+          gerenciaId: null,
+          discipuladorId: 2,
+          emFormacao: true,
+          coLideres: [],
+        }}
+      />,
+    )
+    await user.click(await screen.findByRole('button', { name: /Houve discipulado/i }))
+
+    expect(await screen.findByRole('button', { name: /Carla: ausente/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Goe: ausente/i })).toBeInTheDocument()
+    expect(screen.queryByText('GOE e visitantes')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Adicionar visitante/i })).not.toBeInTheDocument()
+    expect(screen.queryByText('Co-líder:')).not.toBeInTheDocument()
+  })
+
   it('sem permissão de não realização, oculta "Não houve discipulado"', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input)

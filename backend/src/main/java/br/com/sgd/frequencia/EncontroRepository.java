@@ -24,6 +24,7 @@ public interface EncontroRepository extends JpaRepository<Encontro, Long> {
       """
       select d from Discipulado d
       where d.ativo = true
+        and d.emFormacao = false
         and not exists (
           select 1 from Encontro e
           where e.discipulado = d

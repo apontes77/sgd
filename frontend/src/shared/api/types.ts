@@ -56,10 +56,11 @@ export interface Discipulado {
   nome: string
   sexo: SexoDiscipulado
   faixaEtaria: FaixaEtaria
-  gerenciaId: number
+  gerenciaId?: number | null
   discipuladorId: number
   discipuladorNome?: string
   ativo?: boolean
+  emFormacao?: boolean
   coLideres: Usuario[]
 }
 
@@ -71,7 +72,8 @@ export interface DiscipuladoRequest {
   nome: string
   sexo: SexoDiscipulado
   faixaEtaria: FaixaEtaria
-  gerenciaId: number
+  gerenciaId?: number | null
   discipuladorId: number
   ativo?: boolean
+  emFormacao?: boolean
 }

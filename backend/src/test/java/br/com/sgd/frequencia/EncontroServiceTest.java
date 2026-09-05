@@ -268,6 +268,32 @@ class EncontroServiceTest {
   }
 
   @Test
+  void permiteCriacaoAposPrazoDaSextaQuandoDiscipuladoEstaEmFormacao() throws Exception {
+    EncontroService atrasado =
+        new EncontroService(
+            encontros,
+            frequencias,
+            visitantes,
+            vinculos,
+            discipulados,
+            escopo,
+            auditoria,
+            json,
+            Clock.fixed(Instant.parse("2026-07-20T03:00:00Z"), ZoneOffset.UTC));
+    when(discipulados.findById(10L)).thenReturn(Optional.of(discipulado));
+    when(discipulado.isAtivo()).thenReturn(true);
+    when(discipulado.isEmFormacao()).thenReturn(true);
+    when(encontros.save(any())).thenAnswer(i -> withId(i.getArgument(0), 1L));
+    when(json.writeValueAsString(any())).thenReturn("{}");
+
+    Encontro criado =
+        atrasado.criar(
+            usuario(Role.DISCIPULADOR), 10L, LocalDate.of(2026, 7, 17), SituacaoEncontro.REALIZADO);
+
+    assertThat(criado.getSituacao()).isEqualTo(SituacaoEncontro.REALIZADO);
+  }
+
+  @Test
   void adminReverteFechamentoAutomaticoPreservandoFlag() throws Exception {
     Encontro fechado =
         new Encontro(
