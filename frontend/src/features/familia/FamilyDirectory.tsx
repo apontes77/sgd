@@ -25,8 +25,10 @@ import {
   type FamiliaInput,
   familiaNaoConsta,
   type FamiliaResumo,
+  SITUACAO_FICHA_LABEL,
   SITUACAO_IGREJA_LABEL,
   SITUACAO_PAIS_LABEL,
+  type SituacaoFichaFamilia,
   type SituacaoIgrejaFamilia,
   type SituacaoPaisFamilia,
 } from '@/features/familia/api'
@@ -37,6 +39,7 @@ import { DataTableCard, EmptyState, FilterToolbar, PageHeader, SectionCard } fro
 const PAGE_SIZE = 20
 const SITUACOES_IGREJA = Object.keys(SITUACAO_IGREJA_LABEL) as SituacaoIgrejaFamilia[]
 const SITUACOES_PAIS = Object.keys(SITUACAO_PAIS_LABEL) as SituacaoPaisFamilia[]
+const SITUACOES_FICHA = Object.keys(SITUACAO_FICHA_LABEL) as SituacaoFichaFamilia[]
 
 const paginaVazia: Pagina<FamiliaResumo> = {
   content: [],
@@ -52,6 +55,7 @@ export default function FamilyDirectory() {
   const [buscaAplicada, setBuscaAplicada] = useState('')
   const [situacaoIgreja, setSituacaoIgreja] = useState<SituacaoIgrejaFamilia | ''>('')
   const [situacaoPais, setSituacaoPais] = useState<SituacaoPaisFamilia | ''>('')
+  const [situacaoFicha, setSituacaoFicha] = useState<SituacaoFichaFamilia | ''>('')
   const [erro, setErro] = useState('')
   const [sucesso, setSucesso] = useState('')
   const [salvando, setSalvando] = useState(false)
@@ -69,6 +73,7 @@ export default function FamilyDirectory() {
             busca: buscaAplicada,
             situacaoIgreja,
             situacaoPais,
+            situacaoFicha,
           }),
         )
       } catch (e) {
@@ -82,7 +87,7 @@ export default function FamilyDirectory() {
         setCarregando(false)
       }
     },
-    [buscaAplicada, situacaoIgreja, situacaoPais],
+    [buscaAplicada, situacaoIgreja, situacaoPais, situacaoFicha],
   )
 
   useEffect(() => {
@@ -180,6 +185,20 @@ export default function FamilyDirectory() {
           />
           <TextField
             select
+            label="Situação da ficha"
+            value={situacaoFicha}
+            onChange={(e) => setSituacaoFicha(e.target.value as SituacaoFichaFamilia | '')}
+            sx={{ minWidth: { xs: '100%', sm: 180 } }}
+          >
+            <MenuItem value="">Todas</MenuItem>
+            {SITUACOES_FICHA.map((valor) => (
+              <MenuItem key={valor} value={valor}>
+                {SITUACAO_FICHA_LABEL[valor]}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
             label="Situação na igreja"
             value={situacaoIgreja}
             onChange={(e) => setSituacaoIgreja(e.target.value as SituacaoIgrejaFamilia | '')}
@@ -237,7 +256,7 @@ export default function FamilyDirectory() {
                     </Typography>
                   </TableCell>
                   <TableCell>{item.discipuladoNome}</TableCell>
-                  <TableCell>{item.situacaoFicha === 'PREENCHIDA' ? 'Preenchida' : 'Não consta'}</TableCell>
+                  <TableCell>{SITUACAO_FICHA_LABEL[item.situacaoFicha]}</TableCell>
                   <TableCell>{SITUACAO_IGREJA_LABEL[item.situacaoIgreja]}</TableCell>
                   <TableCell>{SITUACAO_PAIS_LABEL[item.situacaoPais]}</TableCell>
                   <TableCell align="right">

@@ -41,6 +41,18 @@ public interface FichaFamiliaRepository extends JpaRepository<FichaFamilia, Long
          ))
         and (:situacaoIgreja is null or f.situacao.situacaoIgreja = :situacaoIgreja)
         and (:situacaoPais is null or f.situacao.situacaoPais = :situacaoPais)
+        and (
+          :situacaoFicha is null
+          or :situacaoFicha
+            = case
+              when exists (
+                select 1 from f.responsaveis r
+                where r.nome <> 'Não consta'
+              )
+                then 'PREENCHIDA'
+              else 'NAO_CONSTA'
+            end
+        )
       order by f.adolescente.nome asc
       """)
   Page<FichaFamilia> listarNoEscopo(
@@ -51,5 +63,6 @@ public interface FichaFamiliaRepository extends JpaRepository<FichaFamilia, Long
       @Param("busca") String busca,
       @Param("situacaoIgreja") SituacaoIgrejaFamilia situacaoIgreja,
       @Param("situacaoPais") SituacaoPaisFamilia situacaoPais,
+      @Param("situacaoFicha") String situacaoFicha,
       Pageable pageable);
 }

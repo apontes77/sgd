@@ -357,7 +357,7 @@ class FamiliaHttpTest {
   }
 
   @Test
-  void listagemFamiliasFiltraPorBuscaSituacaoIgrejaEPais() throws Exception {
+  void listagemFamiliasFiltraPorBuscaSituacaoIgrejaPaisEFicha() throws Exception {
     long idCasados =
         criarAdolescente(admin, alpha.getId(), "Ana Busca Alpha", familiaPreenchidaJson("Mãe Ana"));
     criarAdolescente(admin, betaOutraGerencia.getId(), "Bruno Outro", familiaNaoConstaJson());
@@ -433,6 +433,32 @@ class FamiliaHttpTest {
                 .getContentAsString());
     assertThat(porPais.get("content").toString()).contains("Ana Busca Alpha");
     assertThat(porPais.get("content").toString()).doesNotContain("Bruno Outro");
+
+    JsonNode porFichaPreenchida =
+        json.readTree(
+            mvc.perform(
+                    get("/api/v1/familias")
+                        .param("situacaoFicha", "PREENCHIDA")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token(admin))))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString());
+    assertThat(porFichaPreenchida.get("content").toString()).contains("Ana Busca Alpha");
+    assertThat(porFichaPreenchida.get("content").toString()).doesNotContain("Bruno Outro");
+
+    JsonNode porFichaNaoConsta =
+        json.readTree(
+            mvc.perform(
+                    get("/api/v1/familias")
+                        .param("situacaoFicha", "NAO_CONSTA")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token(admin))))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString());
+    assertThat(porFichaNaoConsta.get("content").toString()).contains("Bruno Outro");
+    assertThat(porFichaNaoConsta.get("content").toString()).doesNotContain("Ana Busca Alpha");
   }
 
   @Test

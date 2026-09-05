@@ -69,6 +69,7 @@ export type FamiliaListagemFiltros = {
   busca?: string
   situacaoIgreja?: SituacaoIgrejaFamilia | ''
   situacaoPais?: SituacaoPaisFamilia | ''
+  situacaoFicha?: SituacaoFichaFamilia | ''
 }
 
 export const SITUACAO_IGREJA_LABEL: Record<SituacaoIgrejaFamilia, string> = {
@@ -87,6 +88,11 @@ export const SITUACAO_PAIS_LABEL: Record<SituacaoPaisFamilia, string> = {
   ADOTIVOS: 'Adotivos',
   HOMOAFETIVOS: 'Homoafetivos',
   NULOS: 'Nulos (criado por parente)',
+  NAO_CONSTA: NAO_CONSTA,
+}
+
+export const SITUACAO_FICHA_LABEL: Record<SituacaoFichaFamilia, string> = {
+  PREENCHIDA: 'Preenchida',
   NAO_CONSTA: NAO_CONSTA,
 }
 
@@ -201,6 +207,7 @@ export const familiaApi = {
     if (busca) params.set('busca', busca)
     if (filtros.situacaoIgreja) params.set('situacaoIgreja', filtros.situacaoIgreja)
     if (filtros.situacaoPais) params.set('situacaoPais', filtros.situacaoPais)
+    if (filtros.situacaoFicha) params.set('situacaoFicha', filtros.situacaoFicha)
     return request<Pagina<FamiliaResumo>>(`/familias?${params}`)
   },
   obter: (adolescenteId: number) => request<Familia>(`/adolescentes/${adolescenteId}/familia`),

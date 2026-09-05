@@ -94,12 +94,14 @@ public class FamiliaService {
       Pageable pageable,
       String busca,
       SituacaoIgrejaFamilia situacaoIgreja,
-      SituacaoPaisFamilia situacaoPais) {
+      SituacaoPaisFamilia situacaoPais,
+      SituacaoFichaFamilia situacaoFicha) {
     boolean admin = usuario.getPerfis().contains(Role.ADMIN);
     Long gerenteId = usuario.getPerfis().contains(Role.GERENTE) ? usuario.getId() : null;
     Long discipuladorId = usuario.getPerfis().contains(Role.DISCIPULADOR) ? usuario.getId() : null;
     Long coLiderId = usuario.getPerfis().contains(Role.CO_LIDER) ? usuario.getId() : null;
     String termo = busca == null || busca.isBlank() ? null : busca.trim();
+    String situacaoFichaFiltro = situacaoFicha == null ? null : situacaoFicha.name();
     return fichas
         .listarNoEscopo(
             admin,
@@ -109,6 +111,7 @@ public class FamiliaService {
             termo,
             situacaoIgreja,
             situacaoPais,
+            situacaoFichaFiltro,
             pageable)
         .map(this::resumo);
   }
