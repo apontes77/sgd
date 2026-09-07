@@ -1,4 +1,4 @@
-import { cleanup, screen, within } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -77,7 +77,9 @@ describe('navegação autenticada', () => {
               ? emptyManagerDashboard
               : url.includes('/painel/lider')
                 ? emptyLeaderDashboard
-                : emptyPage,
+                : url.includes('/discipulados/liderados')
+                  ? []
+                  : emptyPage,
         ),
         { status: 200, headers: { 'Content-Type': 'application/json' } },
       )
@@ -158,17 +160,73 @@ describe('navegação autenticada', () => {
   })
 
   it('oferece Meu discipulado para discipulador e co-líder', async () => {
+    vi.mocked(globalThis.fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      return new Response(
+        JSON.stringify(
+          url.includes('/painel/lider')
+            ? emptyLeaderDashboard
+            : url.includes('/discipulados/liderados')
+              ? [
+                  {
+                    id: 8,
+                    nome: 'Minha formação',
+                    sexo: 'FEMININO',
+                    gerenciaId: null,
+                    discipuladorId: 1,
+                    ativo: true,
+                    emFormacao: true,
+                    coLideres: [],
+                  },
+                ]
+              : emptyPage,
+        ),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      )
+    })
     const { rerender } = render(<AuthenticatedApp currentUser={user(['DISCIPULADOR'])} onLogout={() => undefined} />)
     expect(screen.getByRole('tab', { name: 'Meu discipulado' })).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByRole('tab', { name: 'Famílias' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Registrar frequência' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Frequência em formação' })).toBeInTheDocument()
+    expect(await screen.findByRole('tab', { name: 'Frequência em formação' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Relatórios' })).toBeInTheDocument()
     rerender(<AuthenticatedApp currentUser={user(['CO_LIDER'])} onLogout={() => undefined} />)
     expect(screen.getByRole('tab', { name: 'Meu discipulado' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Famílias' })).toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Frequência em formação' })).not.toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Relatórios' })).toBeInTheDocument()
+  })
+
+  it('oculta frequência em formação do discipulador somente de sexta', async () => {
+    vi.mocked(globalThis.fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      return new Response(
+        JSON.stringify(
+          url.includes('/painel/lider')
+            ? emptyLeaderDashboard
+            : url.includes('/discipulados/liderados')
+              ? [
+                  {
+                    id: 7,
+                    nome: 'Meu grupo',
+                    sexo: 'MASCULINO',
+                    gerenciaId: 1,
+                    discipuladorId: 1,
+                    ativo: true,
+                    emFormacao: false,
+                    coLideres: [],
+                  },
+                ]
+              : emptyPage,
+        ),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      )
+    })
+    render(<AuthenticatedApp currentUser={user(['DISCIPULADOR'])} onLogout={() => undefined} />)
+    expect(screen.getByRole('tab', { name: 'Registrar frequência' })).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.queryByRole('tab', { name: 'Frequência em formação' })).not.toBeInTheDocument()
+    })
   })
 
   it('soma Meu discipulado aos painéis de perfis acumulados', () => {
@@ -389,7 +447,7 @@ describe('navegação autenticada', () => {
     })
     render(<AuthenticatedApp currentUser={user(['DISCIPULADOR'])} onLogout={() => undefined} />)
 
-    await userEvent.click(screen.getByRole('tab', { name: 'Frequência em formação' }))
+    await userEvent.click(await screen.findByRole('tab', { name: 'Frequência em formação' }))
 
     expect(await screen.findByRole('button', { name: /^Houve discipulado/ })).toBeInTheDocument()
     expect(screen.queryByPlaceholderText('Pesquisar discipulado ou discipulador')).not.toBeInTheDocument()

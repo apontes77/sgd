@@ -573,7 +573,6 @@ export default function AdolescentManagement({
               items={items}
               empty="Nenhum discípulo neste discipulado de formação."
               acoes={acoesLinha}
-              ocultarEstrutura
               onEditar={podeEditar ? editar : undefined}
               onAbrirFamilia={podeFamilia ? (a) => void abrirFamilia(a) : undefined}
             />
@@ -601,6 +600,7 @@ export default function AdolescentManagement({
                 empty="Nenhum discípulo GOE neste discipulado."
                 acoes={acoesLinha}
                 mostrarMotivo
+                ocultarEstrutura
                 onEditar={podeEditar ? editar : undefined}
                 onAbrirFamilia={podeFamilia ? (a) => void abrirFamilia(a) : undefined}
               />

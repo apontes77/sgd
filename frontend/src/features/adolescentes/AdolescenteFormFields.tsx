@@ -46,6 +46,7 @@ export function AdolescenteFormFields({ value, onChange, disabled, autoFocus = t
               onChange({
                 categoria,
                 motivoAfastamento: categoria === 'DISCIPULO_GOE' ? value.motivoAfastamento : '',
+                estrutura: categoria === 'DISCIPULO_GOE' ? '' : value.estrutura,
               })
             }}
           >
@@ -118,7 +119,7 @@ export function AdolescenteFormFields({ value, onChange, disabled, autoFocus = t
         disabled={disabled}
         onChange={(e) => onChange({ consentimentoEm: e.target.value })}
       />
-      {!listagemSimples && (
+      {!goe && (
         <TextField
           label="Estrutura"
           value={value.estrutura ?? ''}

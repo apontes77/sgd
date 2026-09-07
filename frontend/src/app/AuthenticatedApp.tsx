@@ -101,9 +101,34 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
   const shouldRestoreFocus = useRef(false)
   const isAdmin = currentUser.perfis.includes('ADMIN')
   const isGerente = currentUser.perfis.includes('GERENTE')
+  const isDiscipulador = currentUser.perfis.includes('DISCIPULADOR')
   const podeFamilia = currentUser.perfis.some(
     (perfil) => perfil === 'ADMIN' || perfil === 'GERENTE' || perfil === 'DISCIPULADOR' || perfil === 'CO_LIDER',
   )
+  const [lideraFormacao, setLideraFormacao] = useState(isAdmin)
+  useEffect(() => {
+    if (isAdmin) {
+      setLideraFormacao(true)
+      return
+    }
+    if (!isDiscipulador) {
+      setLideraFormacao(false)
+      return
+    }
+    let ativo = true
+    organizationApi
+      .listarDiscipuladosLiderados(true)
+      .then((items) => {
+        if (ativo) setLideraFormacao(items.some((item) => Boolean(item.emFormacao)))
+      })
+      .catch(() => {
+        if (ativo) setLideraFormacao(false)
+      })
+    return () => {
+      ativo = false
+    }
+  }, [isAdmin, isDiscipulador])
+  const podeFrequenciaFormacao = isAdmin || lideraFormacao
   const sections = useMemo(() => {
     const values: NavItem[] = []
     if (isAdmin || isGerente)
@@ -167,7 +192,7 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
         group: 'Operações',
         icon: <FactCheckRounded />,
       })
-    if (currentUser.perfis.some((role) => role === 'ADMIN' || role === 'DISCIPULADOR'))
+    if (podeFrequenciaFormacao)
       values.push({
         value: 'frequencia-formacao',
         label: 'Frequência em formação',
@@ -191,7 +216,7 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
       icon: <AssessmentRounded />,
     })
     return values
-  }, [currentUser.perfis, isAdmin, isGerente])
+  }, [currentUser.perfis, isAdmin, isGerente, podeFrequenciaFormacao])
   const available = useMemo(() => sections.map((item) => item.value), [sections])
   const [section, setSection] = useState<Section>(() => resolveInitialSection(available))
   const [discipuladoFiltro, setDiscipuladoFiltro] = useState<number | undefined>(() => discipuladoIdFromSearch())
@@ -359,7 +384,9 @@ export default function AuthenticatedApp({ currentUser, onLogout }: { currentUse
               {section === 'frequencia' && <FrequencyPage currentUser={currentUser} />}
               {section === 'frequencia-formacao' && <FrequencyPage currentUser={currentUser} emFormacao />}
               {section === 'chamada-lideranca' && <LeadershipAttendance />}
-              {section === 'relatorios' && <ReportsPage currentUser={currentUser} />}
+              {section === 'relatorios' && (
+                <ReportsPage currentUser={currentUser} podeFrequenciaFormacao={podeFrequenciaFormacao} />
+              )}
             </motion.div>
           </Suspense>
         </Box>

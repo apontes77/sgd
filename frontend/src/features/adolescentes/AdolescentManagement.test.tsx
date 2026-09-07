@@ -1,4 +1,4 @@
-import { cleanup, screen } from '@testing-library/react'
+import { cleanup, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import AdolescentManagement from '@/features/adolescentes/AdolescentManagement'
@@ -154,7 +154,7 @@ describe('gestão de discípulos', () => {
     expect(String(listagem?.[0])).toContain('ativo=true')
   })
 
-  it('em discipulado de formação, lista discípulos sem subdividir por categoria', async () => {
+  it('em discipulado de formação, lista discípulos sem subdividir por categoria e mostra estrutura', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input)
       if (url.includes('/discipulados')) {
@@ -186,6 +186,7 @@ describe('gestão de discípulos', () => {
                 nome: 'Carla',
                 dataNascimento: '1990-01-01',
                 categoria: 'DISCIPULO',
+                estrutura: 'Célula A',
                 anonimizado: false,
                 discipuladoId: 1,
                 ativo: true,
@@ -207,9 +208,80 @@ describe('gestão de discípulos', () => {
     expect(await screen.findByText('Carla')).toBeInTheDocument()
     expect(screen.getByText('1 discípulo')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Discípulos' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Estrutura' })).toBeInTheDocument()
+    expect(screen.getByText('Célula A')).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Visitantes' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Discípulos GOE' })).not.toBeInTheDocument()
     expect(screen.queryByText('Idade do discipulado')).not.toBeInTheDocument()
     expect(screen.queryByText('Co-líder:')).not.toBeInTheDocument()
+  })
+
+  it('na listagem de Discípulos GOE, oculta a coluna Estrutura', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/discipulados')) {
+        return new Response(
+          JSON.stringify({
+            ...emptyPage,
+            content: [
+              {
+                id: 1,
+                nome: 'Alpha',
+                discipuladorNome: 'Maria',
+                faixaEtaria: 'DE_15_MAIS',
+                ativo: true,
+                coLideres: [],
+              },
+            ],
+            totalElements: 1,
+            totalPages: 1,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        )
+      }
+      if (url.includes('/adolescentes?')) {
+        return new Response(
+          JSON.stringify({
+            content: [
+              {
+                id: 10,
+                nome: 'Bruno',
+                dataNascimento: '2010-01-01',
+                categoria: 'DISCIPULO_GOE',
+                estrutura: 'Não deve aparecer',
+                motivoAfastamento: 'Mudou de cidade',
+                anonimizado: false,
+                discipuladoId: 1,
+                ativo: true,
+              },
+            ],
+            page: 0,
+            size: 100,
+            totalElements: 1,
+            totalPages: 1,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        )
+      }
+      if (url.includes('/alertas-goe')) {
+        return new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      throw new Error(`Requisição inesperada: ${url}`)
+    })
+
+    render(<AdolescentManagement discipuladoInicial={1} />)
+
+    expect(await screen.findByText('Bruno')).toBeInTheDocument()
+    const goeHeading = screen.getByRole('heading', { name: 'Discípulos GOE' })
+    const goeSection = goeHeading.closest('.MuiPaper-root') ?? goeHeading.parentElement?.parentElement
+    expect(goeSection).toBeTruthy()
+    expect(
+      within(goeSection as HTMLElement).getByRole('columnheader', { name: 'Motivo do afastamento' }),
+    ).toBeInTheDocument()
+    expect(within(goeSection as HTMLElement).queryByRole('columnheader', { name: 'Estrutura' })).not.toBeInTheDocument()
+    expect(within(goeSection as HTMLElement).queryByText('Não deve aparecer')).not.toBeInTheDocument()
   })
 })

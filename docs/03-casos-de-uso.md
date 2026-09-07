@@ -99,7 +99,7 @@ Administrador, Gerente, Discipulador ou Co-líder
 Fluxo:
 
 1. Acessar “Relatórios”.
-2. Escolher a aba “Frequência” (discipulados regulares) ou “Frequência em formação” (grupos de formação). Administradores e discipuladores veem as duas abas; gerentes e co-líderes consultam somente o relatório regular.
+2. Escolher a aba “Frequência” (discipulados regulares) ou “Frequência em formação” (grupos de formação). Administradores veem as duas abas; discipuladores só veem “Frequência em formação” quando lideram um grupo de formação; gerentes, co-líderes e discipuladores somente de sexta consultam o relatório regular.
 3. Selecionar uma data inicial e uma data final, iguais para um único dia ou separadas por no máximo 12 meses.
 4. Consultar os encontros realizados dentro do escopo dos perfis acumulados do usuário e do tipo escolhido.
 5. Visualizar uma página por registro, com frequência dos adolescentes (ou discípulos, na formação) quando houve discipulado, ou a justificativa quando não houve.
