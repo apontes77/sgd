@@ -6,10 +6,10 @@ HTTP e validação de migrações.
 
 ## Escopo
 
-- `POST`, `GET` e `PATCH /api/v1/gerencias`;
+- `POST`, `GET`, `PATCH` e `DELETE /api/v1/gerencias`;
 - `POST`, `GET` e `PATCH /api/v1/discipulados`;
 - `PUT /api/v1/discipulados/{discipuladoId}/co-lideres`;
-- regras RN003, RN004 e RN005.
+- regras RN003, RN004, RN005 e RN060.
 
 Os testes devem usar usuários ativos, com o perfil exigido, salvo quando o
 caso declarar o contrário. `409 Conflict` representa violação de regra de
@@ -39,6 +39,8 @@ de autorização.
 | EO-18 | RN054 | Criar discipulado com `emFormacao=true` sem `gerenciaId`. | `201`; `gerenciaId` nulo e `emFormacao` verdadeiro. |
 | EO-19 | RN054 | Definir co-líderes em discipulado de formação. | `409`. |
 | EO-20 | RN054 | Cadastrar membro de formação com categoria diferente de `DISCIPULO`. | `400`. |
+| EO-21 | RN060 | Excluir gerência sem discipulados associados. | `204`. |
+| EO-22 | RN060 | Excluir gerência que ainda possui discipulados. | `409`; nenhum registro é removido. |
 | EO-17 | RN015 | Usuário acumula `GERENTE + DISCIPULADOR` ou `ADMIN + DISCIPULADOR`. | Mantém os painéis do papel administrativo/gerencial e recebe também “Meu discipulado”. |
 
 ## Testes automatizados previstos
