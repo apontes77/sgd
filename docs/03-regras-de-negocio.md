@@ -12,6 +12,8 @@ RN004 - Um discipulado padrão pode possuir até dois co-líderes. Discipulado d
 
 RN005 - Um discipulado padrão possui exatamente uma gerência (e, portanto, um gerente). Discipulado de formação não se atrela a gerência.
 
+RN060 - Somente administradores podem excluir uma gerência (`DELETE /gerencias/{id}`). A exclusão é física e só é permitida quando a gerência não possui nenhum discipulado associado (ativos ou inativos). Caso contrário a API retorna `409` para que os discipulados sejam realocados ou desativados antes.
+
 ---
 
 ## Frequência
@@ -123,6 +125,18 @@ RN031 - O painel do discipulado considera somente o grupo no qual o usuário exe
 
 ---
 
+## Chamada de liderança
+
+RN055 - Somente administradores consultam e salvam a chamada de liderança (`GET`/`PUT /chamadas-lideranca`). A chamada registra presença de discipuladores e co-líderes atuais dos discipulados ativos regulares (não inclui discipulados de formação), por data (uma chamada por data).
+
+RN056 - O salvamento é parcial e mescla: o payload pode incluir um subconjunto de discipulados. Líderes omitidos no payload não são apagados se já tinham presença naquele discipulado; novas ou alteradas situações são aplicadas. Observação geral (até 1000 caracteres) e observação por discipulado (até 500) são opcionais.
+
+RN057 - Cada pessoa (usuário) pode ter no máximo um lançamento de presença na mesma data, independentemente do discipulado. Duplicidade no mesmo payload retorna `409`. Se a pessoa já estiver salva em outro discipulado (ou no mesmo com situação diferente), o `PUT` retorna `409` com `conflitos` e só persiste após `confirmarAtualizacao: true`, que remove a presença anterior nos demais discipulados do dia.
+
+RN058 - Administradores consultam o relatório de chamada de liderança (`GET /relatorios/chamadas-lideranca`) e exportam Excel (`GET /relatorios/chamadas-lideranca/export`). O período aceita de um dia a 12 meses e pode filtrar por `discipuladoId`.
+
+---
+
 ## Relatório de frequência por período
 
 RN032 - O relatório de frequência padrão (`emFormacao=false`) considera somente discipulados regulares: administradores consultam todos; gerentes consultam os das suas gerências ativas; discipuladores e co-líderes consultam os grupos em que exercem liderança. O relatório de frequência em formação (`emFormacao=true`) considera somente grupos de formação: administradores consultam todos; o discipulador titular consulta o próprio grupo. Gerentes e co-líderes não ganham escopo extra sobre formação (RN054).
@@ -147,4 +161,4 @@ RN039 - Gerentes consultam os encontros não realizados e suas justificativas so
 
 RN040 - Um discipulado possui no máximo um encontro por data, independentemente da situação. Não é possível registrar chamada ou visitantes em encontro não realizado.
 
-RN050 - Um encontro pode armazenar uma observação opcional de até 500 caracteres (texto livre sobre o encontro, distinta da justificativa de não realização). A observação é criada/alterada via `PATCH /encontros/{id}` por quem já pode alterar o encontro; string vazia ou só espaços é persistida como nula. Alterações entram na auditoria do encontro.
+RN059 - Um encontro pode armazenar uma observação opcional de até 500 caracteres (texto livre sobre o encontro, distinta da justificativa de não realização). A observação é criada/alterada via `PATCH /encontros/{id}` por quem já pode alterar o encontro; string vazia ou só espaços é persistida como nula. Alterações entram na auditoria do encontro.
