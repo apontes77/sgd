@@ -104,8 +104,8 @@ public class PainelDesempenhoService {
             .put(referencia, (long) entry.getValue().size());
       }
     }
-    for (Long discipuladoId : porDiscipulado.keySet()) {
-      Map<String, Long> serie = porDiscipulado.get(discipuladoId);
+    for (Map.Entry<Long, Map<String, Long>> entry : porDiscipulado.entrySet()) {
+      Map<String, Long> serie = entry.getValue();
       for (LocalDate fimMes : finsDeMes) {
         serie.putIfAbsent(YearMonth.from(fimMes).toString(), 0L);
       }
