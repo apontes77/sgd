@@ -4,6 +4,10 @@
 
 Grupo de adolescentes liderado por um discipulador.
 
+## Estrutura
+
+Tela administrativa de gerências e discipulados. Clicar no nome de um discipulado abre Adolescentes já filtrado (`/app/adolescentes?discipuladoId=`).
+
 ## Discipulador
 
 Líder titular de um discipulado. Pode acumular no máximo um discipulado padrão e um de formação; não pode liderar dois grupos do mesmo tipo ao mesmo tempo.

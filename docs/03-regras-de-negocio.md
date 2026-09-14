@@ -143,7 +143,7 @@ RN032 - O relatório de frequência padrão (`emFormacao=false`) considera somen
 
 RN033 - Usuários com perfis acumulados recebem a união dos escopos de relatório, e o perfil de administrador equivale ao acesso total.
 
-RN034 - O relatório inclui somente encontros realizados e frequências efetivamente persistidas no período informado, preservando adolescentes transferidos ou inativados que constem na chamada histórica. O período pode representar um único dia e não pode exceder 12 meses.
+RN034 - O relatório inclui encontros `REALIZADO` e `NAO_REALIZADO` do período (não realizados trazem justificativa). Frequências nominais consideram apenas registros efetivamente persistidos, preservando adolescentes transferidos ou inativados que constem na chamada histórica. O período pode representar um único dia e não pode exceder 12 meses.
 
 RN035 - Cada encontro gera uma página independente, ordenada por data, gerência, discipulado e encontro, e pode ser impressa ou salva como PDF pelo diálogo nativo do navegador.
 
