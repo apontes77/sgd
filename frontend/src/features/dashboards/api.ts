@@ -1,4 +1,5 @@
 import { request } from '@/shared/api/httpClient'
+import type { FaixaEtaria } from '@/shared/api/types'
 
 export interface IndicadorFrequencia {
   presentes: number
@@ -79,6 +80,35 @@ export interface PainelLiderResponse {
   discipulos: DiscipuloPainel[]
 }
 
+export interface FrequenciaMensalDesempenho {
+  referencia: string
+  presentes: number
+  ausentes: number
+}
+
+export interface QuantidadeMensalDesempenho {
+  referencia: string
+  quantidade: number
+}
+
+export interface DiscipuladoDesempenho {
+  id: number
+  nome: string
+  sexo: 'MASCULINO' | 'FEMININO'
+  faixaEtaria: FaixaEtaria
+  gerenciaId: number
+  gerenciaNome: string
+  ativo: boolean
+  frequencia: FrequenciaMensalDesempenho[]
+  discipulos: QuantidadeMensalDesempenho[]
+}
+
+export interface PainelDesempenhoResponse {
+  dataInicio: string
+  dataFim: string
+  discipulados: DiscipuladoDesempenho[]
+}
+
 export const painelApi = {
   consultar: (dataInicio: string, dataFim: string) =>
     request<PainelAdminResponse>(`/painel/admin?${new URLSearchParams({ dataInicio, dataFim })}`),
@@ -86,4 +116,8 @@ export const painelApi = {
     request<PainelGerenciaResponse>(`/painel/gerencia?${new URLSearchParams({ dataInicio, dataFim })}`),
   consultarLider: (dataInicio: string, dataFim: string) =>
     request<PainelLiderResponse>(`/painel/lider?${new URLSearchParams({ dataInicio, dataFim })}`),
+  consultarDesempenho: (dataInicio: string, dataFim: string) =>
+    request<PainelDesempenhoResponse>(
+      `/painel/desempenho-discipulados?${new URLSearchParams({ dataInicio, dataFim })}`,
+    ),
 }

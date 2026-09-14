@@ -32,6 +32,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { pathForSection } from '@/app/appNavigation'
 import { organizationApi } from '@/features/organizacao/api'
+import DiscipuladoPerformance from '@/features/organizacao/DiscipuladoPerformance'
 import { LoadingState, PageHeader, RowActionsMenu } from '@/shared/ui'
 
 import type {
@@ -307,16 +308,18 @@ export default function OrganizationManagement({
         description="Gerencie gerências, discipulados e suas lideranças."
         eyebrow="Gestão"
         action={
-          <Button
-            variant="contained"
-            startIcon={<AddRounded />}
-            onClick={() => {
-              setPendingDiscipuladoId(undefined)
-              setModal(tab === 0 ? { kind: 'gerencia' } : { kind: 'discipulado', formacao: tab === 2 })
-            }}
-          >
-            {tab === 0 ? 'Nova gerência' : tab === 2 ? 'Novo discipulado de formação' : 'Novo discipulado'}
-          </Button>
+          tab === 3 ? undefined : (
+            <Button
+              variant="contained"
+              startIcon={<AddRounded />}
+              onClick={() => {
+                setPendingDiscipuladoId(undefined)
+                setModal(tab === 0 ? { kind: 'gerencia' } : { kind: 'discipulado', formacao: tab === 2 })
+              }}
+            >
+              {tab === 0 ? 'Nova gerência' : tab === 2 ? 'Novo discipulado de formação' : 'Novo discipulado'}
+            </Button>
+          )
         }
       />
       {error && (
@@ -333,8 +336,11 @@ export default function OrganizationManagement({
           <Tab label="Gerências" />
           <Tab label="Discipulados" />
           <Tab label="Discipulados de formação" />
+          <Tab label="Desempenho dos discipulados" />
         </Tabs>
-        {loading ? (
+        {tab === 3 ? (
+          <DiscipuladoPerformance />
+        ) : loading ? (
           <Box sx={{ p: 3 }}>
             <LoadingState label="Carregando estrutura..." />
           </Box>
