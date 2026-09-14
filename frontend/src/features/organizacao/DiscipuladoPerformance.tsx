@@ -1,3 +1,4 @@
+/** Aba Estrutura → Desempenho dos discipulados (presença e tamanho do grupo). */
 import {
   Alert,
   Box,
