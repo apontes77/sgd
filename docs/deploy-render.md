@@ -54,7 +54,11 @@ Não use curingas no CORS e não coloque segredos em variáveis `VITE_*`, pois e
 
 ## Memória da API
 
-O `Dockerfile` da API aplica `-XX:MaxRAMPercentage=70.0` quando `JAVA_TOOL_OPTIONS` ainda não define o teto. No Render o plano `starter` já limita a instância (~512 MB); 70% desse cgroup é o heap máximo esperado. Não baixe esse percentual no Blueprint.
+O `docker-entrypoint.sh` da API aplica, quando `JAVA_TOOL_OPTIONS` ainda não define o teto:
+
+`-XX:MaxRAMPercentage=50.0 -XX:MaxMetaspaceSize=128m -XX:+UseSerialGC -Xss512k`
+
+No Render o plano `starter` limita a instância a ~512 MB; 50% do cgroup deixa margem para metaspace e memória nativa. Valores maiores (ex.: 70%) tendem a matar o processo com `Out of memory (used over 512Mi)` no startup. Não suba esse percentual no Blueprint sem subir o plano.
 
 No Compose local o `backend` tem `mem_limit: 768m` e `JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=60.0`, e o Postgres `512m`, para a JVM não ocupar ~70% do WSL/host. Para outro teto, defina `JAVA_TOOL_OPTIONS` com `MaxRAMPercentage` no ambiente do serviço.
 

@@ -20,7 +20,10 @@ fi
 
 case "${JAVA_TOOL_OPTIONS:-}" in
   *MaxRAMPercentage*) ;;
-  *) export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-} -XX:MaxRAMPercentage=70.0" ;;
+  *)
+    # Starter (~512Mi): keep heap ~half the cgroup so metaspace/native/Tomcat fit.
+    export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-} -XX:MaxRAMPercentage=50.0 -XX:MaxMetaspaceSize=128m -XX:+UseSerialGC -Xss512k"
+    ;;
 esac
 
 exec java -jar /app/app.jar
