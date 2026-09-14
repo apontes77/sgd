@@ -93,8 +93,8 @@ paths:
   /usuarios/{usuarioId}:
     patch:
       tags: [Usuários]
-      summary: Atualiza perfis ou inativa/reativa usuário
-      description: Requer ADMIN. Nunca exclui fisicamente o usuário.
+      summary: Atualiza nome, perfis ou inativa/reativa usuário
+      description: Requer ADMIN. Permite alterar nome, substituir o conjunto de perfis (acúmulo enviando múltiplos valores, RN014 e RN015) e `ativo`. Nunca exclui fisicamente o usuário.
       parameters: [ { $ref: '#/components/parameters/UsuarioId' } ]
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AtualizarUsuarioRequest' } } } }
       responses: { '200': { description: Usuário atualizado, content: { application/json: { schema: { $ref: '#/components/schemas/Usuario' } } } }, '404': { $ref: '#/components/responses/NaoEncontrado' } }
@@ -199,6 +199,16 @@ paths:
       parameters: [ { $ref: '#/components/parameters/AdolescenteId' } ]
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AdolescenteRequest' } } } }
       responses: { '200': { description: Adolescente atualizado, content: { application/json: { schema: { $ref: '#/components/schemas/Adolescente' } } } } }
+  /adolescentes/{adolescenteId}/dados-pessoais:
+    delete:
+      tags: [Adolescentes]
+      summary: Anonimiza dados pessoais do adolescente
+      description: Requer ADMIN. Mascara nome e contatos, marca `anonimizado` e anonimiza a ficha de família associada.
+      parameters: [ { $ref: '#/components/parameters/AdolescenteId' } ]
+      responses:
+        '204': { description: Dados pessoais anonimizados }
+        '403': { $ref: '#/components/responses/Proibido' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
   /adolescentes/{adolescenteId}/vinculos:
     post:
       tags: [Adolescentes]
@@ -297,7 +307,8 @@ paths:
       tags: [Chamada de liderança]
       summary: Salva (parcialmente) a chamada de liderança na data
       description: |
-        Requer ADMIN. O payload pode incluir um subconjunto de discipulados; o servidor mescla observações e presenças (RN056).
+        Requer ADMIN. O payload pode incluir um subconjunto de discipulados ativos; o servidor mescla observações e presenças (RN056).
+        A grade do GET exclui formação (`emFormacao`); a UI não envia esses grupos. O serviço valida discipulado ativo e líderes atuais, sem filtro explícito de `emFormacao` no PUT.
         Presenças aceitam somente o discipulador e os co-líderes atuais do grupo, com papel coerente.
         Uma pessoa só pode constar uma vez por data: duplicidade no payload ou mudança em lançamento já salvo retorna 409; envie `confirmarAtualizacao: true` para sobrescrever e remover a presença anterior nos demais discipulados do dia (RN057).
       requestBody:
@@ -425,6 +436,18 @@ paths:
       responses:
         '200': { description: Planilha gerada, content: { application/vnd.openxmlformats-officedocument.spreadsheetml.sheet: { schema: { type: string, format: binary } } } }
         '400': { description: Período inválido, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
+        '403': { $ref: '#/components/responses/Proibido' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+  /relatorios/adolescentes/export:
+    get:
+      tags: [Indicadores e relatórios]
+      summary: Exporta adolescentes em CSV
+      description: Requer ADMIN. Gera CSV (`text/csv`) dos vínculos ativos no escopo; filtros opcionais por discipulado e situação ativo/inativo.
+      parameters:
+        - { name: discipuladoId, in: query, required: false, schema: { type: integer, format: int64 } }
+        - { name: ativo, in: query, required: false, schema: { type: boolean } }
+      responses:
+        '200': { description: CSV gerado, content: { text/csv: { schema: { type: string, format: binary } } } }
         '403': { $ref: '#/components/responses/Proibido' }
         '404': { $ref: '#/components/responses/NaoEncontrado' }
   /relatorios/mensal:

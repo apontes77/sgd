@@ -26,7 +26,7 @@ Usuário com acesso global ao sistema.
 
 ## Adolescente
 
-Participante vinculado a um discipulado. Possui uma categoria de acompanhamento: Discípulo, Visitante ou Discípulo GOE.
+Participante vinculado a um discipulado. Possui uma categoria de acompanhamento: Discípulo, Visitante ou Discípulo GOE. O campo opcional `estrutura` (texto livre) aparece no cadastro para Discípulo, Visitante e formação; não é exibido para Discípulo GOE.
 
 ## Discípulo
 

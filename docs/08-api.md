@@ -76,11 +76,11 @@ Os acessos são cumulativos: `GERENTE + DISCIPULADOR` recebe “Minha gerência�
 | --- | --- |
 | Usuários | `/usuarios` |
 | Estrutura | `/gerencias`, `/discipulados`, `/discipulados/liderados`, `/discipulados/{id}/co-lideres` |
-| Cadastro | `/adolescentes`, `/adolescentes/{id}/vinculos`, `/adolescentes/{id}/familia`, `/familias` |
+| Cadastro | `/adolescentes`, `/adolescentes/{id}/vinculos`, `/adolescentes/{id}/familia`, `/adolescentes/{id}/dados-pessoais`, `/familias` |
 | Frequência | `/encontros`, `/encontros/{id}/frequencias`, `/encontros/{id}/visitantes` |
 | Liderança | `/chamadas-lideranca` |
 | Indicadores | `/painel/lider`, `/painel/gerencia`, `/painel/admin` |
-| Relatórios | `/relatorios/frequencia-diaria`, `/relatorios/frequencia`, `/relatorios/frequencia/export`, `/relatorios/chamadas-lideranca`, `/relatorios/chamadas-lideranca/export` |
+| Relatórios | `/relatorios/frequencia-diaria`, `/relatorios/frequencia`, `/relatorios/frequencia/export`, `/relatorios/chamadas-lideranca`, `/relatorios/chamadas-lideranca/export`, `/relatorios/adolescentes/export` |
 | Auditoria | `/auditoria` |
 
 A listagem de discipulados inclui `discipuladorNome` para busca tipável e contexto de liderança na UI. Os painéis administrativo e de gerência consideram somente gerências ativas; o de gerência também devolve `discipuladorNome` por discipulado e a lista de encontros não realizados do período. A grade de `GET /chamadas-lideranca` devolve os discipulados regulares ativos e, quando a pessoa já tem lançamento no dia, o campo `registroDoDia` (grupo e situação).

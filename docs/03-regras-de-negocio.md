@@ -36,7 +36,7 @@ RN046 - Encontros com data de sexta-feira de discipulados padrão podem ser lan�
 
 RN047 - Se, após o domingo subsequente, um discipulado padrão ativo não tiver chamada salva nem encontro não realizado para aquela sexta, o sistema registra automaticamente o encontro como `NAO_REALIZADO` com a justificativa `discipulador ou colider não registraram a frequência` e marca `fechamento_automatico`. Encontros `REALIZADO` sem chamada salva são convertidos para essa situação. Discipulados de formação não entram no fechamento automático.
 
-RN054 - Discipulado de formação (`emFormacao`) não possui gerência nem co-líder. Os membros não são subdivididos por categoria (`DISCIPULO`, `VISITANTE`, `DISCIPULO_GOE`) nem por faixa etária: cadastro, listagem e chamada são uma lista simples de discípulos. Somente `ADMIN` (qualquer grupo) e o discipulador titular lançam frequência desses grupos. O perfil `GERENTE` não ganha acesso extra.
+RN054 - Discipulado de formação (`emFormacao`) não possui gerência nem co-líder. Os membros não são subdivididos por categoria (`DISCIPULO`, `VISITANTE`, `DISCIPULO_GOE`) nem por faixa etária: cadastro, listagem e chamada são uma lista simples de discípulos. Somente `ADMIN` (qualquer grupo) e o discipulador titular lançam frequência desses grupos. O perfil `GERENTE` não ganha acesso extra. Na UI, o menu “Frequência em formação” e a aba correspondente em Relatórios só aparecem para `ADMIN` ou para discipulador que lidera ao menos um grupo em formação (`GET /discipulados/liderados`).
 
 RN052 - Administradores podem reverter um encontro de fechamento automático (`fechamento_automatico`) de `NAO_REALIZADO` para `REALIZADO` e lançar ou alterar a chamada a qualquer momento. O flag permanece verdadeiro após a correção, para que o sistema continue informando que o discipulador/co-líder não lançou a frequência no prazo.
 
@@ -48,9 +48,9 @@ RN053 - Somente administradores podem excluir um encontro (chamada, visitantes e
 
 RN013 - Administradores criam usuários.
 
-RN014 - Administradores gerenciam permissões.
+RN014 - Administradores gerenciam permissões. O `PATCH /usuarios/{id}` permite alterar nome, o conjunto de perfis e a flag `ativo` (nunca exclusão física).
 
-RN015 - Um usuário pode acumular papéis e recebe a união das visões e permissões correspondentes a cada papel.
+RN015 - Um usuário pode acumular papéis e recebe a união das visões e permissões correspondentes a cada papel. Na edição, o ADMIN envia o conjunto completo de perfis desejado (substituição do conjunto, não incremento opaco).
 
 Exemplo:
 
@@ -127,7 +127,7 @@ RN031 - O painel do discipulado considera somente o grupo no qual o usuário exe
 
 ## Chamada de liderança
 
-RN055 - Somente administradores consultam e salvam a chamada de liderança (`GET`/`PUT /chamadas-lideranca`). A chamada registra presença de discipuladores e co-líderes atuais dos discipulados ativos regulares (não inclui discipulados de formação), por data (uma chamada por data).
+RN055 - Somente administradores consultam e salvam a chamada de liderança (`GET`/`PUT /chamadas-lideranca`). A chamada registra presença de discipuladores e co-líderes atuais dos discipulados ativos regulares, por data (uma chamada por data). O `GET` monta a grade excluindo discipulados com `emFormacao=true`. O `PUT` mescla itens de discipulados ativos enviados no payload; a UI não lista formação na grade, e o serviço não deve ser usado para lançar presença de grupos em formação.
 
 RN056 - O salvamento é parcial e mescla: o payload pode incluir um subconjunto de discipulados. Líderes omitidos no payload não são apagados se já tinham presença naquele discipulado; novas ou alteradas situações são aplicadas. Observação geral (até 1000 caracteres) e observação por discipulado (até 500) são opcionais.
 
