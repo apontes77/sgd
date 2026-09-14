@@ -73,4 +73,4 @@ Reexecutar é seguro: upsert por e-mail (usuário), nome da gerência e `(gerenc
 
 ## Render Blueprint
 
-`render.yaml` do banco de produção: `plan: basic-1gb` e `diskSizeGB: 1`. Após commit, sincronizar o Blueprint no Render.
+`render.yaml` do banco de produção: `plan: basic-256mb` e `diskSizeGB: 1`. Após commit, sincronizar o Blueprint no Render.
