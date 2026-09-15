@@ -44,6 +44,22 @@ const faixaEtariaLabel: Record<FaixaEtaria, string> = {
 
 const sexoLabel = (sexo: string) => (sexo === 'MASCULINO' ? 'Masculino' : 'Feminino')
 
+function labelDesempenho(item: { nome: string; discipuladorNome?: string; ativo?: boolean }) {
+  const base = item.discipuladorNome ? `${item.nome} - ${item.discipuladorNome}` : item.nome
+  return item.ativo === false ? `${base} (inativo)` : base
+}
+
+function frequenciaVazia(referencia: string): FrequenciaMensalDesempenho {
+  return {
+    referencia,
+    presentes: 0,
+    presentesDiscipulos: 0,
+    presentesVisitantes: 0,
+    presentesGoe: 0,
+    ausentes: 0,
+  }
+}
+
 function referenciasPeriodo(inicio: string, fim: string): string[] {
   const [anoInicio, mesInicio] = inicio.slice(0, 7).split('-').map(Number)
   const [anoFim, mesFim] = fim.slice(0, 7).split('-').map(Number)
@@ -65,7 +81,7 @@ function normalizarFrequencia(
   const mapa = new Map(dados.map((item) => [item.referencia, item]))
   return referenciasPeriodo(inicio, fim).map((referencia) => {
     const item = mapa.get(referencia)
-    return item ? { ...item, possuiEncontro: true } : { referencia, presentes: 0, ausentes: 0, possuiEncontro: false }
+    return item ? { ...item, possuiEncontro: true } : { ...frequenciaVazia(referencia), possuiEncontro: false }
   })
 }
 
@@ -85,10 +101,13 @@ function somarFrequencias(itens: DiscipuladoDesempenho[]): FrequenciaMensalDesem
   const mapa = new Map<string, FrequenciaMensalDesempenho>()
   for (const item of itens) {
     for (const mes of item.frequencia) {
-      const atual = mapa.get(mes.referencia) ?? { referencia: mes.referencia, presentes: 0, ausentes: 0 }
+      const atual = mapa.get(mes.referencia) ?? frequenciaVazia(mes.referencia)
       mapa.set(mes.referencia, {
         referencia: mes.referencia,
         presentes: atual.presentes + mes.presentes,
+        presentesDiscipulos: atual.presentesDiscipulos + mes.presentesDiscipulos,
+        presentesVisitantes: atual.presentesVisitantes + mes.presentesVisitantes,
+        presentesGoe: atual.presentesGoe + mes.presentesGoe,
         ausentes: atual.ausentes + mes.ausentes,
       })
     }
@@ -121,7 +140,7 @@ function totaisFrequencia(itens: DiscipuladoDesempenho[]) {
   )
 }
 
-export default function DiscipuladoPerformance() {
+export default function DiscipuladoPerformance({ embedded = false }: { embedded?: boolean }) {
   const inicial = periodoPadrao()
   const [dataInicio, setDataInicio] = useState(inicial.inicio)
   const [dataFim, setDataFim] = useState(inicial.fim)
@@ -183,7 +202,7 @@ export default function DiscipuladoPerformance() {
   )
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: embedded ? 0 : 3 }}>
       <Stack spacing={3}>
         <Box>
           <Typography variant="h6" component="h2">
@@ -300,8 +319,7 @@ function VisaoDiscipulado({
           >
             {dados.discipulados.map((item) => (
               <MenuItem value={item.id} key={item.id}>
-                {item.nome}
-                {item.ativo ? '' : ' (inativo)'}
+                {labelDesempenho(item)}
               </MenuItem>
             ))}
           </Select>
@@ -559,7 +577,9 @@ function TabelaFrequencia({ dados }: { dados: Array<FrequenciaMensalDesempenho &
         <TableHead>
           <TableRow>
             <TableCell>Mês</TableCell>
-            <TableCell>Presentes</TableCell>
+            <TableCell>Discípulos</TableCell>
+            <TableCell>Visitantes</TableCell>
+            <TableCell>Discípulos GOE</TableCell>
             <TableCell>Ausentes</TableCell>
           </TableRow>
         </TableHead>
@@ -567,7 +587,9 @@ function TabelaFrequencia({ dados }: { dados: Array<FrequenciaMensalDesempenho &
           {dados.map((item) => (
             <TableRow key={item.referencia}>
               <TableCell>{formatarMes(item.referencia)}</TableCell>
-              <TableCell>{item.possuiEncontro ? item.presentes : '—'}</TableCell>
+              <TableCell>{item.possuiEncontro ? item.presentesDiscipulos : '—'}</TableCell>
+              <TableCell>{item.possuiEncontro ? item.presentesVisitantes : '—'}</TableCell>
+              <TableCell>{item.possuiEncontro ? item.presentesGoe : '—'}</TableCell>
               <TableCell>{item.possuiEncontro ? item.ausentes : '—'}</TableCell>
             </TableRow>
           ))}

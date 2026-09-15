@@ -33,7 +33,18 @@ class PainelDesempenhoHttpTest {
 
   @Test
   @WithMockUser(roles = "GERENTE")
-  void rejeitaUsuarioQueNaoEAdmin() throws Exception {
+  void gerentePodeConsultarDesempenho() throws Exception {
+    mvc.perform(
+            get("/api/v1/painel/desempenho-discipulados")
+                .param("dataInicio", "2026-01-01")
+                .param("dataFim", "2026-06-30"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.discipulados").isArray());
+  }
+
+  @Test
+  @WithMockUser(roles = "DISCIPULADOR")
+  void rejeitaDiscipulador() throws Exception {
     mvc.perform(
             get("/api/v1/painel/desempenho-discipulados")
                 .param("dataInicio", "2026-01-01")

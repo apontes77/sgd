@@ -4,14 +4,17 @@ import java.time.LocalDate;
 
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import br.com.sgd.user.User;
+
 @RestController
 @RequestMapping("/api/v1/painel/desempenho-discipulados")
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN','GERENTE')")
 public class PainelDesempenhoController {
   private final PainelDesempenhoService service;
 
@@ -21,8 +24,9 @@ public class PainelDesempenhoController {
 
   @GetMapping
   public PainelDesempenhoService.PainelDesempenhoResponse consultar(
+      @AuthenticationPrincipal User usuario,
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicio,
       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFim) {
-    return service.consultar(dataInicio, dataFim);
+    return service.consultar(usuario, dataInicio, dataFim);
   }
 }

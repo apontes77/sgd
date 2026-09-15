@@ -53,8 +53,18 @@ const desempenho = {
       faixaEtaria: 'DE_09_A_11',
       gerenciaId: 10,
       gerenciaNome: 'Gerência Beatriz Ferreira',
+      discipuladorNome: 'Andressa Eliza',
       ativo: true,
-      frequencia: [{ referencia: '2026-03', presentes: 4, ausentes: 1 }],
+      frequencia: [
+        {
+          referencia: '2026-03',
+          presentes: 4,
+          presentesDiscipulos: 2,
+          presentesVisitantes: 1,
+          presentesGoe: 1,
+          ausentes: 1,
+        },
+      ],
       discipulos: [
         { referencia: '2026-01', quantidade: 5 },
         { referencia: '2026-02', quantidade: 6 },
@@ -68,8 +78,18 @@ const desempenho = {
       faixaEtaria: 'DE_15_MAIS',
       gerenciaId: 11,
       gerenciaNome: 'Gerência Norte',
+      discipuladorNome: 'Administrador',
       ativo: true,
-      frequencia: [{ referencia: '2026-03', presentes: 2, ausentes: 2 }],
+      frequencia: [
+        {
+          referencia: '2026-03',
+          presentes: 2,
+          presentesDiscipulos: 2,
+          presentesVisitantes: 0,
+          presentesGoe: 0,
+          ausentes: 2,
+        },
+      ],
       discipulos: [{ referencia: '2026-03', quantidade: 3 }],
     },
   ],
@@ -90,6 +110,17 @@ function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 }
 
+function mockOrganizacaoEDesempenho() {
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+    const url = String(input)
+    if (url.includes('/usuarios?')) return json(page([admin, discipulador]))
+    if (url.includes('/gerencias?')) return json(page([gerencia]))
+    if (url.includes('/discipulados?')) return json(page([discipulado]))
+    if (url.includes('/painel/desempenho-discipulados')) return json(desempenho)
+    throw new Error(`Requisição inesperada: ${url}`)
+  })
+}
+
 describe('estrutura — desempenho dos discipulados', () => {
   beforeEach(() => {
     sessionStorage.setItem('sgd.access-token', 'token')
@@ -101,16 +132,9 @@ describe('estrutura — desempenho dos discipulados', () => {
     vi.restoreAllMocks()
   })
 
-  it('exibe a aba, oculta o botão de criar e permite trocar o discipulado', async () => {
+  it('exibe seletor com nome e discipulador e tabela por categoria', async () => {
     const user = userEvent.setup()
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
-      const url = String(input)
-      if (url.includes('/usuarios?')) return json(page([admin, discipulador]))
-      if (url.includes('/gerencias?')) return json(page([gerencia]))
-      if (url.includes('/discipulados?')) return json(page([discipulado]))
-      if (url.includes('/painel/desempenho-discipulados')) return json(desempenho)
-      throw new Error(`Requisição inesperada: ${url}`)
-    })
+    mockOrganizacaoEDesempenho()
 
     render(<OrganizationManagement />)
     expect(await screen.findByRole('button', { name: 'Nova gerência' })).toBeInTheDocument()
@@ -118,23 +142,23 @@ describe('estrutura — desempenho dos discipulados', () => {
     await user.click(screen.getByRole('tab', { name: 'Desempenho dos discipulados' }))
     expect(await screen.findByRole('heading', { name: 'Desempenho dos discipulados' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Nova/ })).not.toBeInTheDocument()
-    expect(screen.getAllByTestId('grafico').length).toBeGreaterThan(0)
 
     await user.click(screen.getByLabelText('Discipulado'))
-    await user.click(screen.getByRole('option', { name: 'Fonte de vida' }))
+    expect(screen.getByRole('option', { name: 'Luz do mundo - Andressa Eliza' })).toBeInTheDocument()
+    await user.click(screen.getByRole('option', { name: 'Fonte de vida - Administrador' }))
     expect(await screen.findByText(/Presentes e ausentes — Fonte de vida/)).toBeInTheDocument()
+
+    await user.click(screen.getAllByRole('button', { name: 'Dados' })[0])
+    const tabela = screen.getByRole('table', { name: 'Resumo mensal de presença e ausência' })
+    expect(within(tabela).getByRole('columnheader', { name: 'Discípulos' })).toBeInTheDocument()
+    expect(within(tabela).getByRole('columnheader', { name: 'Visitantes' })).toBeInTheDocument()
+    expect(within(tabela).getByRole('columnheader', { name: 'Discípulos GOE' })).toBeInTheDocument()
+    expect(within(tabela).getByRole('columnheader', { name: 'Ausentes' })).toBeInTheDocument()
   })
 
   it('mostra recortes por sexo, faixa etária e gerência', async () => {
     const user = userEvent.setup()
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
-      const url = String(input)
-      if (url.includes('/usuarios?')) return json(page([admin, discipulador]))
-      if (url.includes('/gerencias?')) return json(page([gerencia]))
-      if (url.includes('/discipulados?')) return json(page([discipulado]))
-      if (url.includes('/painel/desempenho-discipulados')) return json(desempenho)
-      throw new Error(`Requisição inesperada: ${url}`)
-    })
+    mockOrganizacaoEDesempenho()
 
     render(<OrganizationManagement />)
     await user.click(await screen.findByRole('tab', { name: 'Desempenho dos discipulados' }))

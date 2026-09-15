@@ -20,6 +20,7 @@ import ReactECharts from 'echarts-for-react'
 import { useEffect, useMemo, useState } from 'react'
 
 import { type DiscipuladoPainel, painelApi, type PainelGerenciaResponse } from '@/features/dashboards/api'
+import DiscipuladoPerformance from '@/features/organizacao/DiscipuladoPerformance'
 import { labelDiscipulado } from '@/shared/api/types'
 import { axisLabelStyle, seriesLabelStyle, useChartColors } from '@/shared/charts/chartTheme'
 import { FiltroPeriodo, KpisPresenca, PainelEvolucao } from '@/shared/dashboard-ui'
@@ -134,6 +135,7 @@ export default function ManagerDashboard() {
           )}
         </>
       )}
+      <DiscipuladoPerformance embedded />
     </Stack>
   )
 }

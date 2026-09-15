@@ -15,21 +15,35 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import br.com.sgd.organizacao.Gerencia;
+import br.com.sgd.organizacao.GerenciaRepository;
+import br.com.sgd.user.Role;
+import br.com.sgd.user.User;
+
 @Service
 @Transactional(readOnly = true)
 public class PainelDesempenhoService {
   private final PainelDesempenhoRepository repository;
+  private final GerenciaRepository gerencias;
 
-  public PainelDesempenhoService(PainelDesempenhoRepository repository) {
+  public PainelDesempenhoService(
+      PainelDesempenhoRepository repository, GerenciaRepository gerencias) {
     this.repository = repository;
+    this.gerencias = gerencias;
   }
 
-  public PainelDesempenhoResponse consultar(LocalDate inicio, LocalDate fim) {
+  public PainelDesempenhoResponse consultar(User usuario, LocalDate inicio, LocalDate fim) {
     validar(inicio, fim);
-    Map<Long, Map<String, FrequenciaMensal>> frequencias = carregarFrequencias(inicio, fim);
-    Map<Long, Map<String, Long>> tamanhos = carregarTamanhos(inicio, fim);
+    Long gerenciaId = escopoGerencia(usuario);
+    List<PainelDesempenhoRepository.DiscipuladoMeta> metas =
+        gerenciaId == null
+            ? repository.listarDiscipulados()
+            : repository.listarDiscipuladosDaGerencia(gerenciaId);
+    Map<Long, Map<String, FrequenciaMensal>> frequencias =
+        carregarFrequencias(gerenciaId, inicio, fim);
+    Map<Long, Map<String, Long>> tamanhos = carregarTamanhos(gerenciaId, inicio, fim);
     List<DiscipuladoDesempenho> discipulados = new ArrayList<>();
-    for (PainelDesempenhoRepository.DiscipuladoMeta meta : repository.listarDiscipulados()) {
+    for (PainelDesempenhoRepository.DiscipuladoMeta meta : metas) {
       long id = meta.getId();
       List<FrequenciaMensal> serieFrequencia =
           frequencias.getOrDefault(id, Map.of()).values().stream()
@@ -54,6 +68,7 @@ public class PainelDesempenhoService {
               meta.getFaixaEtaria(),
               meta.getGerenciaId(),
               meta.getGerenciaNome(),
+              meta.getDiscipuladorNome(),
               ativo,
               serieFrequencia,
               serieDiscipulos));
@@ -66,27 +81,47 @@ public class PainelDesempenhoService {
     return new PainelDesempenhoResponse(inicio, fim, discipulados);
   }
 
+  private Long escopoGerencia(User usuario) {
+    if (usuario == null || usuario.getPerfis().contains(Role.ADMIN)) return null;
+    List<Gerencia> encontradas = gerencias.findAllByGerenteIdAndAtivoTrue(usuario.getId());
+    if (encontradas.isEmpty())
+      throw new ResponseStatusException(
+          HttpStatus.NOT_FOUND, "O gerente não possui uma gerência ativa.");
+    if (encontradas.size() > 1)
+      throw new ResponseStatusException(
+          HttpStatus.CONFLICT, "O gerente possui mais de uma gerência ativa.");
+    return encontradas.getFirst().getId();
+  }
+
   private Map<Long, Map<String, FrequenciaMensal>> carregarFrequencias(
-      LocalDate inicio, LocalDate fim) {
+      Long gerenciaId, LocalDate inicio, LocalDate fim) {
     Map<Long, Map<String, FrequenciaMensal>> porDiscipulado = new LinkedHashMap<>();
-    repository
-        .frequenciasMensais(inicio, fim)
-        .forEach(
-            item ->
-                porDiscipulado
-                    .computeIfAbsent(item.getDiscipuladoId(), id -> new LinkedHashMap<>())
-                    .put(
+    List<PainelDesempenhoRepository.FrequenciaMensal> itens =
+        gerenciaId == null
+            ? repository.frequenciasMensais(inicio, fim)
+            : repository.frequenciasMensaisDaGerencia(gerenciaId, inicio, fim);
+    itens.forEach(
+        item ->
+            porDiscipulado
+                .computeIfAbsent(item.getDiscipuladoId(), id -> new LinkedHashMap<>())
+                .put(
+                    item.getReferencia(),
+                    new FrequenciaMensal(
                         item.getReferencia(),
-                        new FrequenciaMensal(
-                            item.getReferencia(),
-                            valor(item.getPresentes()),
-                            valor(item.getAusentes()))));
+                        valor(item.getPresentes()),
+                        valor(item.getPresentesDiscipulos()),
+                        valor(item.getPresentesVisitantes()),
+                        valor(item.getPresentesGoe()),
+                        valor(item.getAusentes()))));
     return porDiscipulado;
   }
 
-  private Map<Long, Map<String, Long>> carregarTamanhos(LocalDate inicio, LocalDate fim) {
+  private Map<Long, Map<String, Long>> carregarTamanhos(
+      Long gerenciaId, LocalDate inicio, LocalDate fim) {
     List<PainelDesempenhoRepository.VinculoPeriodo> vinculos =
-        repository.vinculosNoPeriodo(inicio, fim);
+        gerenciaId == null
+            ? repository.vinculosNoPeriodo(inicio, fim)
+            : repository.vinculosNoPeriodoDaGerencia(gerenciaId, inicio, fim);
     List<LocalDate> finsDeMes = finsDeMes(inicio, fim);
     Map<Long, Map<String, Long>> porDiscipulado = new LinkedHashMap<>();
     for (LocalDate fimMes : finsDeMes) {
@@ -159,11 +194,18 @@ public class PainelDesempenhoService {
       String faixaEtaria,
       long gerenciaId,
       String gerenciaNome,
+      String discipuladorNome,
       boolean ativo,
       List<FrequenciaMensal> frequencia,
       List<QuantidadeMensal> discipulos) {}
 
-  public record FrequenciaMensal(String referencia, long presentes, long ausentes) {}
+  public record FrequenciaMensal(
+      String referencia,
+      long presentes,
+      long presentesDiscipulos,
+      long presentesVisitantes,
+      long presentesGoe,
+      long ausentes) {}
 
   public record QuantidadeMensal(String referencia, long quantidade) {}
 }

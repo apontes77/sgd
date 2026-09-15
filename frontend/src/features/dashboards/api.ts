@@ -83,6 +83,9 @@ export interface PainelLiderResponse {
 export interface FrequenciaMensalDesempenho {
   referencia: string
   presentes: number
+  presentesDiscipulos: number
+  presentesVisitantes: number
+  presentesGoe: number
   ausentes: number
 }
 
@@ -98,6 +101,7 @@ export interface DiscipuladoDesempenho {
   faixaEtaria: FaixaEtaria
   gerenciaId: number
   gerenciaNome: string
+  discipuladorNome: string
   ativo: boolean
   frequencia: FrequenciaMensalDesempenho[]
   discipulos: QuantidadeMensalDesempenho[]
