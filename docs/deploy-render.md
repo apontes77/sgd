@@ -58,7 +58,7 @@ O `docker-entrypoint.sh` da API aplica, quando `JAVA_TOOL_OPTIONS` ainda não de
 
 `-XX:MaxRAMPercentage=50.0 -XX:MaxMetaspaceSize=128m -XX:+UseSerialGC -Xss512k`
 
-No Render o plano `starter` limita a instância a ~512 MB; 50% do cgroup deixa margem para metaspace e memória nativa. Valores maiores (ex.: 70%) tendem a matar o processo com `Out of memory (used over 512Mi)` no startup. Não suba esse percentual no Blueprint sem subir o plano.
+No Render a API usa o plano `standard` (~2 GB / 1 CPU). Com `MaxRAMPercentage=50.0` o heap fica em torno de 1 GB, com margem para metaspace e memória nativa. No plano `starter` (512 MB), valores altos de heap (ex.: 70%) tendiam a matar o processo com `Out of memory (used over 512Mi)` no startup.
 
 No Compose local o `backend` tem `mem_limit: 768m` e `JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=60.0`, e o Postgres `512m`, para a JVM não ocupar ~70% do WSL/host. Para outro teto, defina `JAVA_TOOL_OPTIONS` com `MaxRAMPercentage` no ambiente do serviço.
 

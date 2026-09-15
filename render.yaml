@@ -30,7 +30,7 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     region: virginia
-    plan: starter
+    plan: standard
     numInstances: 1
     autoDeployTrigger: checksPass
     healthCheckPath: /actuator/health/readiness
