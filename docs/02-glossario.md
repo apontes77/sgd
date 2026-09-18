@@ -4,13 +4,17 @@
 
 Grupo de adolescentes liderado por um discipulador.
 
+## Estrutura
+
+Tela administrativa de gerências e discipulados. Clicar no nome de um discipulado abre Adolescentes já filtrado (`/app/adolescentes?discipuladoId=`).
+
 ## Discipulador
 
-Líder responsável por um único discipulado. Um usuário não pode exercer liderança em outro grupo simultaneamente, nem como co-líder.
+Líder titular de um discipulado. Pode acumular no máximo um discipulado padrão e um de formação; não pode liderar dois grupos do mesmo tipo ao mesmo tempo.
 
 ## Co-líder
 
-Pessoa que auxilia o discipulador em um único grupo e possui a mesma visão histórica do discipulado. Um usuário não pode exercer liderança em outro grupo simultaneamente.
+Pessoa que auxilia o discipulador em um discipulado padrão e possui a mesma visão histórica do grupo. Não existe co-líder em discipulado de formação. Um usuário não pode co-liderar (nem liderar) outro discipulado padrão simultaneamente.
 
 ## Gerência
 
@@ -26,7 +30,7 @@ Usuário com acesso global ao sistema.
 
 ## Adolescente
 
-Participante vinculado a um discipulado. Possui uma categoria de acompanhamento: Discípulo, Visitante ou Discípulo GOE.
+Participante vinculado a um discipulado. Possui uma categoria de acompanhamento: Discípulo, Visitante ou Discípulo GOE. O campo opcional `estrutura` (texto livre) aparece no cadastro para Discípulo, Visitante e formação; não é exibido para Discípulo GOE.
 
 ## Discípulo
 
@@ -47,6 +51,10 @@ Reunião de um discipulado em determinada data. Pode ser realizado ou não reali
 ## Frequência
 
 Registro de presença de um adolescente em um encontro.
+
+## Chamada de liderança
+
+Registro administrativo (somente ADMIN) da presença de discipuladores e co-líderes por discipulado regular em uma data. Independente da chamada de adolescentes do encontro. Aceita salvamento parcial e no máximo um lançamento por pessoa no mesmo dia. Discipulados de formação ficam fora da grade.
 
 ## Observação (encontro)
 
