@@ -26,13 +26,14 @@
 ## Relatórios
 
 - HTML/CSS com impressão nativa do navegador (relatório de frequência por período)
-- JasperReports e Excel permanecem no roadmap
+- Exportação Excel (XLSX) para frequência e para chamada de liderança (`/relatorios/.../export`)
+- JasperReports permanece no roadmap
 
 ## Infraestrutura
 
 - Docker / Docker Compose (local: teto de memória no `backend` e no `postgres`; JVM com `MaxRAMPercentage=60` no Compose)
 - Render (ver `docs/deploy-render.md`)
-- Observabilidade OTLP (ver `docs/observability.md`)
+- Observabilidade: `traceId` em Problem Details e Actuator (ver `docs/observability.md`)
 
 ## CI/CD
 
@@ -49,11 +50,13 @@ Pacote-por-domínio em `br.com.sgd`:
 - `common` (contratos compartilhados, como `PaginaResponse`)
 - `config`
 - `exception`
+- `familia` (ficha 1:1 do adolescente)
 - `frequencia` (encontros, chamada, prazo de lançamento, job de fechamento)
 - `health`
+- `lideranca` (`/chamadas-lideranca` — presença de discipuladores/co-líderes)
 - `observability`
 - `organizacao` (gerências, discipulados, co-líderes)
-- `painel` (`/painel/lider`, `/painel/gerencia`, `/painel/admin`)
+- `painel` (`/painel/lider`, `/painel/gerencia`, `/painel/admin`, `/painel/desempenho-discipulados`)
 - `relatorio`
 - `user`
 
@@ -67,18 +70,26 @@ flowchart LR
   API --> Auth[auth]
   API --> Org[organizacao]
   API --> Adol[adolescente]
+  API --> Fam[familia]
   API --> Freq[frequencia]
+  API --> Lid[lideranca]
   API --> Painel[painel]
+  API --> Rel[relatorio]
   Freq --> Job[FechamentoFrequenciaJob]
   Job --> DB[(PostgreSQL)]
   Freq --> DB
+  Lid --> DB
   Painel --> DB
+  Rel --> DB
 ```
 
-- **Prazo de lançamento**: sexta-feira lançável até domingo 23:59:59 `America/Sao_Paulo` para líder/co-líder; admin ignora o prazo.
+- **Prazo de lançamento**: sexta-feira lançável até domingo 23:59:59 `America/Sao_Paulo` para líder/co-líder em discipulado padrão; admin ignora o prazo. Discipulados de formação não têm esse prazo.
 - **Janela da chamada**: primeiro `PUT .../frequencias` grava `chamadaSalvaEm`; depois disso, líderes têm 3 horas; admin sempre pode.
-- **Fechamento automático**: após o prazo, `FechamentoFrequenciaJob` marca sexta sem chamada como `NAO_REALIZADO` com justificativa padrão e `fechamentoAutomatico=true`. ADMIN pode reverter e preencher a chamada sem limpar o flag; só ADMIN exclui o encontro (`DELETE /encontros/{id}`).
+- **Fechamento automático**: após o prazo, `FechamentoFrequenciaJob` marca sexta sem chamada de discipulado padrão como `NAO_REALIZADO` com justificativa padrão e `fechamentoAutomatico=true`. ADMIN pode reverter e preencher a chamada sem limpar o flag; só ADMIN exclui o encontro (`DELETE /encontros/{id}`). Formação não entra no job.
 - **Observação do encontro**: campo opcional atualizado via `PATCH /encontros/{id}` (não entra no `POST` de criação).
+- **Chamada de liderança**: ADMIN salva presença parcial por discipulado regular (`PUT /chamadas-lideranca`); conflito de pessoa já lançada no dia exige `confirmarAtualizacao` (RN055–RN057). Formação fica fora da grade.
+- **Desempenho dos discipulados**: `GET /painel/desempenho-discipulados` agrega presença mensal (encontros `REALIZADO`) e tamanho do grupo por vínculo vigente; só regulares; ADMIN global / GERENTE na gerência (RN061). Sem tabelas próprias — lê `encontros`, `frequencias` e `vinculos_adolescente_discipulado`.
+- **Exclusão de gerência**: ADMIN pode `DELETE /gerencias/{id}` somente se não houver discipulados associados (RN060).
 
 ## Estrutura Frontend
 
@@ -89,10 +100,12 @@ Organização por feature em `frontend/src`:
 - `features/` — módulos de domínio:
   - `auth`
   - `users`
-  - `organizacao`
+  - `organizacao` (inclui `DiscipuladoPerformance` — aba Desempenho)
   - `adolescentes`
+  - `familia`
   - `frequencia`
-  - `dashboards` (visão executiva admin/gerência, líder, detalhe)
+  - `lideranca` (`LeadershipAttendance`)
+  - `dashboards` (visão executiva admin/gerência, líder, detalhe; gerência embute desempenho)
   - `relatorios`
 - `test/` — setup do Vitest
 
@@ -102,8 +115,8 @@ Imports entre pastas usam o alias `@/*`.
 
 | Perfil | Componente principal | API |
 | --- | --- | --- |
-| ADMIN | `ExecutiveDashboard` (`escopo=admin`) + `AdminDashboard` | `GET /painel/admin` |
-| GERENTE | `ExecutiveDashboard` (`escopo=gerencia`) + `ManagerDashboard` | `GET /painel/gerencia` |
+| ADMIN | `ExecutiveDashboard` (`escopo=admin`) + `AdminDashboard`; Estrutura → Desempenho | `GET /painel/admin`, `GET /painel/desempenho-discipulados` |
+| GERENTE | `ExecutiveDashboard` (`escopo=gerencia`) + `ManagerDashboard` (inclui desempenho embutido) | `GET /painel/gerencia`, `GET /painel/desempenho-discipulados` |
 | DISCIPULADOR / CO_LIDER | `LeaderDashboard` | `GET /painel/lider` |
 
-Perfis acumulados recebem a união das visões; o painel “Meu discipulado” sempre usa a associação de liderança.
+Perfis acumulados recebem a união das visões; o painel “Meu discipulado” sempre usa a associação de liderança. Desempenho dos discipulados é exclusivo de ADMIN/GERENTE (RN061).
