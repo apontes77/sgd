@@ -34,13 +34,16 @@ O refresh token é rotacionado a cada renovação. Tokens de redefinição não 
 | Recurso | ADMIN | GERENTE | DISCIPULADOR | CO_LIDER |
 | --- | --- | --- | --- | --- |
 | Usuários e perfis | Total | Não | Não | Não |
-| Gerências | Total | Própria, leitura | Não | Não |
+| Gerências | Total (inclui `DELETE` sem discipulados) | Própria, leitura | Não | Não |
 | Discipulados | Total | Da gerência | Próprio | Próprio, leitura limitada |
 | Adolescentes — leitura | Total | Da gerência | Próprio | Próprio |
-| Adolescentes — cadastro/edição/inativação | Total | Não, salvo se acumular papel de líder | Próprio | Próprio |
-| Adolescentes — transferência | Total | Não | Não | Não |
-| Encontros e chamada | Total | Da gerência, leitura | Próprio | Próprio |
-| Relatório diário de frequência | Todos | Gerências ativas próprias | Grupos liderados | Grupos liderados |
+| Adolescentes — cadastro/edição/inativação | Total | Da gerência | Próprio | Próprio |
+| Adolescentes — transferência | Total | Da gerência | Não | Não |
+| Ficha / listagem de famílias | Total | Da gerência | Próprio | Próprio |
+| Encontros e chamada | Total | Da gerência, leitura | Próprio (formação: titular) | Próprio (não lança formação) |
+| Chamada de liderança | Total | Não | Não | Não |
+| Relatório diário / período de frequência | Todos | Gerências ativas próprias (só regular) | Grupos liderados (regular e formação) | Grupos liderados (só regular) |
+| Relatório de chamada de liderança | Total | Não | Não | Não |
 | Painel do discipulado | Se também for líder | Se também for líder | Próprio | Próprio |
 | Auditoria | Total | Não | Não | Não |
 
@@ -53,15 +56,17 @@ Os acessos são cumulativos: `GERENTE + DISCIPULADOR` recebe “Minha gerência�
 - Um adolescente possui somente um vínculo ativo por vez; transferências usam `POST /adolescentes/{adolescenteId}/vinculos` e preservam o histórico.
 - Um discipulado padrão tem exatamente um discipulador, uma gerência e até dois co-líderes. Discipulado de formação (`emFormacao`) tem discipulador, não tem gerência nem co-líder, e não subdivide os membros por categoria nem faixa etária.
 - Um encontro é `REALIZADO` ou `NAO_REALIZADO`; há no máximo um encontro por discipulado/data. A não realização exige justificativa, pode ser registrada por `ADMIN` ou pelo `DISCIPULADOR` do próprio grupo e somente `ADMIN` pode revertê-la.
-- A observação do encontro (`observacao`, até 500 caracteres) é opcional, distinta da justificativa, e é alterada via `PATCH /encontros/{id}` com auditoria (RN050).
+- A observação do encontro (`observacao`, até 500 caracteres) é opcional, distinta da justificativa, e é alterada via `PATCH /encontros/{id}` com auditoria (RN059).
 - Há uma única frequência por adolescente e encontro.
 - A chamada usa os vínculos ativos atuais sem comparar a data de início do vínculo com a data do encontro; em discipulado padrão, discípulos (`DISCIPULO`) são obrigatórios na chamada, e GOE/visitantes entram só como `PRESENTE` quando comparecem (RN049). Em formação, todos os membros ativos entram na chamada como presente/ausente, sem essa subdivisão (RN054). Participantes anteriormente registrados de discípulos permanecem disponíveis para preservar o histórico.
 - Discipulador e co-líder podem lançar a frequência de uma sexta de discipulado padrão até o domingo subsequente (23:59, `America/Sao_Paulo`). Discipulados de formação não têm esse prazo. A janela de três horas para editar a chamada começa no primeiro `PUT /encontros/{id}/frequencias` (`chamadaSalvaEm`); após isso, somente `ADMIN` pode alterar. Sem lançamento até o prazo, o sistema fecha a sexta do grupo padrão como `NAO_REALIZADO` com justificativa automática e `fechamentoAutomatico=true`. `ADMIN` pode reverter esse encontro para `REALIZADO` e preencher a chamada; o flag permanece (RN052). Somente `ADMIN` pode `DELETE /encontros/{id}` (RN053). Todas as alterações são auditadas.
-- Discipulador e co-líder registram encontros realizados, chamadas e visitantes somente nos discipulados em que exercem liderança; o `DISCIPULADOR` também informa a não realização e sua justificativa no próprio grupo. `ADMIN` pode executar essas ações em qualquer discipulado ativo.
+- Discipulador e co-líder registram encontros realizados, chamadas e visitantes somente nos discipulados em que exercem liderança; o `DISCIPULADOR` também informa a não realização e sua justificativa no próprio grupo. Em formação, somente `ADMIN` e o discipulador titular lançam frequência. `ADMIN` pode executar essas ações em qualquer discipulado ativo.
 - Gerentes visualizam no painel as não realizações e justificativas dos discipulados da própria gerência, sem permissão de alteração.
 - Discipulador e co-líder cadastram, atualizam e inativam adolescentes somente no próprio discipulado; gerente na própria gerência; ADMIN com superacesso. Transferências: ADMIN global ou GERENTE dentro da gerência.
 - Cada adolescente possui ficha de família 1:1 (RN048). Em `POST /adolescentes`, `familia` é obrigatória para ADMIN/GERENTE; DISCIPULADOR/CO_LIDER podem informar a ficha no body (persistida) ou omiti-la, caso em que nasce como “Não consta” (RN051). `GET`/`PUT /adolescentes/{id}/familia` e `GET /familias` estão disponíveis para todos os perfis no respectivo escopo. A listagem `GET /familias` é paginada e aceita filtros `busca` (nome do adolescente ou discipulado), `situacaoFicha`, `situacaoIgreja` e `situacaoPais`.
 - Um usuário exerce liderança em no máximo um discipulado padrão e em no máximo um discipulado de formação. O acúmulo dos dois tipos é permitido.
+- Chamada de liderança (ADMIN): `GET`/`PUT /chamadas-lideranca?data=` registra presença de discipuladores e co-líderes atuais dos discipulados regulares ativos (formação fora da grade). O `PUT` é parcial e mescla por discipulado (RN056). Uma pessoa só pode constar uma vez por data; conflito de atualização devolve `409` com `conflitos` até `confirmarAtualizacao: true` (RN057). Relatório e Excel: `/relatorios/chamadas-lideranca` (RN058).
+- `DELETE /gerencias/{id}` (ADMIN) remove fisicamente a gerência somente se não houver discipulados associados; caso contrário `409` (RN060).
 - Permissões e painéis são cumulativos. O painel “Meu discipulado” sempre usa a associação de liderança, mesmo quando o usuário também é `ADMIN` ou `GERENTE`.
 - O relatório por período reúne a união dos escopos dos perfis do usuário, aceita de um dia a 12 meses, inclui encontros realizados e não realizados (com justificativa) e devolve totais no `resumo`. `GET /relatorios/frequencia`, `GET /relatorios/frequencia-diaria` e `GET /relatorios/frequencia/export` aceitam `emFormacao` (padrão `false`): `false` lista só discipulados regulares e `true` só os de formação. `resumo.presentes` e `resumo.ausentes` consideram só a categoria `DISCIPULO` nos grupos regulares; em formação, todos os membros da chamada entram nesses totais. `goe` conta `DISCIPULO_GOE` presentes; visitantes nominais e avulsos seguem em `visitantes` (ambos zerados na formação). A exportação Excel soma Presentes + Visitantes + GOE no total e preenche Observação estrutura com a observação do discipulado na chamada de liderança da mesma data; o arquivo de formação usa o prefixo `frequencias-formacao-`. A lista nominal de participantes (`participantes`) é preenchida na consulta de um único dia (`dataInicio` igual a `dataFim`, ou `GET /relatorios/frequencia-diaria`) e, no relatório de formação, em qualquer período; a impressão A4 e o salvamento em PDF usam o diálogo nativo do navegador.
 
@@ -73,10 +78,11 @@ Os acessos são cumulativos: `GERENTE + DISCIPULADOR` recebe “Minha gerência�
 | Estrutura | `/gerencias`, `/discipulados`, `/discipulados/liderados`, `/discipulados/{id}/co-lideres` |
 | Cadastro | `/adolescentes`, `/adolescentes/{id}/vinculos`, `/adolescentes/{id}/familia`, `/familias` |
 | Frequência | `/encontros`, `/encontros/{id}/frequencias`, `/encontros/{id}/visitantes` |
+| Liderança | `/chamadas-lideranca` |
 | Indicadores | `/painel/lider`, `/painel/gerencia`, `/painel/admin` |
-| Relatórios | `/relatorios/frequencia-diaria`, `/relatorios/frequencia` |
+| Relatórios | `/relatorios/frequencia-diaria`, `/relatorios/frequencia`, `/relatorios/frequencia/export`, `/relatorios/chamadas-lideranca`, `/relatorios/chamadas-lideranca/export` |
 | Auditoria | `/auditoria` |
 
-A listagem de discipulados inclui `discipuladorNome` para busca tipável e contexto de liderança na UI. Os painéis administrativo e de gerência consideram somente gerências ativas; o de gerência também devolve `discipuladorNome` por discipulado e a lista de encontros não realizados do período.
+A listagem de discipulados inclui `discipuladorNome` para busca tipável e contexto de liderança na UI. Os painéis administrativo e de gerência consideram somente gerências ativas; o de gerência também devolve `discipuladorNome` por discipulado e a lista de encontros não realizados do período. A grade de `GET /chamadas-lideranca` devolve os discipulados regulares ativos e, quando a pessoa já tem lançamento no dia, o campo `registroDoDia` (grupo e situação).
 
 Consulte o arquivo OpenAPI para payloads, enums, respostas e códigos de status completos.
