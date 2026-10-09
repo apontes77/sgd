@@ -223,7 +223,7 @@ paths:
     get:
       tags: [Adolescentes]
       summary: Lista fichas de família no escopo do usuário
-      description: ADMIN vê todas; GERENTE a gerência; DISCIPULADOR/CO_LIDER o próprio discipulado (RN051). Paginação obrigatória. Filtros opcionais por texto (nome do adolescente ou discipulado), situacaoFicha, situacaoIgreja e situacaoPais.
+      description: ADMIN vê todas; GERENTE a gerência; DISCIPULADOR/CO_LIDER o próprio discipulado (RN051). Paginação obrigatória. Filtros opcionais por texto (nome do adolescente ou discipulado), situacaoFicha, situacaoIgreja, situacaoPais, tipoDesafio e situacaoIntervencao (REGISTRADA = texto diferente de “Não consta”; NAO_CONSTA = intervenção não preenchida).
       parameters:
         - { $ref: '#/components/parameters/Pagina' }
         - { $ref: '#/components/parameters/TamanhoPagina' }
@@ -231,6 +231,8 @@ paths:
         - { name: situacaoFicha, in: query, schema: { type: string, enum: [PREENCHIDA, NAO_CONSTA] } }
         - { name: situacaoIgreja, in: query, schema: { type: string, enum: [FDV_ATUANTES, FDV_NAO_ATUANTES, OUTRA_IGREJA, NAO_CRISTA, AFASTADA, NAO_CONSTA] } }
         - { name: situacaoPais, in: query, schema: { type: string, enum: [CASADOS, SEPARADOS, FALECIDOS, ADOTIVOS, HOMOAFETIVOS, NULOS, NAO_CONSTA] } }
+        - { name: tipoDesafio, in: query, schema: { type: string, enum: [FINANCEIRO, EMOCIONAL, ESPIRITUAL] }, description: Famílias com o desafio marcado }
+        - { name: situacaoIntervencao, in: query, schema: { type: string, enum: [REGISTRADA, NAO_CONSTA] }, description: REGISTRADA difere de “Não consta”; NAO_CONSTA é a intervenção não preenchida }
       responses: { '200': { description: Página de fichas } }
   /encontros:
     get:

@@ -462,6 +462,44 @@ class FamiliaHttpTest {
   }
 
   @Test
+  void listagemFamiliasFiltraPorTipoDesafioEIntervencao() throws Exception {
+    criarAdolescente(
+        admin,
+        alpha.getId(),
+        "Clara Desafios",
+        familiaComDesafios("Mãe Clara", true, false, true, "Visita pastoral"));
+    criarAdolescente(
+        admin,
+        alpha.getId(),
+        "Diego Emocional",
+        familiaComDesafios("Mãe Diego", false, true, false, "não consta"));
+    criarAdolescente(admin, alpha.getId(), "Fabio Sem Desafio", familiaNaoConstaJson());
+
+    JsonNode financeiro = listarFamilias(admin, "tipoDesafio", "FINANCEIRO");
+    assertThat(financeiro.get("content").toString()).contains("Clara Desafios");
+    assertThat(financeiro.get("content").toString()).doesNotContain("Diego Emocional");
+    assertThat(financeiro.get("content").toString()).doesNotContain("Fabio Sem Desafio");
+
+    JsonNode emocional = listarFamilias(admin, "tipoDesafio", "EMOCIONAL");
+    assertThat(emocional.get("content").toString()).contains("Diego Emocional");
+    assertThat(emocional.get("content").toString()).doesNotContain("Clara Desafios");
+
+    JsonNode espiritual = listarFamilias(admin, "tipoDesafio", "ESPIRITUAL");
+    assertThat(espiritual.get("content").toString()).contains("Clara Desafios");
+    assertThat(espiritual.get("content").toString()).doesNotContain("Diego Emocional");
+
+    JsonNode registradas = listarFamilias(admin, "situacaoIntervencao", "REGISTRADA");
+    assertThat(registradas.get("content").toString()).contains("Clara Desafios");
+    assertThat(registradas.get("content").toString()).doesNotContain("Diego Emocional");
+    assertThat(registradas.get("content").toString()).doesNotContain("Fabio Sem Desafio");
+
+    JsonNode naoPreenchidas = listarFamilias(admin, "situacaoIntervencao", "NAO_CONSTA");
+    assertThat(naoPreenchidas.get("content").toString()).contains("Diego Emocional");
+    assertThat(naoPreenchidas.get("content").toString()).contains("Fabio Sem Desafio");
+    assertThat(naoPreenchidas.get("content").toString()).doesNotContain("Clara Desafios");
+  }
+
+  @Test
   void listagemFamiliasPaginadaNaoCarregaTudo() throws Exception {
     criarAdolescente(admin, alpha.getId(), "Pagina Um");
     criarAdolescente(admin, alpha.getId(), "Pagina Dois");
@@ -493,6 +531,18 @@ class FamiliaHttpTest {
                 .header(HttpHeaders.AUTHORIZATION, bearer(token(admin))))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content.length()").value(1));
+  }
+
+  private JsonNode listarFamilias(User ator, String parametro, String valor) throws Exception {
+    return json.readTree(
+        mvc.perform(
+                get("/api/v1/familias")
+                    .param(parametro, valor)
+                    .header(HttpHeaders.AUTHORIZATION, bearer(token(ator))))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString());
   }
 
   private long criarAdolescente(User ator, long discipuladoId, String nome) throws Exception {
@@ -580,6 +630,58 @@ class FamiliaHttpTest {
         }
         """
         .formatted(nomeResponsavel1);
+  }
+
+  private static String familiaComDesafios(
+      String nomeResponsavel1,
+      boolean financeiro,
+      boolean emocional,
+      boolean espiritual,
+      String intervencao) {
+    return """
+        {
+          "cep": "74000000",
+          "rua": "Rua Teste",
+          "numero": "10",
+          "complemento": "Casa",
+          "bairro": "Centro",
+          "cidade": "Goiânia",
+          "situacaoIgreja": "OUTRA_IGREJA",
+          "atuaOnde": "Não consta",
+          "situacaoPais": "CASADOS",
+          "descricao": "Família acolhedora",
+          "desafioFinanceiro": %s,
+          "desafioEmocional": %s,
+          "desafioEspiritual": %s,
+          "desafiosDescricao": "Não consta",
+          "atividadesJuntas": "Não consta",
+          "rotinaSemana": "Não consta",
+          "irmaoDokmos": "Não consta",
+          "pedidoOracao": "Não consta",
+          "intervencao": "%s",
+          "observacaoDiscipulador": "Não consta",
+          "observacaoGerente": "Não consta",
+          "responsavel1": {
+            "nome": "%s",
+            "parentesco": "Mãe",
+            "estadoCivil": "Casada",
+            "profissao": "Professora",
+            "telefone": "62999998888",
+            "email": "mae@exemplo.com",
+            "interessePessoal": "Música"
+          },
+          "responsavel2": {
+            "nome": "Não consta",
+            "parentesco": "Não consta",
+            "estadoCivil": "Não consta",
+            "profissao": "Não consta",
+            "telefone": "Não consta",
+            "email": "Não consta",
+            "interessePessoal": "Não consta"
+          }
+        }
+        """
+        .formatted(financeiro, emocional, espiritual, intervencao, nomeResponsavel1);
   }
 
   private static String familiaNaoConstaJson() {

@@ -11,6 +11,10 @@ export type SituacaoPaisFamilia =
 
 export type SituacaoFichaFamilia = 'PREENCHIDA' | 'NAO_CONSTA'
 
+export type TipoDesafioFamilia = 'FINANCEIRO' | 'EMOCIONAL' | 'ESPIRITUAL'
+
+export type SituacaoIntervencaoFamilia = 'REGISTRADA' | 'NAO_CONSTA'
+
 export interface ResponsavelFamiliaInput {
   nome: string
   parentesco: string
@@ -70,6 +74,8 @@ export type FamiliaListagemFiltros = {
   situacaoIgreja?: SituacaoIgrejaFamilia | ''
   situacaoPais?: SituacaoPaisFamilia | ''
   situacaoFicha?: SituacaoFichaFamilia | ''
+  tipoDesafio?: TipoDesafioFamilia | ''
+  situacaoIntervencao?: SituacaoIntervencaoFamilia | ''
 }
 
 export const SITUACAO_IGREJA_LABEL: Record<SituacaoIgrejaFamilia, string> = {
@@ -94,6 +100,17 @@ export const SITUACAO_PAIS_LABEL: Record<SituacaoPaisFamilia, string> = {
 export const SITUACAO_FICHA_LABEL: Record<SituacaoFichaFamilia, string> = {
   PREENCHIDA: 'Preenchida',
   NAO_CONSTA: NAO_CONSTA,
+}
+
+export const TIPO_DESAFIO_LABEL: Record<TipoDesafioFamilia, string> = {
+  FINANCEIRO: 'Desafio financeiro',
+  EMOCIONAL: 'Desafio emocional',
+  ESPIRITUAL: 'Desafio espiritual',
+}
+
+export const SITUACAO_INTERVENCAO_LABEL: Record<SituacaoIntervencaoFamilia, string> = {
+  REGISTRADA: 'Registradas',
+  NAO_CONSTA: 'Não preenchidas',
 }
 
 export function responsavelNaoConsta(): ResponsavelFamiliaInput {
@@ -208,6 +225,8 @@ export const familiaApi = {
     if (filtros.situacaoIgreja) params.set('situacaoIgreja', filtros.situacaoIgreja)
     if (filtros.situacaoPais) params.set('situacaoPais', filtros.situacaoPais)
     if (filtros.situacaoFicha) params.set('situacaoFicha', filtros.situacaoFicha)
+    if (filtros.tipoDesafio) params.set('tipoDesafio', filtros.tipoDesafio)
+    if (filtros.situacaoIntervencao) params.set('situacaoIntervencao', filtros.situacaoIntervencao)
     return request<Pagina<FamiliaResumo>>(`/familias?${params}`)
   },
   obter: (adolescenteId: number) => request<Familia>(`/adolescentes/${adolescenteId}/familia`),

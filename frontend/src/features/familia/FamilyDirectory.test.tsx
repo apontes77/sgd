@@ -1,4 +1,5 @@
 import { cleanup, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { familiaApi } from '@/features/familia/api'
@@ -54,14 +55,45 @@ describe('diretório de famílias', () => {
 
     expect(await screen.findByText('Ana Silva')).toBeInTheDocument()
     expect(screen.getByLabelText('Situação da ficha')).toBeInTheDocument()
+    expect(screen.getByLabelText('Tipo de desafio')).toBeInTheDocument()
+    expect(screen.getByLabelText('Intervenção')).toBeInTheDocument()
     expect(screen.getByText('Preenchida')).toBeInTheDocument()
   })
 
-  it('envia situacaoFicha na consulta de famílias', async () => {
+  it('envia situacaoFicha, tipo de desafio e intervenção na consulta de famílias', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(pagina))
 
-    await familiaApi.listar(0, 20, { situacaoFicha: 'PREENCHIDA' })
+    await familiaApi.listar(0, 20, {
+      situacaoFicha: 'PREENCHIDA',
+      tipoDesafio: 'FINANCEIRO',
+      situacaoIntervencao: 'REGISTRADA',
+    })
 
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('situacaoFicha=PREENCHIDA')
+    const url = String(fetchMock.mock.calls[0]?.[0])
+    expect(url).toContain('situacaoFicha=PREENCHIDA')
+    expect(url).toContain('tipoDesafio=FINANCEIRO')
+    expect(url).toContain('situacaoIntervencao=REGISTRADA')
+  })
+
+  it('consulta famílias pelo tipo de desafio e pelo preenchimento da intervenção', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/familias')) return jsonResponse(pagina)
+      return jsonResponse({})
+    })
+    const user = userEvent.setup()
+
+    render(<FamilyDirectory />)
+    expect(await screen.findByText('Ana Silva')).toBeInTheDocument()
+
+    await user.click(screen.getByLabelText('Tipo de desafio'))
+    await user.click(screen.getByRole('option', { name: 'Desafio emocional' }))
+
+    await user.click(screen.getByLabelText('Intervenção'))
+    await user.click(screen.getByRole('option', { name: 'Não preenchidas' }))
+
+    const urls = fetchMock.mock.calls.map((call) => String(call[0]))
+    expect(urls.some((url) => url.includes('tipoDesafio=EMOCIONAL'))).toBe(true)
+    expect(urls.some((url) => url.includes('situacaoIntervencao=NAO_CONSTA'))).toBe(true)
   })
 })

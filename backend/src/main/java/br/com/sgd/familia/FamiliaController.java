@@ -38,7 +38,9 @@ public class FamiliaController {
       @RequestParam(required = false) String busca,
       @RequestParam(required = false) SituacaoIgrejaFamilia situacaoIgreja,
       @RequestParam(required = false) SituacaoPaisFamilia situacaoPais,
-      @RequestParam(required = false) SituacaoFichaFamilia situacaoFicha) {
+      @RequestParam(required = false) SituacaoFichaFamilia situacaoFicha,
+      @RequestParam(required = false) TipoDesafioFamilia tipoDesafio,
+      @RequestParam(required = false) SituacaoIntervencaoFamilia situacaoIntervencao) {
     return PaginaResponse.of(
         service.listar(
             usuario(auth),
@@ -46,7 +48,9 @@ public class FamiliaController {
             busca,
             situacaoIgreja,
             situacaoPais,
-            situacaoFicha));
+            situacaoFicha,
+            tipoDesafio,
+            situacaoIntervencao));
   }
 
   @GetMapping("/api/v1/adolescentes/{adolescenteId}/familia")

@@ -27,10 +27,14 @@ import {
   type FamiliaResumo,
   SITUACAO_FICHA_LABEL,
   SITUACAO_IGREJA_LABEL,
+  SITUACAO_INTERVENCAO_LABEL,
   SITUACAO_PAIS_LABEL,
   type SituacaoFichaFamilia,
   type SituacaoIgrejaFamilia,
+  type SituacaoIntervencaoFamilia,
   type SituacaoPaisFamilia,
+  TIPO_DESAFIO_LABEL,
+  type TipoDesafioFamilia,
 } from '@/features/familia/api'
 import { FamilyFormFields } from '@/features/familia/FamilyFormFields'
 import type { Pagina } from '@/shared/api/types'
@@ -40,6 +44,8 @@ const PAGE_SIZE = 20
 const SITUACOES_IGREJA = Object.keys(SITUACAO_IGREJA_LABEL) as SituacaoIgrejaFamilia[]
 const SITUACOES_PAIS = Object.keys(SITUACAO_PAIS_LABEL) as SituacaoPaisFamilia[]
 const SITUACOES_FICHA = Object.keys(SITUACAO_FICHA_LABEL) as SituacaoFichaFamilia[]
+const TIPOS_DESAFIO = Object.keys(TIPO_DESAFIO_LABEL) as TipoDesafioFamilia[]
+const SITUACOES_INTERVENCAO = Object.keys(SITUACAO_INTERVENCAO_LABEL) as SituacaoIntervencaoFamilia[]
 
 const paginaVazia: Pagina<FamiliaResumo> = {
   content: [],
@@ -56,6 +62,8 @@ export default function FamilyDirectory() {
   const [situacaoIgreja, setSituacaoIgreja] = useState<SituacaoIgrejaFamilia | ''>('')
   const [situacaoPais, setSituacaoPais] = useState<SituacaoPaisFamilia | ''>('')
   const [situacaoFicha, setSituacaoFicha] = useState<SituacaoFichaFamilia | ''>('')
+  const [tipoDesafio, setTipoDesafio] = useState<TipoDesafioFamilia | ''>('')
+  const [situacaoIntervencao, setSituacaoIntervencao] = useState<SituacaoIntervencaoFamilia | ''>('')
   const [erro, setErro] = useState('')
   const [sucesso, setSucesso] = useState('')
   const [salvando, setSalvando] = useState(false)
@@ -74,6 +82,8 @@ export default function FamilyDirectory() {
             situacaoIgreja,
             situacaoPais,
             situacaoFicha,
+            tipoDesafio,
+            situacaoIntervencao,
           }),
         )
       } catch (e) {
@@ -87,7 +97,7 @@ export default function FamilyDirectory() {
         setCarregando(false)
       }
     },
-    [buscaAplicada, situacaoIgreja, situacaoPais, situacaoFicha],
+    [buscaAplicada, situacaoIgreja, situacaoPais, situacaoFicha, tipoDesafio, situacaoIntervencao],
   )
 
   useEffect(() => {
@@ -222,6 +232,34 @@ export default function FamilyDirectory() {
             {SITUACOES_PAIS.map((valor) => (
               <MenuItem key={valor} value={valor}>
                 {SITUACAO_PAIS_LABEL[valor]}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            label="Tipo de desafio"
+            value={tipoDesafio}
+            onChange={(e) => setTipoDesafio(e.target.value as TipoDesafioFamilia | '')}
+            sx={{ minWidth: { xs: '100%', sm: 200 } }}
+          >
+            <MenuItem value="">Todos</MenuItem>
+            {TIPOS_DESAFIO.map((valor) => (
+              <MenuItem key={valor} value={valor}>
+                {TIPO_DESAFIO_LABEL[valor]}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            label="Intervenção"
+            value={situacaoIntervencao}
+            onChange={(e) => setSituacaoIntervencao(e.target.value as SituacaoIntervencaoFamilia | '')}
+            sx={{ minWidth: { xs: '100%', sm: 200 } }}
+          >
+            <MenuItem value="">Todas</MenuItem>
+            {SITUACOES_INTERVENCAO.map((valor) => (
+              <MenuItem key={valor} value={valor}>
+                {SITUACAO_INTERVENCAO_LABEL[valor]}
               </MenuItem>
             ))}
           </TextField>
