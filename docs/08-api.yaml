@@ -20,6 +20,7 @@ tags:
   - name: Adolescentes
   - name: Encontros
   - name: Frequências
+  - name: Chamada de liderança
   - name: Indicadores e relatórios
 paths:
   /autenticacao/login:
@@ -92,8 +93,8 @@ paths:
   /usuarios/{usuarioId}:
     patch:
       tags: [Usuários]
-      summary: Atualiza perfis ou inativa/reativa usuário
-      description: Requer ADMIN. Nunca exclui fisicamente o usuário.
+      summary: Atualiza nome, perfis ou inativa/reativa usuário
+      description: Requer ADMIN. Permite alterar nome, substituir o conjunto de perfis (acúmulo enviando múltiplos valores, RN014 e RN015) e `ativo`. Nunca exclui fisicamente o usuário.
       parameters: [ { $ref: '#/components/parameters/UsuarioId' } ]
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AtualizarUsuarioRequest' } } } }
       responses: { '200': { description: Usuário atualizado, content: { application/json: { schema: { $ref: '#/components/schemas/Usuario' } } } }, '404': { $ref: '#/components/responses/NaoEncontrado' } }
@@ -198,6 +199,16 @@ paths:
       parameters: [ { $ref: '#/components/parameters/AdolescenteId' } ]
       requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AdolescenteRequest' } } } }
       responses: { '200': { description: Adolescente atualizado, content: { application/json: { schema: { $ref: '#/components/schemas/Adolescente' } } } } }
+  /adolescentes/{adolescenteId}/dados-pessoais:
+    delete:
+      tags: [Adolescentes]
+      summary: Anonimiza dados pessoais do adolescente
+      description: Requer ADMIN. Mascara nome e contatos, marca `anonimizado` e anonimiza a ficha de família associada.
+      parameters: [ { $ref: '#/components/parameters/AdolescenteId' } ]
+      responses:
+        '204': { description: Dados pessoais anonimizados }
+        '403': { $ref: '#/components/responses/Proibido' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
   /adolescentes/{adolescenteId}/vinculos:
     post:
       tags: [Adolescentes]
@@ -277,12 +288,54 @@ paths:
       requestBody: { required: true, content: { application/json: { schema: { type: object, required: [frequencias], properties: { frequencias: { type: array, items: { $ref: '#/components/schemas/FrequenciaRequest' } } } } } } }
       responses: { '200': { description: Chamada salva; o primeiro salvamento define chamadaSalvaEm e inicia a janela de três horas, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Frequencia' } } } } }, '403': { description: Fora da janela de três horas ou do prazo de lançamento (sexta até domingo subsequente) para líder ou co-líder, $ref: '#/components/responses/Proibido' } }
   /encontros/{encontroId}/visitantes:
+    get:
+      tags: [Frequências]
+      summary: Consulta a quantidade de visitantes avulsos do encontro
+      description: 'Quem já pode ler o encontro no respectivo escopo. Sem registro prévio devolve quantidade 0.'
+      parameters: [ { $ref: '#/components/parameters/EncontroId' } ]
+      responses:
+        '200': { description: Quantidade de visitantes, content: { application/json: { schema: { $ref: '#/components/schemas/VisitantesResponse' } } } }
+        '403': { $ref: '#/components/responses/Proibido' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
     put:
       tags: [Frequências]
       summary: Registra a quantidade de visitantes do encontro
+      description: ADMIN, DISCIPULADOR ou CO_LIDER com permissão de edição do encontro. Quantidade mínima 0.
       parameters: [ { $ref: '#/components/parameters/EncontroId' } ]
       requestBody: { required: true, content: { application/json: { schema: { type: object, required: [quantidade], properties: { quantidade: { type: integer, minimum: 0 } } } } } }
-      responses: { '200': { description: Visitantes registrados } }
+      responses:
+        '200': { description: Visitantes registrados, content: { application/json: { schema: { $ref: '#/components/schemas/VisitantesResponse' } } } }
+        '403': { $ref: '#/components/responses/Proibido' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+  /chamadas-lideranca:
+    get:
+      tags: [Chamada de liderança]
+      summary: Consulta a grade de chamada de liderança na data
+      description: Requer ADMIN. Devolve discipulados ativos regulares (exclui formação) com discipulador e co-líderes; quando a pessoa já tem lançamento no dia, inclui `registroDoDia` (RN055).
+      parameters:
+        - { name: data, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200': { description: Grade do dia, content: { application/json: { schema: { $ref: '#/components/schemas/ChamadaLiderancaResponse' } } } }
+        '400': { description: Data ausente, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
+        '403': { $ref: '#/components/responses/Proibido' }
+    put:
+      tags: [Chamada de liderança]
+      summary: Salva (parcialmente) a chamada de liderança na data
+      description: |
+        Requer ADMIN. O payload pode incluir um subconjunto de discipulados ativos; o servidor mescla observações e presenças (RN056).
+        A grade do GET exclui formação (`emFormacao`); a UI não envia esses grupos. O serviço valida discipulado ativo e líderes atuais, sem filtro explícito de `emFormacao` no PUT.
+        Presenças aceitam somente o discipulador e os co-líderes atuais do grupo, com papel coerente.
+        Uma pessoa só pode constar uma vez por data: duplicidade no payload ou mudança em lançamento já salvo retorna 409; envie `confirmarAtualizacao: true` para sobrescrever e remover a presença anterior nos demais discipulados do dia (RN057).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SalvarChamadaLiderancaRequest' }
+      responses:
+        '200': { description: Chamada salva; resposta é a grade atualizada do dia, content: { application/json: { schema: { $ref: '#/components/schemas/ChamadaLiderancaResponse' } } } }
+        '400': { description: Payload inválido, discipulado inativo ou líder que não pertence ao grupo, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
+        '403': { $ref: '#/components/responses/Proibido' }
+        '409': { description: Conflito de presença no dia; corpo Problem Details inclui `conflitos` quando falta confirmação, content: { application/problem+json: { schema: { $ref: '#/components/schemas/ProblemaChamadaLideranca' } } } }
   /painel/lider:
     get:
       tags: [Indicadores e relatórios]
@@ -326,7 +379,27 @@ paths:
         '400': { description: Período ausente, invertido ou superior a 24 meses, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
         '401': { $ref: '#/components/responses/NaoAutorizado' }
         '403': { $ref: '#/components/responses/Proibido' }
-  /relatorios/frequencia-diaria:
+  /painel/desempenho-discipulados:
+    get:
+      tags: [Indicadores e relatórios]
+      summary: Desempenho mensal dos discipulados regulares
+      description: >
+        Requer ADMIN ou GERENTE (RN061). ADMIN vê todos os discipulados regulares (`emFormacao=false`);
+        GERENTE restringe à própria gerência ativa (exige exatamente uma). Período máximo 24 meses.
+        Para cada discipulado devolve séries mensais de frequência (encontros REALIZADO — presentes totais
+        e por categoria DISCIPULO/VISITANTE/DISCIPULO_GOE, mais ausentes) e quantidade de adolescentes com
+        vínculo vigente no fim de cada mês. Discipulados inativos sem série de frequência e com tamanho zero
+        em todos os meses do período são omitidos.
+      parameters:
+        - { name: dataInicio, in: query, required: true, schema: { type: string, format: date } }
+        - { name: dataFim, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200': { description: Séries de desempenho por discipulado, content: { application/json: { schema: { $ref: '#/components/schemas/PainelDesempenhoResponse' } } } }
+        '400': { description: Período ausente, invertido ou superior a 24 meses, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '403': { $ref: '#/components/responses/Proibido' }
+        '404': { description: Gerente sem gerência ativa, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
+        '409': { description: Gerente com mais de uma gerência ativa, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
   /relatorios/frequencia:
     get:
       tags: [Indicadores e relatórios]
@@ -343,7 +416,7 @@ paths:
         '401': { $ref: '#/components/responses/NaoAutorizado' }
         '403': { $ref: '#/components/responses/Proibido' }
         '404': { description: Usuário sem associação organizacional aplicável, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
-
+  /relatorios/frequencia-diaria:
     get:
       tags: [Indicadores e relatórios]
       summary: Consulta o relatório diário de frequência do escopo autenticado
@@ -358,12 +431,61 @@ paths:
         '401': { $ref: '#/components/responses/NaoAutorizado' }
         '403': { $ref: '#/components/responses/Proibido' }
         '404': { description: Usuário sem associação organizacional aplicável, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
-  /relatorios/mensal:
+  /relatorios/frequencia/export:
     get:
       tags: [Indicadores e relatórios]
-      summary: Exporta relatório mensal
-      parameters: [ { name: referencia, in: query, required: true, schema: { type: string, pattern: '^\\d{4}-\\d{2}$' } }, { name: formato, in: query, required: true, schema: { type: string, enum: [pdf, xlsx] } } ]
-      responses: { '200': { description: Arquivo gerado, content: { application/pdf: { schema: { type: string, format: binary } }, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet: { schema: { type: string, format: binary } } } } }
+      summary: Exporta o relatório de frequência em Excel
+      description: Mesmos filtros de `GET /relatorios/frequencia`. O arquivo de formação usa o prefixo `frequencias-formacao-`.
+      parameters:
+        - { name: dataInicio, in: query, required: true, schema: { type: string, format: date } }
+        - { name: dataFim, in: query, required: true, schema: { type: string, format: date } }
+        - { name: discipuladoId, in: query, required: false, schema: { type: integer, format: int64 } }
+        - { name: emFormacao, in: query, required: false, schema: { type: boolean, default: false } }
+      responses:
+        '200': { description: Planilha gerada, content: { application/vnd.openxmlformats-officedocument.spreadsheetml.sheet: { schema: { type: string, format: binary } } } }
+        '400': { description: Período inválido, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
+        '403': { $ref: '#/components/responses/Proibido' }
+        '404': { description: Usuário sem associação organizacional aplicável, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
+  /relatorios/chamadas-lideranca:
+    get:
+      tags: [Indicadores e relatórios]
+      summary: Consulta o relatório de chamada de liderança por período
+      description: Requer ADMIN. Período de um dia a 12 meses; filtro opcional por discipulado (RN058).
+      parameters:
+        - { name: dataInicio, in: query, required: true, schema: { type: string, format: date } }
+        - { name: dataFim, in: query, required: true, schema: { type: string, format: date } }
+        - { name: discipuladoId, in: query, required: false, schema: { type: integer, format: int64 } }
+      responses:
+        '200': { description: Relatórios das chamadas no período, content: { application/json: { schema: { $ref: '#/components/schemas/RelatorioChamadaLiderancaPeriodoResponse' } } } }
+        '400': { description: Período ausente, invertido ou superior a 12 meses, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
+        '403': { $ref: '#/components/responses/Proibido' }
+        '404': { description: Discipulado informado não encontrado, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
+  /relatorios/chamadas-lideranca/export:
+    get:
+      tags: [Indicadores e relatórios]
+      summary: Exporta a chamada de liderança em Excel
+      description: Requer ADMIN. Mesmos filtros do relatório JSON; responde XLSX.
+      parameters:
+        - { name: dataInicio, in: query, required: true, schema: { type: string, format: date } }
+        - { name: dataFim, in: query, required: true, schema: { type: string, format: date } }
+        - { name: discipuladoId, in: query, required: false, schema: { type: integer, format: int64 } }
+      responses:
+        '200': { description: Planilha gerada, content: { application/vnd.openxmlformats-officedocument.spreadsheetml.sheet: { schema: { type: string, format: binary } } } }
+        '400': { description: Período inválido, content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problema' } } } }
+        '403': { $ref: '#/components/responses/Proibido' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+  /relatorios/adolescentes/export:
+    get:
+      tags: [Indicadores e relatórios]
+      summary: Exporta adolescentes em CSV
+      description: Requer ADMIN. Gera CSV (`text/csv`) dos vínculos ativos no escopo; filtros opcionais por discipulado e situação ativo/inativo.
+      parameters:
+        - { name: discipuladoId, in: query, required: false, schema: { type: integer, format: int64 } }
+        - { name: ativo, in: query, required: false, schema: { type: boolean } }
+      responses:
+        '200': { description: CSV gerado, content: { text/csv: { schema: { type: string, format: binary } } } }
+        '403': { $ref: '#/components/responses/Proibido' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
   /auditoria:
     get:
       tags: [Indicadores e relatórios]
@@ -393,6 +515,21 @@ components:
     PaginaAdolescentes: { description: Página de adolescentes, content: { application/json: { schema: { $ref: '#/components/schemas/PaginaAdolescente' } } } }
   schemas:
     Problema: { type: object, required: [type, title, status, detail, traceId], properties: { type: { type: string, format: uri }, title: { type: string }, status: { type: integer }, detail: { type: string }, traceId: { type: string } } }
+    ProblemaChamadaLideranca: { allOf: [ { $ref: '#/components/schemas/Problema' }, { type: object, properties: { conflitos: { type: array, items: { $ref: '#/components/schemas/ConflitoPresencaLideranca' }, description: Presente quando a atualização exige confirmarAtualizacao. } } } ] }
+    PapelLideranca: { type: string, enum: [DISCIPULADOR, CO_LIDER] }
+    SalvarChamadaLiderancaRequest: { type: object, required: [data, discipulados], properties: { data: { type: string, format: date }, observacaoGeral: { type: [string, 'null'], maxLength: 1000 }, discipulados: { type: array, items: { $ref: '#/components/schemas/DiscipuladoChamadaLiderancaRequest' } }, confirmarAtualizacao: { type: boolean, description: Quando true, sobrescreve lançamentos conflitantes da mesma pessoa no dia (RN057). } } }
+    DiscipuladoChamadaLiderancaRequest: { type: object, required: [discipuladoId, presencas], properties: { discipuladoId: { type: integer, format: int64 }, observacao: { type: [string, 'null'], maxLength: 500 }, presencas: { type: array, items: { $ref: '#/components/schemas/PresencaLiderancaRequest' } } } }
+    PresencaLiderancaRequest: { type: object, required: [usuarioId, papel, situacao], properties: { usuarioId: { type: integer, format: int64 }, papel: { $ref: '#/components/schemas/PapelLideranca' }, situacao: { type: string, enum: [PRESENTE, AUSENTE] } } }
+    ChamadaLiderancaResponse: { type: object, required: [data, discipulados], properties: { id: { type: [integer, 'null'], format: int64 }, data: { type: string, format: date }, observacaoGeral: { type: [string, 'null'] }, discipulados: { type: array, items: { $ref: '#/components/schemas/DiscipuladoChamadaLiderancaResponse' } } } }
+    DiscipuladoChamadaLiderancaResponse: { type: object, required: [discipuladoId, discipuladoNome, sexo, gerenciaNome, presencas], properties: { discipuladoId: { type: integer, format: int64 }, discipuladoNome: { type: string }, sexo: { type: string, enum: [MASCULINO, FEMININO] }, gerenciaNome: { type: string }, observacao: { type: [string, 'null'] }, presencas: { type: array, items: { $ref: '#/components/schemas/PresencaLiderancaResponse' } } } }
+    PresencaLiderancaResponse: { type: object, required: [usuarioId, nome, papel], properties: { usuarioId: { type: integer, format: int64 }, nome: { type: string }, papel: { $ref: '#/components/schemas/PapelLideranca' }, situacao: { type: [string, 'null'], enum: [PRESENTE, AUSENTE] }, registroDoDia: { oneOf: [ { $ref: '#/components/schemas/RegistroDoDiaLideranca' }, { type: 'null' } ] } } }
+    RegistroDoDiaLideranca: { type: object, required: [discipuladoId, discipuladoNome, situacao], properties: { discipuladoId: { type: integer, format: int64 }, discipuladoNome: { type: string }, situacao: { type: string, enum: [PRESENTE, AUSENTE] } } }
+    ConflitoPresencaLideranca: { type: object, required: [usuarioId, nome, discipuladoId, discipuladoNome, situacao], properties: { usuarioId: { type: integer, format: int64 }, nome: { type: string }, discipuladoId: { type: integer, format: int64 }, discipuladoNome: { type: string }, situacao: { type: string, enum: [PRESENTE, AUSENTE] } } }
+    RelatorioChamadaLiderancaPeriodoResponse: { type: object, required: [dataInicio, dataFim, emitidoEm, relatorios], properties: { dataInicio: { type: string, format: date }, dataFim: { type: string, format: date }, emitidoEm: { type: string, format: date-time }, relatorios: { type: array, items: { $ref: '#/components/schemas/RelatorioChamadaLideranca' } } } }
+    RelatorioChamadaLideranca: { type: object, required: [chamadaId, data, discipulados, resumo], properties: { chamadaId: { type: integer, format: int64 }, data: { type: string, format: date }, observacaoGeral: { type: [string, 'null'] }, discipulados: { type: array, items: { $ref: '#/components/schemas/DiscipuladoRelatorioChamadaLideranca' } }, resumo: { $ref: '#/components/schemas/ResumoChamadaLideranca' } } }
+    DiscipuladoRelatorioChamadaLideranca: { type: object, required: [discipuladoId, discipuladoNome, sexo, gerenciaNome, presencas], properties: { discipuladoId: { type: integer, format: int64 }, discipuladoNome: { type: string }, sexo: { type: string }, gerenciaNome: { type: string }, observacao: { type: [string, 'null'] }, presencas: { type: array, items: { $ref: '#/components/schemas/PresencaRelatorioChamadaLideranca' } } } }
+    PresencaRelatorioChamadaLideranca: { type: object, required: [usuarioId, nome, papel, situacao], properties: { usuarioId: { type: integer, format: int64 }, nome: { type: string }, papel: { $ref: '#/components/schemas/PapelLideranca' }, situacao: { type: string, enum: [PRESENTE, AUSENTE] } } }
+    ResumoChamadaLideranca: { type: object, required: [presentes, ausentes, participantes, percentualPresenca], properties: { presentes: { type: integer, format: int64 }, ausentes: { type: integer, format: int64 }, participantes: { type: integer, format: int64 }, percentualPresenca: { type: number } } }
     LoginRequest: { type: object, required: [email, senha], properties: { email: { type: string, format: email }, senha: { type: string, format: password } } }
     RefreshTokenRequest: { type: object, required: [refreshToken], properties: { refreshToken: { type: string } } }
     EmailRequest: { type: object, required: [email], properties: { email: { type: string, format: email } } }
@@ -409,14 +546,15 @@ components:
     DiscipuladoRequest: { type: object, required: [nome, sexo, faixaEtaria, discipuladorId], properties: { nome: { type: string, minLength: 1, maxLength: 120 }, sexo: { type: string, enum: [MASCULINO, FEMININO] }, faixaEtaria: { $ref: '#/components/schemas/FaixaEtaria' }, gerenciaId: { type: [integer, 'null'], format: int64, description: Obrigatório no discipulado padrão; nulo no de formação. }, discipuladorId: { type: integer, format: int64 }, ativo: { type: boolean }, emFormacao: { type: boolean, description: 'Quando true, o discipulado não possui gerência nem co-líder e não subdivide membros por categoria nem faixa etária (RN054).' } } }
     AtualizarDiscipuladoRequest: { type: object, minProperties: 1, properties: { nome: { type: string, minLength: 1, maxLength: 120 }, sexo: { type: string, enum: [MASCULINO, FEMININO] }, faixaEtaria: { $ref: '#/components/schemas/FaixaEtaria' }, gerenciaId: { type: [integer, 'null'], format: int64 }, discipuladorId: { type: integer, format: int64 }, ativo: { type: boolean } } }
     Discipulado: { allOf: [ { $ref: '#/components/schemas/DiscipuladoRequest' }, { type: object, required: [id, discipuladorNome, coLideres], properties: { id: { type: integer, format: int64 }, discipuladorNome: { type: string, description: Nome do discipulador titular, usado na seleção tipável e no contexto de liderança na UI. }, coLideres: { type: array, maxItems: 2, items: { $ref: '#/components/schemas/Usuario' }, description: 'Índice 0 = co-líder; índice 1 = co-líder em treinamento.' } } } ] }
-    AdolescenteRequest: { type: object, required: [nome, dataNascimento, categoria, consentimentoEm, discipuladoId], properties: { nome: { type: string, minLength: 1, maxLength: 120 }, dataNascimento: { type: string, format: date }, telefone: { type: string, description: 'Obrigatório quando categoria for DISCIPULO_GOE, salvo se naoPossuiTelefone=true (RN048).' }, naoPossuiTelefone: { type: boolean, description: 'Quando true, o telefone do adolescente fica vazio e a obrigatoriedade de telefone em DISCIPULO_GOE é dispensada.' }, naoPossuiContatoFamiliar: { type: boolean, description: 'Quando true, os contatos de mãe/pai/responsável ficam vazios e a obrigatoriedade de contato familiar em DISCIPULO/VISITANTE é dispensada.' }, instagram: { type: string }, responsavelNome: { type: string }, responsavelTelefone: { type: string }, consentimentoEm: { type: string, format: date }, categoria: { type: string, enum: [DISCIPULO, VISITANTE, DISCIPULO_GOE] }, telefoneMae: { type: string }, telefonePai: { type: string }, estrutura: { type: string, maxLength: 120 }, motivoAfastamento: { type: string, maxLength: 500, description: Obrigatório quando categoria for DISCIPULO_GOE. }, discipuladoId: { type: integer, format: int64 }, ativo: { type: boolean }, dataInicio: { type: string, format: date, description: Data de início do vínculo com o discipulado. Padrão é a data atual; usada ao registrar um visitante em uma data anterior. }, familia: { type: object, description: 'Obrigatória para ADMIN/GERENTE; ignorada para DISCIPULADOR/CO_LIDER (ficha automática “Não consta”, RN051).' } }, description: 'Ficha de família 1:1 (RN048). ADMIN/GERENTE devem enviar `familia`; liderança omite e o servidor cria “Não consta” (RN051). Contatos familiares vivem na ficha, não nestes campos legados.' }
+    AdolescenteRequest: { type: object, required: [nome, dataNascimento, categoria, consentimentoEm, discipuladoId], properties: { nome: { type: string, minLength: 1, maxLength: 120 }, dataNascimento: { type: string, format: date }, telefone: { type: string, description: 'Obrigatório quando categoria for DISCIPULO_GOE, salvo se naoPossuiTelefone=true (RN048).' }, naoPossuiTelefone: { type: boolean, description: 'Quando true, o telefone do adolescente fica vazio e a obrigatoriedade de telefone em DISCIPULO_GOE é dispensada.' }, naoPossuiContatoFamiliar: { type: boolean, description: 'Quando true, os contatos de mãe/pai/responsável ficam vazios e a obrigatoriedade de contato familiar em DISCIPULO/VISITANTE é dispensada.' }, instagram: { type: string }, responsavelNome: { type: string }, responsavelTelefone: { type: string }, consentimentoEm: { type: string, format: date }, categoria: { type: string, enum: [DISCIPULO, VISITANTE, DISCIPULO_GOE] }, telefoneMae: { type: string }, telefonePai: { type: string }, estrutura: { type: string, maxLength: 120 }, motivoAfastamento: { type: string, maxLength: 500, description: Obrigatório quando categoria for DISCIPULO_GOE. }, discipuladoId: { type: integer, format: int64 }, ativo: { type: boolean }, dataInicio: { type: string, format: date, description: Data de início do vínculo com o discipulado. Padrão é a data atual; usada ao registrar um visitante em uma data anterior. }, familia: { type: object, description: 'Obrigatória para ADMIN/GERENTE. DISCIPULADOR/CO_LIDER podem enviar a ficha (persistida) ou omiti-la, caso em que nasce como “Não consta” (RN051).' } }, description: 'Ficha de família 1:1 (RN048). ADMIN/GERENTE devem enviar `familia`; DISCIPULADOR/CO_LIDER podem enviar a ficha (persistida) ou omiti-la, caso em que nasce como “Não consta” (RN051). Contatos familiares vivem na ficha, não nestes campos legados.' }
     Adolescente: { allOf: [ { $ref: '#/components/schemas/AdolescenteRequest' }, { type: object, required: [id, anonimizado], properties: { id: { type: integer, format: int64 }, discipuladoNome: { type: string }, anonimizado: { type: boolean } } } ] }
     AlertaGoe: { type: object, required: [adolescenteId, nome, faltas], properties: { adolescenteId: { type: integer, format: int64 }, nome: { type: string }, faltas: { type: integer, format: int64 } } }
     Vinculo: { type: object, required: [id, adolescenteId, discipuladoId, dataInicio, ativo], properties: { id: { type: integer, format: int64 }, adolescenteId: { type: integer, format: int64 }, discipuladoId: { type: integer, format: int64 }, dataInicio: { type: string, format: date }, dataFim: { type: string, format: date }, ativo: { type: boolean } } }
     EncontroRequest: { type: object, required: [discipuladoId, data, situacao], description: Existe no máximo um encontro por discipulado e data. A observação não é definida na criação; use PATCH depois do registro., properties: { discipuladoId: { type: integer, format: int64 }, data: { type: string, format: date }, situacao: { type: string, enum: [REALIZADO, NAO_REALIZADO] }, justificativa: { type: [string, 'null'], maxLength: 500, description: Obrigatória quando a situação for NAO_REALIZADO e nula quando for REALIZADO. } } }
     AtualizarEncontroRequest: { type: object, minProperties: 1, description: Atualização parcial do encontro. Omitir um campo preserva o valor atual., properties: { data: { type: string, format: date }, situacao: { type: string, enum: [REALIZADO, NAO_REALIZADO] }, justificativa: { type: [string, 'null'], maxLength: 500, description: Obrigatória quando a situação resultante for NAO_REALIZADO. }, observacao: { type: [string, 'null'], maxLength: 500, description: Texto livre opcional sobre o encontro (ex. ocorrências da chamada). String vazia ou só espaços é persistida como nulo. } } }
-    Encontro: { allOf: [ { $ref: '#/components/schemas/EncontroRequest' }, { type: object, required: [id, criadoEm, fechamentoAutomatico], properties: { id: { type: integer, format: int64 }, observacao: { type: [string, 'null'], maxLength: 500, description: Observação opcional do encontro (RN050). }, criadoEm: { type: string, format: date-time }, chamadaSalvaEm: { type: [string, 'null'], format: date-time, description: Instant do primeiro salvamento da chamada; ancora a janela de três horas. }, fechamentoAutomatico: { type: boolean, description: True quando o encontro foi criado ou convertido pelo fechamento automático do prazo (RN047); permanece após ADMIN reverter para REALIZADO (RN052). } } } ] }
+    Encontro: { allOf: [ { $ref: '#/components/schemas/EncontroRequest' }, { type: object, required: [id, criadoEm, fechamentoAutomatico], properties: { id: { type: integer, format: int64 }, observacao: { type: [string, 'null'], maxLength: 500, description: Observação opcional do encontro (RN059). }, criadoEm: { type: string, format: date-time }, chamadaSalvaEm: { type: [string, 'null'], format: date-time, description: Instant do primeiro salvamento da chamada; ancora a janela de três horas. }, fechamentoAutomatico: { type: boolean, description: True quando o encontro foi criado ou convertido pelo fechamento automático do prazo (RN047); permanece após ADMIN reverter para REALIZADO (RN052). } } } ] }
     FrequenciaRequest: { type: object, required: [adolescenteId, situacao], properties: { adolescenteId: { type: integer, format: int64 }, situacao: { type: string, enum: [PRESENTE, AUSENTE], description: DISCIPULO aceita PRESENTE ou AUSENTE. VISITANTE e DISCIPULO_GOE só podem ser enviados como PRESENTE; omitir remove o registro (RN049). } } }
+    VisitantesResponse: { type: object, required: [quantidade], properties: { quantidade: { type: integer, minimum: 0, description: Visitantes avulsos do encontro; 0 quando ainda não houver registro. } } }
     Frequencia: { allOf: [ { $ref: '#/components/schemas/FrequenciaRequest' }, { type: object, required: [id, encontroId, adolescenteNome], properties: { id: { type: integer, format: int64 }, encontroId: { type: integer, format: int64 }, adolescenteNome: { type: string }, categoria: { type: string, enum: [DISCIPULO, VISITANTE, DISCIPULO_GOE] }, registradaEm: { type: string, format: date-time } } } ] }
     IdentificacaoRelatorio: { type: object, required: [id, nome], properties: { id: { type: integer, format: int64 }, nome: { type: string } } }
     DiscipuladoRelatorio: { type: object, required: [id, nome, sexo], properties: { id: { type: integer, format: int64 }, nome: { type: string }, sexo: { type: string, enum: [MASCULINO, FEMININO] } } }
@@ -440,6 +578,10 @@ components:
     EvolucaoDiscipulo: { type: object, required: [referencia, presentes, ausentes, percentualPresenca], properties: { referencia: { type: string, pattern: '^\\d{4}-\\d{2}$' }, presentes: { type: integer, format: int64 }, ausentes: { type: integer, format: int64 }, percentualPresenca: { type: number, format: double } } }
     DiscipuloPainel: { type: object, required: [adolescenteId, nome, presentes, ausentes, evolucao], properties: { adolescenteId: { type: integer, format: int64 }, nome: { type: string }, presentes: { type: integer, format: int64 }, ausentes: { type: integer, format: int64 }, percentualPresenca: { type: number, format: double, nullable: true }, evolucao: { type: array, items: { $ref: '#/components/schemas/EvolucaoDiscipulo' } } } }
     PainelLiderResponse: { type: object, required: [dataInicio, dataFim, discipulado, resumo, evolucao, discipulos], properties: { dataInicio: { type: string, format: date }, dataFim: { type: string, format: date }, discipulado: { $ref: '#/components/schemas/DiscipuladoPainelLider' }, resumo: { $ref: '#/components/schemas/ResumoPainelAdmin' }, evolucao: { type: array, items: { $ref: '#/components/schemas/EvolucaoPainelAdmin' } }, discipulos: { type: array, items: { $ref: '#/components/schemas/DiscipuloPainel' } } } }
+    FrequenciaMensalDesempenho: { type: object, required: [referencia, presentes, presentesDiscipulos, presentesVisitantes, presentesGoe, ausentes], properties: { referencia: { type: string, pattern: '^\\d{4}-\\d{2}$', description: Mês de referência (YYYY-MM). }, presentes: { type: integer, format: int64 }, presentesDiscipulos: { type: integer, format: int64 }, presentesVisitantes: { type: integer, format: int64 }, presentesGoe: { type: integer, format: int64 }, ausentes: { type: integer, format: int64 } } }
+    QuantidadeMensalDesempenho: { type: object, required: [referencia, quantidade], properties: { referencia: { type: string, pattern: '^\\d{4}-\\d{2}$' }, quantidade: { type: integer, format: int64, description: Adolescentes com vínculo vigente no fim do mês (ou no dataFim se o mês estiver truncado). } } }
+    DiscipuladoDesempenho: { type: object, required: [id, nome, sexo, faixaEtaria, gerenciaId, gerenciaNome, discipuladorNome, ativo, frequencia, discipulos], properties: { id: { type: integer, format: int64 }, nome: { type: string }, sexo: { type: string, enum: [MASCULINO, FEMININO] }, faixaEtaria: { $ref: '#/components/schemas/FaixaEtaria' }, gerenciaId: { type: integer, format: int64 }, gerenciaNome: { type: string }, discipuladorNome: { type: string }, ativo: { type: boolean }, frequencia: { type: array, items: { $ref: '#/components/schemas/FrequenciaMensalDesempenho' } }, discipulos: { type: array, items: { $ref: '#/components/schemas/QuantidadeMensalDesempenho' } } } }
+    PainelDesempenhoResponse: { type: object, required: [dataInicio, dataFim, discipulados], properties: { dataInicio: { type: string, format: date }, dataFim: { type: string, format: date }, discipulados: { type: array, items: { $ref: '#/components/schemas/DiscipuladoDesempenho' }, description: Discipulados regulares (emFormacao=false); inativos sem dados no período são omitidos. } } }
     PaginaUsuario: { type: object, properties: { content: { type: array, items: { $ref: '#/components/schemas/Usuario' } }, page: { type: integer }, size: { type: integer }, totalElements: { type: integer, format: int64 }, totalPages: { type: integer } } }
     PaginaGerencia: { type: object, properties: { content: { type: array, items: { $ref: '#/components/schemas/Gerencia' } }, page: { type: integer }, size: { type: integer }, totalElements: { type: integer, format: int64 }, totalPages: { type: integer } } }
     PaginaDiscipulado: { type: object, properties: { content: { type: array, items: { $ref: '#/components/schemas/Discipulado' } }, page: { type: integer }, size: { type: integer }, totalElements: { type: integer, format: int64 }, totalPages: { type: integer } } }

@@ -23,13 +23,14 @@ Fluxo:
 1. Acessar cadastro.
 2. Selecionar o discipulado (ADMIN/GERENTE usam busca tipável por nome do grupo ou do discipulador; líderes usam o próprio grupo).
 3. Conferir o contexto de liderança exibido (discipulador, co-líderes e, quando aplicável, faixa etária).
-4. Informar dados, categoria e ficha de família (RN048, RN051); telefone pode ser omitido quando marcado que não possui.
+4. Informar dados, categoria e ficha de família (RN048, RN051); telefone pode ser omitido quando marcado que não possui. O campo `estrutura` aparece para Discípulo, Visitante e listagem de formação; fica oculto (e é limpo) na categoria Discípulo GOE.
 5. Salvar.
 
 Fluxo alternativo:
 
 - Se o líder informar outro discipulado, rejeitar com `403` sem persistir o adolescente ou vínculo.
 - Sem discipulado selecionado (ADMIN/GERENTE), a tela mostra apenas o total de adolescentes ativos; o detalhe por categoria exige seleção.
+- Na tela Estrutura, clicar no nome do discipulado abre Adolescentes já filtrado por aquele grupo (`/app/adolescentes?discipuladoId=`).
 
 ---
 
@@ -58,13 +59,13 @@ Fluxo alternativo:
 ## UC004 - Registrar Frequência
 
 Ator:
-Discipulador, Co-líder ou Administrador
+Discipulador, Co-líder ou Administrador (frequência regular). Em formação: somente Administrador ou o discipulador titular do grupo (RN054).
 
 Fluxo:
 
-1. Selecionar encontro.
+1. Selecionar encontro (menu “Frequência” ou “Frequência em formação”, este último só se o ator tiver permissão de UI conforme RN054).
 2. Marcar presença dos discípulos.
-3. Opcionalmente marcar presença de GOE e visitantes cadastrados, somente se comparecerem.
+3. Opcionalmente marcar presença de GOE e visitantes cadastrados, somente se comparecerem (não se aplica à formação).
 4. Salvar.
 
 Fluxo alternativo:
@@ -87,7 +88,7 @@ Fluxo:
 
 O acesso é cumulativo: `GERENTE + DISCIPULADOR` visualiza “Minha gerência” e “Meu discipulado”; `ADMIN + DISCIPULADOR` visualiza o painel administrativo (visão executiva) e “Meu discipulado”. Co-líder possui a mesma visão histórica do próprio grupo.
 
-A visão executiva administrativa consome `GET /painel/admin` (gerências ativas, evolução, ranking e encontros não realizados no período). A visão de gerência consome `GET /painel/gerencia` e inclui o nome do discipulador em cada grupo.
+A visão executiva administrativa consome `GET /painel/admin` (gerências ativas, evolução, ranking e encontros não realizados no período). A visão de gerência consome `GET /painel/gerencia` e inclui o nome do discipulador em cada grupo. O desempenho dos discipulados (`GET /painel/desempenho-discipulados`) aparece na aba Estrutura para ADMIN e embutido em “Minha gerência” para GERENTE (RN061).
 
 ---
 
@@ -101,7 +102,7 @@ Fluxo:
 1. Acessar “Relatórios”.
 2. Escolher a aba “Frequência” (discipulados regulares) ou “Frequência em formação” (grupos de formação). Administradores veem as duas abas; discipuladores só veem “Frequência em formação” quando lideram um grupo de formação; gerentes, co-líderes e discipuladores somente de sexta consultam o relatório regular.
 3. Selecionar uma data inicial e uma data final, iguais para um único dia ou separadas por no máximo 12 meses.
-4. Consultar os encontros realizados dentro do escopo dos perfis acumulados do usuário e do tipo escolhido.
+4. Consultar os encontros `REALIZADO` e `NAO_REALIZADO` dentro do escopo dos perfis acumulados do usuário e do tipo escolhido.
 5. Visualizar uma página por registro, com frequência dos adolescentes (ou discípulos, na formação) quando houve discipulado, ou a justificativa quando não houve.
 6. Acionar “Imprimir / salvar como PDF” e usar o diálogo nativo do navegador.
 
@@ -146,3 +147,63 @@ Fluxo alternativo:
 
 - Discipulador ou co-líder tenta transferir: retornar `403`; a ação não é exibida na interface desses perfis.
 - Gerente tenta transferir para discipulado de outra gerência: retornar `403`.
+
+---
+
+## UC009 - Registrar chamada de liderança
+
+Ator:
+Administrador
+
+Fluxo:
+
+1. Acessar “Chamada de liderança”.
+2. Selecionar a data (tipicamente sexta-feira).
+3. Filtrar opcionalmente por sexo do discipulado ou buscar por nome do líder/grupo.
+4. Marcar presença/ausência do discipulador e dos co-líderes por discipulado regular; salvar um card por vez (parcial) ou continuar depois. Discipulados de formação não entram na grade.
+5. Opcionalmente informar observação geral e observação por discipulado.
+
+Fluxo alternativo:
+
+- Se o líder já tiver chamada salva no mesmo dia (outro grupo ou situação diferente), a API responde `409` com `conflitos`; o administrador confirma a atualização (`confirmarAtualizacao`) e a presença anterior nos demais discipulados do dia é removida (RN057).
+- Discipulado inativo ou pessoa que não é líder atual do grupo: `400`.
+- Usuário sem perfil ADMIN: `403`.
+
+---
+
+## UC010 - Consultar relatório de chamada de liderança
+
+Ator:
+Administrador
+
+Fluxo:
+
+1. Acessar relatórios de chamada de liderança.
+2. Informar período (até 12 meses) e, opcionalmente, um discipulado.
+3. Consultar o JSON ou exportar a planilha Excel.
+
+Fluxo alternativo:
+
+- Período inválido ou superior a 12 meses: `400`.
+- `discipuladoId` inexistente: `404`.
+
+---
+
+## UC011 - Consultar desempenho dos discipulados
+
+Ator:
+Administrador ou Gerente
+
+Fluxo:
+
+1. Administrador abre Estrutura → aba “Desempenho dos discipulados”. Gerente abre “Minha gerência”, onde o desempenho aparece embutido abaixo do painel da gerência.
+2. Informar período (até 24 meses) e aplicar o filtro.
+3. Escolher o recorte (discipulado, sexo, faixa etária ou gerência) e, quando aplicável, o seletor do grupo.
+4. Visualizar gráficos/tabelas de presentes e ausentes por mês e a evolução da quantidade de pessoas vinculadas.
+
+Fluxo alternativo:
+
+- Período ausente, invertido ou maior que 24 meses: `400`.
+- Gerente sem gerência ativa: `404`; com mais de uma gerência ativa: `409`.
+- Discipulador ou co-líder: `403`.
+- Escopo sem discipulados regulares no período: lista vazia e mensagem informativa na tela.
