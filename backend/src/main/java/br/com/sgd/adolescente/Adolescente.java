@@ -85,6 +85,23 @@ public class Adolescente {
     assegurarCategoriaDiscipulo();
   }
 
+  /**
+   * Afasta um discípulo para GOE. Não exige telefone: a transição automática não coleta dados. O
+   * cadastro manual continua exigindo motivo e telefone.
+   */
+  public void afastarParaGoe(String motivo) {
+    if (categoria != CategoriaAdolescente.DISCIPULO)
+      throw new IllegalStateException("Somente discípulo pode ser afastado para GOE.");
+    String motivoNormalizado = normalizar(motivo);
+    if (motivoNormalizado == null)
+      throw new IllegalArgumentException(
+          "O motivo do afastamento é obrigatório para discípulo GOE.");
+    this.categoria = CategoriaAdolescente.DISCIPULO_GOE;
+    this.motivoAfastamento = motivoNormalizado;
+    this.estrutura = null;
+    this.atualizadoEm = Instant.now();
+  }
+
   /** Formação não subdivide por categoria: todos os membros são discípulos. */
   public void assegurarCategoriaDiscipulo() {
     this.categoria = CategoriaAdolescente.DISCIPULO;

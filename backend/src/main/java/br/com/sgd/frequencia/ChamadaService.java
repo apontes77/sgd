@@ -93,6 +93,11 @@ public class ChamadaService {
         .map(f -> f.getAdolescente().getId())
         .distinct()
         .forEach(id -> adolescentes.promoverVisitanteSeElegivel(ator, id));
+    resultado.stream()
+        .filter(f -> f.getSituacao() == SituacaoFrequencia.AUSENTE)
+        .map(f -> f.getAdolescente().getId())
+        .distinct()
+        .forEach(id -> adolescentes.afastarParaGoeSeElegivel(ator, id));
     return resultado;
   }
 

@@ -38,7 +38,7 @@ RN054 - Discipulado de formação (`emFormacao`) não possui gerência nem co-l�
 
 RN052 - Administradores podem reverter um encontro de fechamento automático (`fechamento_automatico`) de `NAO_REALIZADO` para `REALIZADO` e lançar ou alterar a chamada a qualquer momento. O flag permanece verdadeiro após a correção, para que o sistema continue informando que o discipulador/co-líder não lançou a frequência no prazo.
 
-RN053 - Somente administradores podem excluir um encontro (chamada, visitantes e o registro da data). A exclusão é auditada, libera o par discipulado+data para novo lançamento e não desfaz promoção automática de categoria (RN045).
+RN053 - Somente administradores podem excluir um encontro (chamada, visitantes e o registro da data). A exclusão é auditada, libera o par discipulado+data para novo lançamento e não desfaz promoção automática de visitante (RN045) nem afastamento automático para GOE (RN043).
 
 ---
 
@@ -79,7 +79,7 @@ RN051 - Leitura e escrita da ficha de família estão disponíveis para todos os
 
 RN049 - A chamada obrigatória de um encontro inclui os adolescentes ativos na categoria `DISCIPULO`. Adolescentes ativos `VISITANTE` e `DISCIPULO_GOE` do discipulado aparecem em seção separada e só geram registro de frequência quando marcados como `PRESENTE`. Omitir ou desmarcar apaga o registro; não se lança `AUSENTE` para GOE ou visitante. Discípulos inativos com frequência já lançada no encontro continuam visíveis/editáveis como registro anterior. Em discipulado de formação a chamada é uma lista simples: todos os membros ativos entram como presença obrigatória (presente/ausente), sem seção de GOE ou visitantes (RN054).
 
-RN043 - Quando um adolescente ativo na categoria `DISCIPULO` acumula ao menos quatro faltas (`AUSENTE`) em encontros `REALIZADO` cuja data está nas últimas seis semanas (42 dias corridos, timezone America/Sao_Paulo), o sistema apresenta alerta de potencial Discípulo GOE. A mudança de categoria só ocorre mediante confirmação do usuário autorizado, com motivo informado. Discipulados de formação não geram esse alerta (RN054).
+RN043 - Quando um adolescente ativo na categoria `DISCIPULO` acumula ao menos quatro faltas (`AUSENTE`) em encontros `REALIZADO` do vínculo ativo cuja data está nas últimas seis semanas (42 dias corridos, timezone America/Sao_Paulo), o sistema muda a categoria para `DISCIPULO_GOE` ao salvar a chamada, sem confirmação. O motivo gravado é `Afastamento automático: quatro ou mais faltas nas últimas seis semanas.` A estrutura é limpa; o telefone permanece como estava. A mudança é unidirecional: editar ou excluir frequência depois não devolve a categoria. Discipulados de formação não aplicam essa regra (RN054). Quem já cumpre o critério na subida da aplicação é afastado na mesma hora.
 
 RN044 - A listagem de adolescentes exibe três grupos (Discípulos, Visitantes e Discípulos GOE) por discipulado padrão. Gerente e Administrador selecionam o discipulado; Discipulador e Co-líder visualizam o próprio grupo. Discipulado de formação exibe uma listagem simples, sem essas subdivisões (RN054).
 

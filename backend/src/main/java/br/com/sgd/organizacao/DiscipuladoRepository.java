@@ -48,4 +48,6 @@ public interface DiscipuladoRepository
 
   @EntityGraph(attributePaths = {"gerencia", "discipulador", "coLideres"})
   List<Discipulado> findAllByAtivoTrue();
+
+  List<Discipulado> findAllByEmFormacaoFalse();
 }

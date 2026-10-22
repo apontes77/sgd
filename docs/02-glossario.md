@@ -38,7 +38,7 @@ Categoria do adolescente que começou a frequentar o discipulado e foi cadastrad
 
 ## Discípulo GOE
 
-Categoria do adolescente que frequentou o discipulado com alguma constância e se afastou. O motivo do afastamento é obrigatório. O sistema alerta a liderança quando um Discípulo acumula pelo menos quatro faltas em encontros realizados nas últimas seis semanas.
+Categoria do adolescente que frequentou o discipulado com alguma constância e se afastou. O motivo do afastamento é obrigatório. Com pelo menos quatro faltas em encontros realizados nas últimas seis semanas, o sistema muda o Discípulo para esta categoria automaticamente, com motivo fixo, sem confirmação da liderança.
 
 ## Encontro
 

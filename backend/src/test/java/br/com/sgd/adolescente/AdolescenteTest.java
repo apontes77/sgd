@@ -61,6 +61,32 @@ class AdolescenteTest {
   }
 
   @Test
+  void afastaDiscipuloParaGoeComMotivoESemEstrutura() {
+    Adolescente adolescente =
+        new Adolescente(
+            dados(CategoriaAdolescente.DISCIPULO, "(11) 91234-5678", null, false), true);
+    adolescente.afastarParaGoe("  Afastamento automático  ");
+    assertThat(adolescente.getCategoria()).isEqualTo(CategoriaAdolescente.DISCIPULO_GOE);
+    assertThat(adolescente.getMotivoAfastamento()).isEqualTo("Afastamento automático");
+    assertThat(adolescente.getEstrutura()).isNull();
+    assertThat(adolescente.getTelefone()).isEqualTo("(11) 91234-5678");
+  }
+
+  @Test
+  void afastamentoGoeRecusaQuemNaoEDiscipuloOuMotivoVazio() {
+    Adolescente visitante =
+        new Adolescente(dados(CategoriaAdolescente.VISITANTE, null, null, true), true);
+    assertThatThrownBy(() -> visitante.afastarParaGoe("motivo"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("discípulo");
+    Adolescente discipulo =
+        new Adolescente(dados(CategoriaAdolescente.DISCIPULO, null, null, true), true);
+    assertThatThrownBy(() -> discipulo.afastarParaGoe("  "))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("motivo do afastamento");
+  }
+
+  @Test
   void promoveVisitanteParaDiscipulo() {
     Adolescente adolescente =
         new Adolescente(dados(CategoriaAdolescente.VISITANTE, null, null, true), true);

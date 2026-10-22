@@ -134,12 +134,6 @@ describe('gestão de discípulos', () => {
           { status: 200, headers: { 'Content-Type': 'application/json' } },
         )
       }
-      if (url.includes('/alertas-goe')) {
-        return new Response(JSON.stringify([]), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
-      }
       throw new Error(`Requisição inesperada: ${url}`)
     })
 
@@ -148,6 +142,8 @@ describe('gestão de discípulos', () => {
     expect(await screen.findByText('1 adolescente')).toBeInTheDocument()
     expect(screen.queryByText('Selecione um discipulado')).not.toBeInTheDocument()
     expect(await screen.findByText('Ana')).toBeInTheDocument()
+    expect(screen.queryByText(/potencial discípulo GOE/i)).not.toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/alertas-goe'))).toBe(false)
 
     const listagem = fetchMock.mock.calls.find(([url]) => String(url).includes('/adolescentes?'))
     expect(String(listagem?.[0])).toContain('discipuladoId=1')
@@ -262,12 +258,6 @@ describe('gestão de discípulos', () => {
           }),
           { status: 200, headers: { 'Content-Type': 'application/json' } },
         )
-      }
-      if (url.includes('/alertas-goe')) {
-        return new Response(JSON.stringify([]), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
       }
       throw new Error(`Requisição inesperada: ${url}`)
     })

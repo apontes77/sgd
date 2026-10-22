@@ -3,6 +3,7 @@ package br.com.sgd.frequencia;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -139,6 +140,8 @@ class ChamadaServiceTest {
     verify(encontros).auditar(eq(ator), eq("FREQUENCIA"), eq("SUBSTITUIR_CHAMADA"), any());
     verify(adolescentes).promoverVisitanteSeElegivel(ator, 1L);
     verify(adolescentes, never()).promoverVisitanteSeElegivel(ator, 2L);
+    verify(adolescentes).afastarParaGoeSeElegivel(ator, 2L);
+    verify(adolescentes, never()).afastarParaGoeSeElegivel(ator, 1L);
   }
 
   @Test
@@ -162,6 +165,7 @@ class ChamadaServiceTest {
     assertThat(historica.getSituacao()).isEqualTo(SituacaoFrequencia.PRESENTE);
     verify(adolescentes).promoverVisitanteSeElegivel(ator, 1L);
     verify(adolescentes).promoverVisitanteSeElegivel(ator, 3L);
+    verify(adolescentes, never()).afastarParaGoeSeElegivel(eq(ator), anyLong());
   }
 
   @Test
@@ -223,6 +227,8 @@ class ChamadaServiceTest {
 
     verify(adolescentes).promoverVisitanteSeElegivel(ator, 1L);
     verify(adolescentes, never()).promoverVisitanteSeElegivel(ator, 2L);
+    verify(adolescentes).afastarParaGoeSeElegivel(ator, 2L);
+    verify(adolescentes, never()).afastarParaGoeSeElegivel(ator, 1L);
   }
 
   @Test

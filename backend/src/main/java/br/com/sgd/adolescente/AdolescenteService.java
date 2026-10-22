@@ -36,6 +36,9 @@ public class AdolescenteService {
   private static final int JANELA_PROMOCAO_VISITANTE_DIAS = 35;
 
   private static final long MINIMO_PRESENCAS_PROMOCAO_VISITANTE = 3;
+
+  public static final String MOTIVO_AFASTAMENTO_GOE_AUTOMATICO =
+      "Afastamento automático: quatro ou mais faltas nas últimas seis semanas.";
   private final AdolescenteRepository adolescentes;
   private final VinculoAdolescenteRepository vinculos;
   private final DiscipuladoRepository discipulados;
@@ -184,18 +187,58 @@ public class AdolescenteService {
     return adolescentes.findAll(filtro, pageable).map(this::comVinculoAtual);
   }
 
-  @Transactional(readOnly = true)
-  public List<AlertaGoe> listarAlertasGoe(User usuario, long discipuladoId) {
-    Discipulado discipulado = discipuladoAtivoOuInativo(discipuladoId);
-    escopo.exigirLeitura(usuario, discipulado);
-    if (discipulado.isEmFormacao()) return List.of();
+  /**
+   * Afasta automaticamente DISCIPULO → DISCIPULO_GOE quando há ao menos quatro faltas em encontros
+   * REALIZADO do vínculo ativo nas últimas seis semanas. Sem confirmação de UI; unidirecional.
+   *
+   * @return true quando a categoria foi alterada nesta chamada
+   */
+  public boolean afastarParaGoeSeElegivel(User ator, long adolescenteId) {
+    Adolescente adolescente = buscar(adolescenteId);
+    if (!adolescente.isAtivo()
+        || adolescente.isAnonimizado()
+        || adolescente.getCategoria() != CategoriaAdolescente.DISCIPULO) {
+      return false;
+    }
+    var vinculo = vinculos.findByAdolescenteIdAndAtivoTrue(adolescenteId);
+    if (vinculo.isEmpty()) return false;
+    Discipulado discipulado = vinculo.get().getDiscipulado();
+    if (discipulado.isEmFormacao() || discipulado.getId() == null) return false;
     LocalDate fim = LocalDate.now(clock.withZone(ZONA_NEGOCIO));
     LocalDate inicio = fim.minusDays(JANELA_GOE_DIAS - 1L);
-    return frequencias
-        .encontrarPotenciaisGoe(discipuladoId, inicio, fim, MINIMO_FALTAS_GOE)
-        .stream()
-        .map(r -> new AlertaGoe(r.getAdolescenteId(), r.getNome(), r.getFaltas()))
-        .toList();
+    long faltas =
+        frequencias.contarAusenciasRealizadas(adolescenteId, discipulado.getId(), inicio, fim);
+    if (faltas < MINIMO_FALTAS_GOE) return false;
+    adolescente.afastarParaGoe(MOTIVO_AFASTAMENTO_GOE_AUTOMATICO);
+    auditoria.save(
+        new AuditLog(
+            ator,
+            "ADOLESCENTE",
+            "AFASTAR_GOE_AUTOMATICO",
+            "adolescenteId="
+                + adolescenteId
+                + ",anterior=DISCIPULO,novo=DISCIPULO_GOE,faltas="
+                + faltas
+                + ",janelaInicio="
+                + inicio
+                + ",janelaFim="
+                + fim));
+    return true;
+  }
+
+  /** Aplica o afastamento a quem já está elegível, para não depender de uma nova chamada. */
+  public int afastarElegiveisGoe() {
+    LocalDate fim = LocalDate.now(clock.withZone(ZONA_NEGOCIO));
+    LocalDate inicio = fim.minusDays(JANELA_GOE_DIAS - 1L);
+    int afastados = 0;
+    for (Discipulado discipulado : discipulados.findAllByEmFormacaoFalse()) {
+      if (discipulado.getId() == null) continue;
+      for (var elegivel :
+          frequencias.encontrarElegiveisGoe(discipulado.getId(), inicio, fim, MINIMO_FALTAS_GOE)) {
+        if (afastarParaGoeSeElegivel(null, elegivel.getAdolescenteId())) afastados++;
+      }
+    }
+    return afastados;
   }
 
   /**
@@ -329,6 +372,4 @@ public class AdolescenteService {
 
   public record AdolescenteComVinculo(
       Adolescente adolescente, long discipuladoId, String discipuladoNome) {}
-
-  public record AlertaGoe(long adolescenteId, String nome, long faltas) {}
 }

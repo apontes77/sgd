@@ -3,13 +3,11 @@ import {
   Alert,
   Autocomplete,
   Button,
-  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControl,
-  FormControlLabel,
   InputAdornment,
   InputLabel,
   MenuItem,
@@ -28,7 +26,7 @@ import type { FormEvent, ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { AdolescenteFormFields } from '@/features/adolescentes/AdolescenteFormFields'
-import type { Adolescente, AdolescenteInput, AlertaGoe, DiscipuladoResumo } from '@/features/adolescentes/api'
+import type { Adolescente, AdolescenteInput, DiscipuladoResumo } from '@/features/adolescentes/api'
 import { adolescentesApi } from '@/features/adolescentes/api'
 import {
   familiaApi,
@@ -111,11 +109,13 @@ export default function AdolescentManagement({
   podeAnonimizar = false,
   podeEditar = true,
   podeFamilia = false,
+  podeTransferir = false,
 }: {
   discipuladoInicial?: number
   podeAnonimizar?: boolean
   podeEditar?: boolean
   podeFamilia?: boolean
+  podeTransferir?: boolean
 }) {
   const [items, setItems] = useState<Adolescente[]>([])
   const [totalAtivos, setTotalAtivos] = useState(0)
@@ -135,13 +135,6 @@ export default function AdolescentManagement({
   const [erro, setErro] = useState('')
   const [sucesso, setSucesso] = useState('')
   const [salvando, setSalvando] = useState(false)
-  const [alertasGoe, setAlertasGoe] = useState<AlertaGoe[]>([])
-  const [alertaAtual, setAlertaAtual] = useState<AlertaGoe | null>(null)
-  const [confirmarGoe, setConfirmarGoe] = useState(false)
-  const [motivoGoe, setMotivoGoe] = useState('')
-  const [telefoneGoe, setTelefoneGoe] = useState('')
-  const [naoPossuiTelefoneGoe, setNaoPossuiTelefoneGoe] = useState(false)
-  const [ignoradosGoe, setIgnoradosGoe] = useState<number[]>([])
 
   const carregarDiscipulados = useCallback(async () => {
     try {
@@ -173,20 +166,6 @@ export default function AdolescentManagement({
     }
   }, [filtro])
 
-  const carregarAlertas = useCallback(async (discipuladoId: number, emFormacao?: boolean) => {
-    if (!discipuladoId || emFormacao) {
-      setAlertasGoe([])
-      setAlertaAtual(null)
-      return
-    }
-    try {
-      const alertas = await adolescentesApi.alertasGoe(discipuladoId)
-      setAlertasGoe(alertas)
-    } catch {
-      setAlertasGoe([])
-    }
-  }, [])
-
   useEffect(() => {
     void carregarDiscipulados()
   }, [carregarDiscipulados])
@@ -194,25 +173,6 @@ export default function AdolescentManagement({
   useEffect(() => {
     void carregar()
   }, [carregar])
-
-  useEffect(() => {
-    if (!filtro) {
-      setAlertasGoe([])
-      setAlertaAtual(null)
-      return
-    }
-    if (discipulados.length === 0) return
-    const emFormacao = discipulados.find((d) => d.id === filtro)?.emFormacao
-    void carregarAlertas(filtro, emFormacao)
-  }, [filtro, discipulados, carregarAlertas])
-
-  useEffect(() => {
-    const pendente = alertasGoe.find((a) => !ignoradosGoe.includes(a.adolescenteId))
-    setAlertaAtual(pendente ?? null)
-    setConfirmarGoe(false)
-    setMotivoGoe('')
-    setTelefoneGoe('')
-  }, [alertasGoe, ignoradosGoe])
 
   const discipulos = useMemo(() => items.filter((a) => (a.categoria ?? 'DISCIPULO') === 'DISCIPULO'), [items])
   const visitantes = useMemo(() => items.filter((a) => a.categoria === 'VISITANTE'), [items])
@@ -344,7 +304,6 @@ export default function AdolescentManagement({
       setFamiliaForm(familiaNaoConsta())
       setDrawerOpen(false)
       await carregar()
-      await carregarAlertas(filtro, listagemSimples)
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Não foi possível salvar.')
     } finally {
@@ -402,69 +361,23 @@ export default function AdolescentManagement({
     }
   }
 
-  function recusarGoe() {
-    if (!alertaAtual) return
-    setIgnoradosGoe((prev) => [...prev, alertaAtual.adolescenteId])
-  }
-
-  async function confirmarAtualizacaoGoe() {
-    if (!alertaAtual || !motivoGoe.trim()) {
-      setErro('Informe o motivo do afastamento.')
-      return
-    }
-    const alvo = items.find((a) => a.id === alertaAtual.adolescenteId)
-    if (!alvo) {
-      setIgnoradosGoe((prev) => [...prev, alertaAtual.adolescenteId])
-      return
-    }
-    const jaTemTelefone = Boolean(alvo.telefone?.trim())
-    const telefoneInformado = jaTemTelefone ? alvo.telefone : telefoneGoe.trim()
-    if (!jaTemTelefone && !naoPossuiTelefoneGoe && !telefoneInformado) {
-      setErro('Informe o telefone do adolescente ou marque que não possui telefone.')
-      return
-    }
-    if (!naoPossuiTelefoneGoe && telefoneInformado && !telefoneValido(telefoneInformado)) {
-      setErro(mensagemTelefoneInvalido('telefone do adolescente'))
-      return
-    }
-    setSalvando(true)
-    setErro('')
-    try {
-      await adolescentesApi.atualizar(alvo.id, {
-        ...inputFromAdolescente(alvo),
-        telefone: naoPossuiTelefoneGoe ? '' : telefoneInformado,
-        naoPossuiTelefone: naoPossuiTelefoneGoe || !telefoneInformado,
-        categoria: 'DISCIPULO_GOE',
-        motivoAfastamento: motivoGoe.trim(),
-      })
-      setSucesso(`Status de ${alvo.nome} atualizado para Discípulo GOE.`)
-      setIgnoradosGoe((prev) => [...prev, alertaAtual.adolescenteId])
-      setConfirmarGoe(false)
-      setMotivoGoe('')
-      setTelefoneGoe('')
-      setNaoPossuiTelefoneGoe(false)
-      await carregar()
-      await carregarAlertas(filtro, listagemSimples)
-    } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Não foi possível atualizar o status.')
-    } finally {
-      setSalvando(false)
-    }
-  }
-
   function acoesLinha(a: Adolescente) {
     const actions = [
       ...(podeFamilia ? [{ label: 'Ficha de família', onClick: () => void abrirFamilia(a) }] : []),
       ...(podeEditar
         ? [
             { label: 'Editar', onClick: () => editar(a) },
-            {
-              label: 'Transferir',
-              onClick: () => {
-                setTransferindo(a)
-                setDestino(0)
-              },
-            },
+            ...(podeTransferir
+              ? [
+                  {
+                    label: 'Transferir',
+                    onClick: () => {
+                      setTransferindo(a)
+                      setDestino(0)
+                    },
+                  },
+                ]
+              : []),
             ...(a.ativo ? [{ label: 'Inativar', onClick: () => setInativando(a), color: 'warning' as const }] : []),
           ]
         : []),
@@ -760,114 +673,6 @@ export default function AdolescentManagement({
           <Button onClick={() => setAnonimizando(null)}>Cancelar</Button>
           <Button color="error" variant="contained" disabled={salvando} onClick={() => void anonimizar()}>
             Excluir dados
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={Boolean(alertaAtual) && !confirmarGoe} onClose={recusarGoe} fullWidth maxWidth="sm">
-        <DialogTitle>Potencial discípulo GOE</DialogTitle>
-        <DialogContent>
-          <Typography>
-            {podeEditar
-              ? `${alertaAtual?.nome} é potencial discípulo GOE (pelo menos ${alertaAtual?.faltas} faltas nas últimas 6 semanas). Deseja atualizar o status dele(a)?`
-              : `${alertaAtual?.nome} é potencial discípulo GOE (pelo menos ${alertaAtual?.faltas} faltas nas últimas 6 semanas). A liderança do discipulado pode atualizar o status.`}
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          {podeEditar ? (
-            <>
-              <Button onClick={recusarGoe}>Não</Button>
-              <Button variant="contained" onClick={() => setConfirmarGoe(true)}>
-                Sim
-              </Button>
-            </>
-          ) : (
-            <Button variant="contained" onClick={recusarGoe}>
-              Entendi
-            </Button>
-          )}
-        </DialogActions>
-      </Dialog>
-
-      <Dialog
-        open={Boolean(alertaAtual) && confirmarGoe}
-        onClose={() => setConfirmarGoe(false)}
-        fullWidth
-        maxWidth="sm"
-      >
-        <DialogTitle>Atualizar para Discípulo GOE</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} mt={1}>
-            <Typography color="text.secondary">Informe o motivo do afastamento de {alertaAtual?.nome}.</Typography>
-            {alertaAtual && !items.find((a) => a.id === alertaAtual.adolescenteId)?.telefone?.trim() && (
-              <>
-                <TextField
-                  required={!naoPossuiTelefoneGoe}
-                  autoFocus
-                  label="Telefone do adolescente"
-                  value={naoPossuiTelefoneGoe ? '' : telefoneGoe}
-                  disabled={naoPossuiTelefoneGoe}
-                  onChange={(e) => {
-                    setTelefoneGoe(e.target.value)
-                    setNaoPossuiTelefoneGoe(false)
-                  }}
-                  error={Boolean(telefoneGoe.trim() && !telefoneValido(telefoneGoe))}
-                  helperText={
-                    naoPossuiTelefoneGoe
-                      ? 'Cadastro permitido sem telefone. É possível informar depois na edição.'
-                      : telefoneGoe.trim() && !telefoneValido(telefoneGoe)
-                        ? mensagemTelefoneInvalido('telefone do adolescente')
-                        : 'Obrigatório para Discípulo GOE, salvo se não possuir telefone.'
-                  }
-                />
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={naoPossuiTelefoneGoe}
-                      onChange={(e) => {
-                        setNaoPossuiTelefoneGoe(e.target.checked)
-                        if (e.target.checked) setTelefoneGoe('')
-                      }}
-                    />
-                  }
-                  label="Não possui telefone"
-                />
-              </>
-            )}
-            <TextField
-              required
-              autoFocus={Boolean(items.find((a) => a.id === alertaAtual?.adolescenteId)?.telefone?.trim())}
-              label="Motivo do afastamento"
-              value={motivoGoe}
-              multiline
-              minRows={2}
-              onChange={(e) => setMotivoGoe(e.target.value)}
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() => {
-              setConfirmarGoe(false)
-              setNaoPossuiTelefoneGoe(false)
-              setTelefoneGoe('')
-            }}
-          >
-            Cancelar
-          </Button>
-          <Button
-            variant="contained"
-            disabled={
-              salvando ||
-              !motivoGoe.trim() ||
-              (Boolean(alertaAtual) &&
-                !items.find((a) => a.id === alertaAtual?.adolescenteId)?.telefone?.trim() &&
-                !naoPossuiTelefoneGoe &&
-                !telefoneGoe.trim())
-            }
-            onClick={() => void confirmarAtualizacaoGoe()}
-          >
-            Atualizar status
           </Button>
         </DialogActions>
       </Dialog>

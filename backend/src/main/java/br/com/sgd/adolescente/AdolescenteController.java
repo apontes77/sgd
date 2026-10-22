@@ -41,15 +41,6 @@ public class AdolescenteController {
             .map(AdolescenteController::resposta));
   }
 
-  @GetMapping("/alertas-goe")
-  @PreAuthorize("hasAnyRole('ADMIN','GERENTE','DISCIPULADOR','CO_LIDER')")
-  public List<AlertaGoeResponse> alertasGoe(
-      Authentication auth, @RequestParam @NotNull @Positive Long discipuladoId) {
-    return service.listarAlertasGoe(usuario(auth), discipuladoId).stream()
-        .map(a -> new AlertaGoeResponse(a.adolescenteId(), a.nome(), a.faltas()))
-        .toList();
-  }
-
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
   @PreAuthorize("hasAnyRole('ADMIN','GERENTE','DISCIPULADOR','CO_LIDER')")
@@ -152,8 +143,6 @@ public class AdolescenteController {
       long discipuladoId,
       String discipuladoNome,
       boolean ativo) {}
-
-  public record AlertaGoeResponse(long adolescenteId, String nome, long faltas) {}
 
   public record VinculoRequest(
       @NotNull @Positive Long discipuladoId, @NotNull LocalDate dataInicio) {}

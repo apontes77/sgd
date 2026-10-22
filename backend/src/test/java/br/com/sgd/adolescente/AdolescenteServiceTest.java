@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -211,27 +212,138 @@ class AdolescenteServiceTest {
   }
 
   @Test
-  void listarAlertasGoeConsultaJanelaDeSeisSemanas() {
-    when(discipulados.findById(10L)).thenReturn(Optional.of(origem));
-    when(frequencias.encontrarPotenciaisGoe(
-            eq(10L), eq(LocalDate.of(2026, 6, 15)), eq(LocalDate.of(2026, 7, 26)), eq(4L)))
-        .thenReturn(List.of(row(1L, "Ana", 4L)));
+  void afastaDiscipuloComQuatroFaltasNaJanelaDeSeisSemanas() {
+    Adolescente discipulo = discipuloComEstrutura();
+    var vinculo = new VinculoAdolescenteDiscipulado(discipulo, origem, LocalDate.of(2026, 1, 1));
+    when(adolescentes.findById(1L)).thenReturn(Optional.of(discipulo));
+    when(vinculos.findByAdolescenteIdAndAtivoTrue(1L)).thenReturn(Optional.of(vinculo));
+    when(origem.getId()).thenReturn(10L);
+    when(frequencias.contarAusenciasRealizadas(
+            1L, 10L, LocalDate.of(2026, 6, 15), LocalDate.of(2026, 7, 26)))
+        .thenReturn(4L);
 
-    var alertas = service.listarAlertasGoe(usuario, 10L);
+    assertThat(service.afastarParaGoeSeElegivel(usuario, 1L)).isTrue();
 
-    assertThat(alertas).containsExactly(new AdolescenteService.AlertaGoe(1L, "Ana", 4L));
-    verify(escopo).exigirLeitura(usuario, origem);
+    assertThat(discipulo.getCategoria()).isEqualTo(CategoriaAdolescente.DISCIPULO_GOE);
+    assertThat(discipulo.getMotivoAfastamento())
+        .isEqualTo(AdolescenteService.MOTIVO_AFASTAMENTO_GOE_AUTOMATICO);
+    assertThat(discipulo.getEstrutura()).isNull();
+    assertThat(discipulo.getTelefone()).isEqualTo("(11) 91234-5678");
+    verify(auditoria).save(any());
     LocalDate hoje = LocalDate.now(CLOCK.withZone(ZONA));
     assertThat(hoje).isEqualTo(LocalDate.of(2026, 7, 26));
   }
 
   @Test
-  void discipuladoDeFormacaoNaoListaAlertasGoe() {
-    when(origem.isEmFormacao()).thenReturn(true);
-    when(discipulados.findById(10L)).thenReturn(Optional.of(origem));
+  void naoAfastaComMenosDeQuatroFaltas() {
+    Adolescente discipulo = discipuloComEstrutura();
+    var vinculo = new VinculoAdolescenteDiscipulado(discipulo, origem, LocalDate.of(2026, 1, 1));
+    when(adolescentes.findById(1L)).thenReturn(Optional.of(discipulo));
+    when(vinculos.findByAdolescenteIdAndAtivoTrue(1L)).thenReturn(Optional.of(vinculo));
+    when(origem.getId()).thenReturn(10L);
+    when(frequencias.contarAusenciasRealizadas(
+            1L, 10L, LocalDate.of(2026, 6, 15), LocalDate.of(2026, 7, 26)))
+        .thenReturn(3L);
 
-    assertThat(service.listarAlertasGoe(usuario, 10L)).isEmpty();
-    verify(frequencias, never()).encontrarPotenciaisGoe(eq(10L), any(), any(), eq(4L));
+    assertThat(service.afastarParaGoeSeElegivel(usuario, 1L)).isFalse();
+
+    assertThat(discipulo.getCategoria()).isEqualTo(CategoriaAdolescente.DISCIPULO);
+    verify(auditoria, never()).save(any());
+  }
+
+  @Test
+  void afastamentoGoeEIdempotente() {
+    Adolescente discipulo = discipuloComEstrutura();
+    var vinculo = new VinculoAdolescenteDiscipulado(discipulo, origem, LocalDate.of(2026, 1, 1));
+    when(adolescentes.findById(1L)).thenReturn(Optional.of(discipulo));
+    when(vinculos.findByAdolescenteIdAndAtivoTrue(1L)).thenReturn(Optional.of(vinculo));
+    when(origem.getId()).thenReturn(10L);
+    when(frequencias.contarAusenciasRealizadas(
+            1L, 10L, LocalDate.of(2026, 6, 15), LocalDate.of(2026, 7, 26)))
+        .thenReturn(4L);
+
+    service.afastarParaGoeSeElegivel(usuario, 1L);
+    assertThat(service.afastarParaGoeSeElegivel(usuario, 1L)).isFalse();
+
+    verify(auditoria, times(1)).save(any());
+    verify(frequencias, times(1))
+        .contarAusenciasRealizadas(1L, 10L, LocalDate.of(2026, 6, 15), LocalDate.of(2026, 7, 26));
+  }
+
+  @Test
+  void discipuladoDeFormacaoNaoAfastaParaGoe() {
+    Adolescente discipulo = discipuloComEstrutura();
+    var vinculo = new VinculoAdolescenteDiscipulado(discipulo, origem, LocalDate.of(2026, 1, 1));
+    when(origem.isEmFormacao()).thenReturn(true);
+    when(adolescentes.findById(1L)).thenReturn(Optional.of(discipulo));
+    when(vinculos.findByAdolescenteIdAndAtivoTrue(1L)).thenReturn(Optional.of(vinculo));
+
+    assertThat(service.afastarParaGoeSeElegivel(usuario, 1L)).isFalse();
+
+    assertThat(discipulo.getCategoria()).isEqualTo(CategoriaAdolescente.DISCIPULO);
+    verify(frequencias, never()).contarAusenciasRealizadas(eq(1L), eq(10L), any(), any());
+  }
+
+  @Test
+  void naoAfastaInativoVisitanteOuQuemJaEGoe() {
+    Adolescente inativo = discipuloComEstrutura();
+    inativo.atualizar(
+        new DadosCadastroAdolescente(
+            "Ana",
+            LocalDate.of(2010, 3, 2),
+            "(11) 91234-5678",
+            null,
+            LocalDate.of(2026, 1, 1),
+            CategoriaAdolescente.DISCIPULO,
+            "Núcleo A",
+            null,
+            false),
+        false);
+    when(adolescentes.findById(1L)).thenReturn(Optional.of(inativo));
+    service.afastarParaGoeSeElegivel(usuario, 1L);
+
+    Adolescente visitante = adolescenteNaCategoria(CategoriaAdolescente.VISITANTE);
+    when(adolescentes.findById(2L)).thenReturn(Optional.of(visitante));
+    service.afastarParaGoeSeElegivel(usuario, 2L);
+
+    Adolescente goe =
+        new Adolescente(
+            new DadosCadastroAdolescente(
+                "Ana",
+                LocalDate.of(2010, 3, 2),
+                "(11) 91234-5678",
+                null,
+                LocalDate.of(2026, 1, 1),
+                CategoriaAdolescente.DISCIPULO_GOE,
+                null,
+                "Mudou",
+                false),
+            true);
+    when(adolescentes.findById(3L)).thenReturn(Optional.of(goe));
+    service.afastarParaGoeSeElegivel(usuario, 3L);
+
+    verify(vinculos, never()).findByAdolescenteIdAndAtivoTrue(any());
+    verify(auditoria, never()).save(any());
+  }
+
+  @Test
+  void varreduraAfastaQuemJaEstaElegivel() {
+    Adolescente discipulo = discipuloComEstrutura();
+    var vinculo = new VinculoAdolescenteDiscipulado(discipulo, origem, LocalDate.of(2026, 1, 1));
+    when(discipulados.findAllByEmFormacaoFalse()).thenReturn(List.of(origem));
+    when(origem.getId()).thenReturn(10L);
+    when(frequencias.encontrarElegiveisGoe(
+            eq(10L), eq(LocalDate.of(2026, 6, 15)), eq(LocalDate.of(2026, 7, 26)), eq(4L)))
+        .thenReturn(List.of(row(1L, "Ana", 4L)));
+    when(adolescentes.findById(1L)).thenReturn(Optional.of(discipulo));
+    when(vinculos.findByAdolescenteIdAndAtivoTrue(1L)).thenReturn(Optional.of(vinculo));
+    when(frequencias.contarAusenciasRealizadas(
+            1L, 10L, LocalDate.of(2026, 6, 15), LocalDate.of(2026, 7, 26)))
+        .thenReturn(4L);
+
+    assertThat(service.afastarElegiveisGoe()).isEqualTo(1);
+    assertThat(discipulo.getCategoria()).isEqualTo(CategoriaAdolescente.DISCIPULO_GOE);
+    verify(auditoria).save(any());
   }
 
   @Test
@@ -376,6 +488,21 @@ class AdolescenteServiceTest {
         true);
   }
 
+  private static Adolescente discipuloComEstrutura() {
+    return new Adolescente(
+        new DadosCadastroAdolescente(
+            "Ana",
+            LocalDate.of(2010, 3, 2),
+            "(11) 91234-5678",
+            null,
+            LocalDate.of(2026, 1, 1),
+            CategoriaAdolescente.DISCIPULO,
+            "Núcleo A",
+            null,
+            false),
+        true);
+  }
+
   private AdolescenteService.DadosAdolescente dadosBasicos(
       long discipuladoId, CategoriaAdolescente categoria, String motivo) {
     String telefone = categoria == CategoriaAdolescente.DISCIPULO_GOE ? "(11) 91234-5678" : null;
@@ -394,8 +521,8 @@ class AdolescenteServiceTest {
         false);
   }
 
-  private static FrequenciaRepository.AlertaGoeRow row(long id, String nome, long faltas) {
-    return new FrequenciaRepository.AlertaGoeRow() {
+  private static FrequenciaRepository.ElegivelGoeRow row(long id, String nome, long faltas) {
+    return new FrequenciaRepository.ElegivelGoeRow() {
       @Override
       public Long getAdolescenteId() {
         return id;

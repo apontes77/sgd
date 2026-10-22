@@ -38,12 +38,6 @@ export interface AdolescenteInput {
   familia?: FamiliaInput
 }
 
-export interface AlertaGoe {
-  adolescenteId: number
-  nome: string
-  faltas: number
-}
-
 export interface Vinculo {
   id: number
   adolescenteId: number
@@ -80,8 +74,6 @@ export const adolescentesApi = {
     }
     return request<Pagina<Adolescente>>(`/adolescentes?${params}`)
   },
-  alertasGoe: (discipuladoId: number) =>
-    request<AlertaGoe[]>(`/adolescentes/alertas-goe?discipuladoId=${discipuladoId}`),
   listarDiscipulados: () => request<Pagina<DiscipuladoResumo>>('/discipulados?ativo=true&page=0&size=100'),
   criar: (body: AdolescenteInput) =>
     request<Adolescente>('/adolescentes', { method: 'POST', body: JSON.stringify(body) }),

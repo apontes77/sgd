@@ -38,11 +38,28 @@ public interface FrequenciaRepository extends JpaRepository<Frequencia, Long> {
       having count(f) >= :minimoFaltas
       order by a.nome
       """)
-  List<AlertaGoeRow> encontrarPotenciaisGoe(
+  List<ElegivelGoeRow> encontrarElegiveisGoe(
       @Param("discipuladoId") long discipuladoId,
       @Param("inicio") LocalDate inicio,
       @Param("fim") LocalDate fim,
       @Param("minimoFaltas") long minimoFaltas);
+
+  @Query(
+      """
+      select count(f)
+      from Frequencia f
+      join f.encontro e
+      where f.adolescente.id = :adolescenteId
+        and e.discipulado.id = :discipuladoId
+        and e.situacao = br.com.sgd.frequencia.SituacaoEncontro.REALIZADO
+        and f.situacao = br.com.sgd.frequencia.SituacaoFrequencia.AUSENTE
+        and e.data between :inicio and :fim
+      """)
+  long contarAusenciasRealizadas(
+      @Param("adolescenteId") long adolescenteId,
+      @Param("discipuladoId") long discipuladoId,
+      @Param("inicio") LocalDate inicio,
+      @Param("fim") LocalDate fim);
 
   @Query(
       """
@@ -59,7 +76,7 @@ public interface FrequenciaRepository extends JpaRepository<Frequencia, Long> {
       @Param("inicio") LocalDate inicio,
       @Param("fim") LocalDate fim);
 
-  interface AlertaGoeRow {
+  interface ElegivelGoeRow {
     Long getAdolescenteId();
 
     String getNome();
