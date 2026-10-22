@@ -429,7 +429,6 @@ export default function AdolescentManagement({
               value={discipulados.find((d) => d.id === filtro) ?? null}
               onChange={(_, value) => {
                 setFiltro(value?.id ?? 0)
-                setIgnoradosGoe([])
               }}
               getOptionLabel={labelDiscipulado}
               isOptionEqualToValue={(option, value) => option.id === value.id}
