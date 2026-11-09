@@ -85,6 +85,8 @@ O script lê `ADMIN_INITIAL_EMAIL` / `ADMIN_INITIAL_PASSWORD` (ou `SGD_ADMIN_EMA
 | Listagem de famílias “some” com vários filtros | Filtros de `GET /familias` combinam em AND (UC012) | Remova um filtro por vez; `tipoDesafio` é um valor por request |
 | Adolescente some da listagem ativa após meses | Job de inativação (RN019) às 03:15 SP | Filtre `ativo=false`; presença `PRESENTE` no trimestre evita a inativação |
 | “Excluir dados” ausente / `403` | Só ADMIN anonimiza (RN062) | Use conta ADMIN; ação some se já `anonimizado` |
+| “Transferir” não aparece em Adolescentes | UI deixa `podeTransferir` desligado para todos | Esperado hoje; API `POST .../vinculos` segue RN029 |
+| Login Google/Microsoft ausente | OAuth sem rotas HTTP / botões não montados | Esperado (RN025–027 parciais); use e-mail/senha |
 | Painel do gerente vazio / `404` | Gerência inativa ou mais de uma ativa | Ative exatamente uma gerência para o usuário |
 | Seed/carga remota recusada | Falta `--allow-remote` ou URL sem HTTPS | Siga `scripts/data/README.md` |
 
