@@ -45,12 +45,16 @@ erDiagram
         string estrutura
         string motivo_afastamento
         boolean ativo
+        datetime anonimizado_em
     }
     FICHA_FAMILIA {
         bigint id PK
         bigint adolescente_id UK, FK
         string situacao_igreja
         string situacao_pais
+        boolean desafio_financeiro
+        boolean desafio_emocional
+        boolean desafio_espiritual
         string intervencao
     }
     FICHA_FAMILIA_RESPONSAVEL {
@@ -90,6 +94,26 @@ erDiagram
         bigint encontro_id FK
         int quantidade
     }
+    CHAMADA_LIDERANCA {
+        bigint id PK
+        date data UK
+        string observacao_geral
+        datetime criado_em
+        datetime atualizado_em
+    }
+    CHAMADA_LIDERANCA_DISCIPULADO {
+        bigint id PK
+        bigint chamada_id FK
+        bigint discipulado_id FK
+        string observacao
+    }
+    PRESENCA_LIDERANCA {
+        bigint id PK
+        bigint item_id FK
+        bigint usuario_id FK
+        string papel
+        string situacao
+    }
     AUDITORIA {
         bigint id PK
         bigint usuario_id FK
@@ -114,6 +138,10 @@ erDiagram
     ENCONTRO ||--o{ FREQUENCIA : registra
     ADOLESCENTE ||--o{ FREQUENCIA : tem
     ENCONTRO ||--o{ VISITANTE : contabiliza
+    CHAMADA_LIDERANCA ||--o{ CHAMADA_LIDERANCA_DISCIPULADO : inclui
+    DISCIPULADO ||--o{ CHAMADA_LIDERANCA_DISCIPULADO : participa
+    CHAMADA_LIDERANCA_DISCIPULADO ||--o{ PRESENCA_LIDERANCA : registra
+    USUARIO ||--o{ PRESENCA_LIDERANCA : comparece
     USUARIO ||--o{ AUDITORIA : realiza
 ```
 
@@ -127,6 +155,9 @@ erDiagram
 - Cada `ADOLESCENTE` possui exatamente uma `FICHA_FAMILIA` (1:1), com dois responsáveis (ordens 1 e 2).
 - Deve haver, no máximo, um `ENCONTRO` para cada par (`discipulado_id`, `data`) e uma `FREQUENCIA` para cada par (`encontro_id`, `adolescente_id`). O status do encontro é `REALIZADO` ou `NAO_REALIZADO`; encontros não realizados exigem `justificativa` e encontros realizados mantêm esse campo nulo. `observacao` é texto livre opcional (até 500 caracteres), independente da situação. `chamada_salva_em` registra o instante do primeiro salvamento da chamada e ancora a janela de edição de três horas. `fechamento_automatico` indica que o encontro veio do job de prazo (RN047) e permanece após correção administrativa (RN052).
 - Alterações em frequência devem gerar `AUDITORIA`, com usuário responsável, data/hora e valores anterior e novo. A exclusão administrativa do encontro (RN053) também gera auditoria.
+- Há no máximo uma `CHAMADA_LIDERANCA` por `data`. Cada par (`chamada_id`, `discipulado_id`) é único. `PRESENCA_LIDERANCA.papel` é `DISCIPULADOR` ou `CO_LIDER`; `situacao` é `PRESENTE` ou `AUSENTE`. A regra de negócio exige no máximo um lançamento por usuário na mesma data (RN057), validada na aplicação. A grade operacional lista somente discipulados ativos regulares (RN055).
+- O painel de desempenho dos discipulados (RN061) não possui tabelas próprias: agrega `ENCONTRO`/`FREQUENCIA` (encontros `REALIZADO`) e `VINCULO_ADOLESCENTE_DISCIPULADO` vigentes por mês, somente para discipulados regulares.
+- Anonimização (RN062): `ADOLESCENTE.anonimizado_em` marca o registro; nome vira `Adolescente anonimizado`; telefone/Instagram/estrutura/motivo são nulos; categoria volta a `DISCIPULO` e `ativo=false`. `data_nascimento` e `consentimento_em` permanecem. A `FICHA_FAMILIA` associada, se existir, é reescrita com “Não consta”. Frequências e vínculos não são apagados.
 
 ## Entidades Principais
 
@@ -158,6 +189,7 @@ erDiagram
 - faixa_etaria
 - gerencia_id
 - discipulador_id (resposta da API também inclui `discipuladorNome`)
+- em_formacao
 
 ### Adolescente
 
@@ -167,10 +199,13 @@ erDiagram
 - telefone
 - instagram
 - categoria (`DISCIPULO`, `VISITANTE`, `DISCIPULO_GOE`)
-- estrutura
-- motivo_afastamento (obrigatório quando categoria = `DISCIPULO_GOE`)
+- estrutura (zerada no afastamento automático para GOE, RN043)
+- motivo_afastamento (obrigatório quando categoria = `DISCIPULO_GOE`; no automático: `Afastamento automático: quatro ou mais faltas nas últimas seis semanas.`)
 - consentimento_em
 - ativo
+- anonimizado_em (nulo até `DELETE .../dados-pessoais`; resposta API expõe `anonimizado`)
+- auditoria de afastamento automático: ação `AFASTAR_GOE_AUTOMATICO` (ator nulo quando dispara na subida da API)
+- auditoria de anonimização: ação `ANONIMIZACAO_DADOS_PESSOAIS` (ADMIN)
 
 ### Ficha de família
 
@@ -178,8 +213,10 @@ erDiagram
 - adolescente_id (UK, 1:1)
 - endereço (cep, rua, número, complemento, bairro, cidade)
 - situacao_igreja / situacao_pais
-- conhecendo a família, intervenção e observações
+- conhecendo a família (inclui flags `desafio_financeiro`, `desafio_emocional`, `desafio_espiritual`)
+- intervenção e observações (texto “Não consta” quando vazio)
 - dois responsáveis (ordem 1 e 2) com nome, parentesco, telefone e e-mail
+- listagem `GET /familias`: filtros opcionais em AND; `situacaoFicha` deriva dos nomes dos responsáveis (`nome <> 'Não consta'` exato no SQL); `tipoDesafio` mapeia uma flag; `situacaoIntervencao` trata nulo/branco/“Não consta” (trim + case-insensitive) como `NAO_CONSTA`
 
 ### Encontro
 
@@ -203,6 +240,15 @@ erDiagram
 - id
 - encontro_id
 - quantidade
+
+### Chamada de liderança
+
+- id
+- data (única)
+- observacao_geral (até 1000)
+- criado_em / atualizado_em
+- itens por discipulado (`chamadas_lideranca_discipulados`): observacao (até 500)
+- presenças (`presencas_lideranca`): usuario_id, papel, situacao
 
 ### Auditoria
 
