@@ -136,18 +136,20 @@ Fluxos alternativos:
 ## UC008 - Transferir Adolescente
 
 Ator:
-Administrador ou Gerente (escopo da gerência)
+Administrador, Gerente (escopo da gerência) ou, via API, liderança de origem e destino (RN029)
 
 Fluxo:
 
 1. Selecionar um adolescente com vínculo ativo.
-2. Informar o discipulado de destino e a data de início.
+2. Informar o discipulado de destino e a data de início (`POST /adolescentes/{id}/vinculos`).
 3. Encerrar o vínculo anterior e criar o novo, preservando o histórico.
 
 Fluxo alternativo:
 
-- Discipulador ou co-líder tenta transferir: retornar `403`; a ação não é exibida na interface desses perfis.
-- Gerente tenta transferir para discipulado de outra gerência: retornar `403`.
+- Sem permissão de alteração em origem ou destino: `403`.
+- Gerente tenta transferir para discipulado de outra gerência: `403`.
+- Mesmo discipulado ou `dataInicio` inválida: `409`.
+- UI: a ação “Transferir” não é montada para nenhum perfil hoje; use a API diretamente ou habilite `podeTransferir` no app se o produto quiser expor o fluxo.
 
 ---
 
@@ -249,3 +251,4 @@ Fluxo alternativo:
 - Perfil sem ADMIN: a ação não aparece na UI; a API responde `403`.
 - Adolescente inexistente: `404`.
 - Já anonimizado: a UI omite a ação; repetir o `DELETE` mascara de novo os mesmos campos (idempotente na prática).
+- Edição posterior: `PATCH /adolescentes/{id}` ainda é aceito pelo service se o ator tiver escopo de alteração; não há bloqueio por `anonimizado_em` (RN062).

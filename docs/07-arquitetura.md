@@ -93,7 +93,7 @@ flowchart LR
 - **Fechamento automático**: após o prazo, `FechamentoFrequenciaJob` (cron `0 20 3 * * *`, `America/Sao_Paulo`) marca sexta sem chamada de discipulado padrão como `NAO_REALIZADO` com justificativa padrão e `fechamentoAutomatico=true`. ADMIN pode reverter e preencher a chamada sem limpar o flag; só ADMIN exclui o encontro (`DELETE /encontros/{id}`). Formação não entra no job.
 - **Inativação por ausência**: `InativacaoAdolescenteJob` (cron `0 15 3 * * *`, `America/Sao_Paulo`) aplica RN019 — `ativo=false` quando o cadastro tem mais de três meses e não há `PRESENTE` no período.
 - **Afastamento GOE**: após salvar a chamada, `ChamadaService` avalia ausentes elegíveis (`AdolescenteService.afastarParaGoeSeElegivel`). Na subida, `AfastamentoGoeAutomatico` (`ApplicationRunner`) aplica o mesmo critério a quem já cumpre quatro faltas em seis semanas nos grupos regulares (RN043).
-- **Anonimização LGPD**: `DELETE /adolescentes/{id}/dados-pessoais` (ADMIN) mascara dados pessoais e a ficha de família, preservando frequências (RN062 / UC013).
+- **Anonimização LGPD**: `DELETE /adolescentes/{id}/dados-pessoais` (ADMIN) mascara dados pessoais e a ficha de família, preservando frequências (RN062 / UC013). O `PATCH` do adolescente não bloqueia por `anonimizado_em`.
 - **Observação do encontro**: campo opcional atualizado via `PATCH /encontros/{id}` (não entra no `POST` de criação).
 - **Chamada de liderança**: ADMIN salva presença parcial por discipulado regular (`PUT /chamadas-lideranca`); conflito de pessoa já lançada no dia exige `confirmarAtualizacao` (RN055–RN057). Formação fica fora da grade.
 - **Desempenho dos discipulados**: `GET /painel/desempenho-discipulados` agrega presença mensal (encontros `REALIZADO`) e tamanho do grupo por vínculo vigente; só regulares; ADMIN global / GERENTE na gerência (RN061). Sem tabelas próprias — lê `encontros`, `frequencias` e `vinculos_adolescente_discipulado`.
@@ -101,9 +101,11 @@ flowchart LR
 
 ## Estrutura Frontend
 
+Rotas autenticadas: `/app/{seção}` (`app/appNavigation.ts`). Mapa de menu por perfil: [06-wireframes.md](06-wireframes.md).
+
 Organização por feature em `frontend/src`:
 
-- `app/` — shell (`App`, `AuthenticatedApp`, `theme`, `main`)
+- `app/` — shell (`App`, `AuthenticatedApp`, `theme`, `main`, navegação)
 - `shared/` — HTTP client, tipos, charts e UI (`DiscipuladoLiderancaInfo`, etc.)
 - `features/` — módulos de domínio:
   - `auth`

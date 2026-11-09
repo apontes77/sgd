@@ -71,7 +71,7 @@ RN018 - O histórico de adolescentes inativados deve ser preservado.
 
 RN019 - Um adolescente ativo torna-se inativado após três meses sem participação. O job `InativacaoAdolescenteJob` roda diariamente às 03:15 `America/Sao_Paulo` e marca `ativo=false` quando `criado_em` é anterior a três meses (início do dia no fuso) e não há frequência `PRESENTE` em encontro com `data` nesse intervalo. Independe da categoria; não apaga vínculos nem histórico de frequência.
 
-RN062 - Somente `ADMIN` pode anonimizar dados pessoais (`DELETE /adolescentes/{id}/dados-pessoais`). A operação mascara o nome para `Adolescente anonimizado`, zera telefone, Instagram, estrutura e motivo de afastamento, redefine a categoria para `DISCIPULO`, marca `ativo=false` e grava `anonimizado_em`. Preserva id, data de nascimento, consentimento, vínculos e frequências. Se existir ficha de família, todos os campos voltam para “Não consta”. Gera auditoria `ANONIMIZACAO_DADOS_PESSOAIS`. A ação é irreversível na aplicação.
+RN062 - Somente `ADMIN` pode anonimizar dados pessoais (`DELETE /adolescentes/{id}/dados-pessoais`). A operação mascara o nome para `Adolescente anonimizado`, zera telefone, Instagram, estrutura e motivo de afastamento, redefine a categoria para `DISCIPULO`, marca `ativo=false` e grava `anonimizado_em`. Preserva id, data de nascimento, consentimento, vínculos e frequências. Se existir ficha de família, todos os campos voltam para “Não consta”. Gera auditoria `ANONIMIZACAO_DADOS_PESSOAIS`. A ação é irreversível na aplicação. A UI omite “Excluir dados” quando já `anonimizado`; o `PATCH /adolescentes/{id}` **não** bloqueia edição pós-anonimização no service (só jobs de GOE/promoção ignoram anonimizados).
 
 RN041 - No cadastro, o adolescente recebe obrigatoriamente uma categoria: `DISCIPULO`, `VISITANTE` ou `DISCIPULO_GOE`. A categoria é independente da flag de ativo/inativo. Discipulado de formação aceita somente `DISCIPULO` (RN054).
 
@@ -107,11 +107,11 @@ RN023 - Senhas nunca devem ser armazenadas em texto puro.
 
 RN024 - Deve existir recuperação de senha.
 
-RN025 - O sistema deve suportar OAuth2.
+RN025 - O sistema deve suportar OAuth2. Status: infraestrutura parcial — existem `OAuthIdentity`/`OAuthIdentityService` e provedores `GOOGLE`/`MICROSOFT`, mas `AuthController` só expõe login por e-mail/senha, refresh, logout, recuperação e `/eu`. Não há rotas HTTP de provedor OAuth.
 
-RN026 - O sistema deve suportar login Google.
+RN026 - O sistema deve suportar login Google. Status: sem rota nem botão montado no login (componente `OAuthLoginButtons` existe e não é usado).
 
-RN027 - O sistema deve suportar login Microsoft.
+RN027 - O sistema deve suportar login Microsoft. Status: idem RN026.
 
 ---
 
@@ -119,7 +119,7 @@ RN027 - O sistema deve suportar login Microsoft.
 
 RN028 - Um usuário pode exercer liderança em no máximo um discipulado padrão (como discipulador ou co-líder) e em no máximo um discipulado de formação (somente como discipulador). O acúmulo de um grupo padrão e um de formação é permitido.
 
-RN029 - Administradores e gerentes (somente dentro da própria gerência) podem transferir adolescentes entre discipulados. Discipulador e co-líder não transferem.
+RN029 - Transferência via `POST /adolescentes/{id}/vinculos`: encerra o vínculo ativo e cria outro após `dataInicio` do vínculo atual. Autorização na API: `ADMIN` (global), `GERENTE` (origem e destino na própria gerência) ou liderança (`DISCIPULADOR`/`CO_LIDER`) de **origem e destino** (`EscopoOrganizacionalService.exigirAlteracao`). Na prática, líder só consegue mover entre grupos que já lidera (ex.: padrão + formação sob RN028). A UI atual **não** exibe “Transferir” para nenhum perfil (`podeTransferir` permanece desligado em `AuthenticatedApp`).
 
 RN030 - Discipulador e co-líder podem consultar o histórico gráfico do próprio discipulado.
 
