@@ -23,11 +23,14 @@ Usuários, adolescentes e discipulados não são excluídos fisicamente. Use `PA
 | --- | --- | --- |
 | Login | `POST /autenticacao/login` | Público |
 | Renovar sessão | `POST /autenticacao/atualizar-token` | Público, com refresh token |
+| Logout | `POST /autenticacao/logout` | Público, com refresh token (revoga o refresh) |
 | Solicitar redefinição | `POST /autenticacao/esqueci-a-senha` | Público |
 | Redefinir senha | `POST /autenticacao/redefinir-senha` | Público, com token único |
 | Consultar sessão | `GET /autenticacao/eu` | Autenticado |
 
-O refresh token é rotacionado a cada renovação. Tokens de redefinição não são expostos pela API e devem ser entregues por provedor transacional de e-mail.
+O refresh token é rotacionado a cada renovação. Durações padrão: access `15` minutos (`JWT_ACCESS_TOKEN_MINUTES`), refresh `7` dias (`JWT_REFRESH_TOKEN_DAYS`), token de redefinição `60` minutos (`PASSWORD_RESET_MINUTES`). Tokens de redefinição não são expostos pela API e devem ser entregues por provedor transacional de e-mail.
+
+No frontend, a sessão persiste em `localStorage` (`sgd.access-token` / `sgd.refresh-token`); ver [07-arquitetura.md](07-arquitetura.md).
 
 ## Autorização
 
@@ -39,7 +42,7 @@ O refresh token é rotacionado a cada renovação. Tokens de redefinição não 
 | Adolescentes — leitura | Total | Da gerência | Próprio | Próprio |
 | Adolescentes — cadastro/edição/inativação | Total | Da gerência | Próprio | Próprio |
 | Adolescentes — anonimização (`DELETE .../dados-pessoais`) | Total | Não | Não | Não |
-| Adolescentes — transferência | Total | Da gerência | Não | Não |
+| Adolescentes — transferência | Total | Da gerência (origem e destino) | Se lidera origem e destino | Se lidera origem e destino |
 | Ficha / listagem de famílias | Total | Da gerência | Próprio | Próprio |
 | Encontros e chamada | Total | Da gerência, leitura | Próprio (formação: titular) | Próprio (não lança formação) |
 | Chamada de liderança | Total | Não | Não | Não |
@@ -65,7 +68,7 @@ Os acessos são cumulativos: `GERENTE + DISCIPULADOR` recebe “Minha gerência�
 - Discipulador e co-líder podem lançar a frequência de uma sexta de discipulado padrão até o domingo subsequente (23:59, `America/Sao_Paulo`). Discipulados de formação não têm esse prazo. A janela de três horas para editar a chamada começa no primeiro `PUT /encontros/{id}/frequencias` (`chamadaSalvaEm`); após isso, somente `ADMIN` pode alterar. Sem lançamento até o prazo, o sistema fecha a sexta do grupo padrão como `NAO_REALIZADO` com justificativa automática e `fechamentoAutomatico=true`. `ADMIN` pode reverter esse encontro para `REALIZADO` e preencher a chamada; o flag permanece (RN052). Somente `ADMIN` pode `DELETE /encontros/{id}` (RN053). Todas as alterações são auditadas.
 - Discipulador e co-líder registram encontros realizados, chamadas e visitantes somente nos discipulados em que exercem liderança; o `DISCIPULADOR` também informa a não realização e sua justificativa no próprio grupo. Em formação, somente `ADMIN` e o discipulador titular lançam frequência. `ADMIN` pode executar essas ações em qualquer discipulado ativo. `GET`/`PUT /encontros/{id}/visitantes` lê e grava a quantidade de visitantes avulsos (`quantidade`; leitura sem registro prévio devolve `0`).
 - Gerentes visualizam no painel as não realizações e justificativas dos discipulados da própria gerência, sem permissão de alteração. Os relatórios de frequência (período e diário) incluem encontros `NAO_REALIZADO` com justificativa; os indicadores dos painéis não.
-- Discipulador e co-líder cadastram, atualizam e inativam adolescentes somente no próprio discipulado; gerente na própria gerência; ADMIN com superacesso. Transferências: ADMIN global ou GERENTE dentro da gerência.
+- Discipulador e co-líder cadastram, atualizam e inativam adolescentes somente no próprio discipulado; gerente na própria gerência; ADMIN com superacesso. Transferências (`POST .../vinculos`): ADMIN global, GERENTE com origem/destino na gerência, ou liderança de origem e destino (RN029). A UI não expõe “Transferir” atualmente.
 - Cada adolescente possui ficha de família 1:1 (RN048). Em `POST /adolescentes`, `familia` é obrigatória para ADMIN/GERENTE; DISCIPULADOR/CO_LIDER podem informar a ficha no body (persistida) ou omiti-la, caso em que nasce como “Não consta” (RN051). `GET`/`PUT /adolescentes/{id}/familia` e `GET /familias` estão disponíveis para todos os perfis no respectivo escopo. A listagem `GET /familias` é paginada; filtros opcionais combinam em **AND** (UC012): `busca` (nome do adolescente ou discipulado, case-insensitive), `situacaoFicha` (`PREENCHIDA` se algum responsável tem nome exatamente diferente de “Não consta”; senão `NAO_CONSTA`), `situacaoIgreja`, `situacaoPais`, um `tipoDesafio` (`FINANCEIRO`/`EMOCIONAL`/`ESPIRITUAL` — flag correspondente verdadeira) e `situacaoIntervencao` (`NAO_CONSTA` = intervenção nula, em branco ou “Não consta” com trim e comparação case-insensitive; `REGISTRADA` = qualquer outro texto).
 - Um usuário exerce liderança em no máximo um discipulado padrão e em no máximo um discipulado de formação. O acúmulo dos dois tipos é permitido.
 - Chamada de liderança (ADMIN): `GET`/`PUT /chamadas-lideranca?data=` registra presença de discipuladores e co-líderes atuais dos discipulados regulares ativos (formação fora da grade). O `PUT` é parcial e mescla por discipulado (RN056). Uma pessoa só pode constar uma vez por data; conflito de atualização devolve `409` com `conflitos` até `confirmarAtualizacao: true` (RN057). Relatório e Excel: `/relatorios/chamadas-lideranca` (RN058).
@@ -88,6 +91,10 @@ Os acessos são cumulativos: `GERENTE + DISCIPULADOR` recebe “Minha gerência�
 | Indicadores | `/painel/lider`, `/painel/gerencia`, `/painel/admin`, `/painel/desempenho-discipulados` |
 | Relatórios | `/relatorios/frequencia-diaria`, `/relatorios/frequencia`, `/relatorios/frequencia/export`, `/relatorios/chamadas-lideranca`, `/relatorios/chamadas-lideranca/export`, `/relatorios/adolescentes/export` |
 | Auditoria | `/auditoria` |
+
+`GET /auditoria` (ADMIN): paginação `page`/`size`, ordenação fixa por `data_hora` descendente, filtros opcionais `entidade` e `usuarioId`. Entidades/ações frequentes no código: `USUARIO` (`LOGIN`, `LOGOUT`, `CRIACAO`, `ATUALIZACAO`, `SOLICITACAO_REDEFINICAO_SENHA`, `REDEFINICAO_SENHA`); `ENCONTRO` (`CRIAR`, `ALTERAR`, `EXCLUIR`, `FECHAMENTO_AUTOMATICO`); `FREQUENCIA` (`SUBSTITUIR_CHAMADA`); `VISITANTE` (`ALTERAR`); `ADOLESCENTE` (`PROMOVER_VISITANTE`, `AFASTAR_GOE_AUTOMATICO`, `ANONIMIZACAO_DADOS_PESSOAIS`). Jobs podem gravar com `usuarioId` nulo.
+
+`GET /api/health` e `/actuator/health/**` são operacionais (públicos) e ficam fora deste contrato de negócio — ver [observability.md](observability.md).
 
 A listagem de discipulados inclui `discipuladorNome` para busca tipável e contexto de liderança na UI. Os painéis administrativo e de gerência consideram somente gerências ativas; o de gerência também devolve `discipuladorNome` por discipulado e a lista de encontros não realizados do período. A grade de `GET /chamadas-lideranca` devolve os discipulados regulares ativos e, quando a pessoa já tem lançamento no dia, o campo `registroDoDia` (grupo e situação). O desempenho dos discipulados devolve, por grupo regular, `frequencia[]` e `discipulos[]` mensais; a UI agrega recortes (sexo, faixa, gerência) no cliente.
 
