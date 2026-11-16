@@ -46,9 +46,14 @@ Rotas (todas sob `/api/v1`):
 
 - `POST /autenticacao/login` — access + refresh token
 - `POST /autenticacao/atualizar-token` — renova a sessão e invalida o refresh anterior
+- `POST /autenticacao/logout` — revoga o refresh token
 - `POST /autenticacao/esqueci-a-senha` e `POST /autenticacao/redefinir-senha`
 - `GET /autenticacao/eu` — usuário autenticado
 - `/usuarios/**` — gestão de usuários (`ADMIN`)
+
+Durações padrão (`application.yml`): access token `JWT_ACCESS_TOKEN_MINUTES=15`, refresh `JWT_REFRESH_TOKEN_DAYS=7`, redefinição `PASSWORD_RESET_MINUTES=60`.
+
+No navegador, access/refresh ficam em `localStorage` (`sgd.access-token`, `sgd.refresh-token`). Tokens legados em `sessionStorage` são migrados na leitura. Em `401`, o client tenta um refresh; se falhar, limpa a sessão. Preferências de UI usam `sgd:sidebar-collapsed` e `sgd:color-mode` (também em `localStorage`).
 
 Tokens de redefinição não são expostos pela API; em produção a entrega depende de provedor de e-mail transacional.
 
@@ -63,10 +68,26 @@ O script lê `ADMIN_INITIAL_EMAIL` / `ADMIN_INITIAL_PASSWORD` (ou `SGD_ADMIN_EMA
 ## Convenções
 
 - Migrações de banco somente em `backend/src/main/resources/db/migration/` (Flyway).
-- Endpoints de negócio: `/api/v1/...`. Operacionais Spring: `/actuator`.
+- Endpoints de negócio: `/api/v1/...`. Operacionais Spring: `/actuator`. Liveness simples: `GET /api/health` (sem checar o banco).
 - Erros usam `application/problem+json` sem detalhes internos de stack.
 - CI valida backend (`mvn verify`) e frontend (lint/test/build) em push e PR.
 - Contrato executável: [docs/08-api.yaml](docs/08-api.yaml). Resumo: [docs/08-api.md](docs/08-api.md).
+
+## Qualidade local (espelho do CI)
+
+```bash
+# backend (Spotless, PMD, SpotBugs, JaCoCo + testes)
+mvn -f backend/pom.xml clean verify
+
+# frontend
+pnpm --dir frontend install --frozen-lockfile
+pnpm --dir frontend run test
+pnpm --dir frontend run lint
+pnpm --dir frontend run format:check
+pnpm --dir frontend run build
+```
+
+Atalho do monorepo (quando disponível no ambiente do agent): `bash .cursor/skills/build-quality/scripts/run-quality.sh full`.
 
 ## Armadilhas comuns (desenvolvimento)
 
@@ -85,7 +106,13 @@ O script lê `ADMIN_INITIAL_EMAIL` / `ADMIN_INITIAL_PASSWORD` (ou `SGD_ADMIN_EMA
 | Listagem de famílias “some” com vários filtros | Filtros de `GET /familias` combinam em AND (UC012) | Remova um filtro por vez; `tipoDesafio` é um valor por request |
 | Adolescente some da listagem ativa após meses | Job de inativação (RN019) às 03:15 SP | Filtre `ativo=false`; presença `PRESENTE` no trimestre evita a inativação |
 | “Excluir dados” ausente / `403` | Só ADMIN anonimiza (RN062) | Use conta ADMIN; ação some se já `anonimizado` |
+| “Transferir” não aparece em Adolescentes | UI deixa `podeTransferir` desligado para todos | Esperado hoje; API `POST .../vinculos` segue RN029 |
+| Login Google/Microsoft ausente | OAuth sem rotas HTTP / botões não montados | Esperado (RN025–027 parciais); use e-mail/senha |
 | Painel do gerente vazio / `404` | Gerência inativa ou mais de uma ativa | Ative exatamente uma gerência para o usuário |
 | Seed/carga remota recusada | Falta `--allow-remote` ou URL sem HTTPS | Siga `scripts/data/README.md` |
+| Sessão some ao fechar a aba | Tokens estão em `localStorage`, não em cookie | Esperado; limpe as chaves `sgd.*` para forçar logout local |
+| `401` em loop / logout inesperado | Refresh expirado/revogado (7 dias) ou logout em outro dispositivo | Faça login de novo; refresh é rotacionado a cada renovação |
+| CORS bloqueia o frontend | `CORS_ALLOWED_ORIGIN` difere da origem exata | Use a origem HTTPS/HTTP completa (sem curinga) |
+| `/api/health` UP mas readiness DOWN | Health simples não consulta o Postgres | Use `/actuator/health/readiness` |
 
-Documentação funcional completa em `docs/` (visão, glossário, regras, casos de uso, modelo e arquitetura).
+Documentação funcional completa em `docs/` (visão, glossário, regras, casos de uso, modelo e arquitetura). Jobs e saúde: [observability.md](docs/observability.md).

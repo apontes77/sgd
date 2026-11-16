@@ -210,7 +210,11 @@ paths:
     post:
       tags: [Adolescentes]
       summary: Transfere adolescente para outro discipulado
-      description: ADMIN (global) ou GERENTE (origem e destino na própria gerência). Encerra o vínculo ativo anterior e cria outro; mantém histórico (RN001, RN002 e RN029).
+      description: >
+        Encerra o vínculo ativo e cria outro; mantém histórico (RN001, RN002 e RN029).
+        Papéis aceitos: ADMIN (global), GERENTE (origem e destino na própria gerência) ou
+        DISCIPULADOR/CO_LIDER com permissão de alteração em origem e destino.
+        A interface web atual não monta a ação Transferir para nenhum perfil.
       parameters: [ { $ref: '#/components/parameters/AdolescenteId' } ]
       requestBody: { required: true, content: { application/json: { schema: { type: object, required: [discipuladoId, dataInicio], properties: { discipuladoId: { type: integer, format: int64 }, dataInicio: { type: string, format: date } } } } } }
       responses: { '201': { description: Vínculo criado, content: { application/json: { schema: { $ref: '#/components/schemas/Vinculo' } } } }, '401': { $ref: '#/components/responses/NaoAutorizado' }, '403': { $ref: '#/components/responses/Proibido' }, '404': { $ref: '#/components/responses/NaoEncontrado' }, '409': { $ref: '#/components/responses/Conflito' } }
